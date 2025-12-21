@@ -21,8 +21,11 @@ export const authService = {
     /**
      * Helper to store session
      */
-    handleAuthSuccess: (response: AuthResponse) => {
+    handleAuthSuccess: (response: AuthResponse, username: string) => {
         if (response.token) localStorage.setItem('token', response.token);
         if (response.refreshToken) localStorage.setItem('refreshToken', response.refreshToken);
+
+        // CRITICAL: Save the username so the Context can find it on refresh
+        localStorage.setItem('username', username);
     }
 };

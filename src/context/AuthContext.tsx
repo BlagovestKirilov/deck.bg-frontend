@@ -1,57 +1,54 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// Define what our Auth State looks like
-interface AuthState {
-    token: string | null;
-    refreshToken: string | null;
-    isAuthenticated: boolean;
+interface User {
+    username: string;
 }
 
-// Define the functions our components can use
-interface AuthContextType extends AuthState {
-    saveAuth: (token: string, refreshToken: string) => void;
+interface AuthContextType {
+    user: User | null;
+    isAuthenticated: boolean;
+    login: (userData: User, token: string, refreshToken?: string) => void;
     logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [authState, setAuthState] = useState<AuthState>({
-        token: localStorage.getItem('token'),
-        refreshToken: localStorage.getItem('refreshToken'),
-        isAuthenticated: !!localStorage.getItem('token'),
-    });
+    const [user, setUser] = useState<User | null>(null);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-    // Function to call after a successful Login/Register
-    const saveAuth = (token: string, refreshToken: string) => {
+    // Persist session on refresh
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const username = localStorage.getItem('username');
+        if (token && username) {
+            setUser({ username });
+            setIsAuthenticated(true);
+        }
+    }, []);
+
+    const login = (userData: User, token: string, refreshToken?: string) => {
         localStorage.setItem('token', token);
-        localStorage.setItem('refreshToken', refreshToken);
-        setAuthState({
-            token,
-            refreshToken,
-            isAuthenticated: true,
-        });
+        localStorage.setItem('username', userData.username);
+        if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+
+        setUser(userData);
+        setIsAuthenticated(true);
     };
 
-    // Function to wipe everything on logout
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        setAuthState({
-            token: null,
-            refreshToken: null,
-            isAuthenticated: false,
-        });
+        localStorage.clear();
+        setUser(null);
+        setIsAuthenticated(false);
     };
 
     return (
-        <AuthContext.Provider value={{ ...authState, saveAuth, logout }}>
+        <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
             {children}
         </AuthContext.Provider>
     );
 };
 
-// Custom hook to make using the context easy
 export const useAuthContext = () => {
     const context = useContext(AuthContext);
     if (!context) {

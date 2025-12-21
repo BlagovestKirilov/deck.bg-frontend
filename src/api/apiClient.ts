@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
 
 const apiClient = axios.create({
     // Use the FULL URL to bypass the React Dev Server 404/403
@@ -8,13 +8,22 @@ const apiClient = axios.create({
     },
 });
 
-// Automatically attach JWT to every request if it exists
-apiClient.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
-    if (token && config.headers) {
-        config.headers.Authorization = `Bearer ${token}`;
+apiClient.interceptors.request.use(
+    (config: InternalAxiosRequestConfig) => {
+        const token = localStorage.getItem('token');
+
+        if (token && config.headers) {
+            // Standard way to set headers in Axios 1.x+
+            config.headers.set('Authorization', `Bearer ${token}`);
+
+            // Console log to verify in the browser
+            console.log(`Sending token to: ${config.url}`);
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
     }
-    return config;
-});
+);
 
 export default apiClient;

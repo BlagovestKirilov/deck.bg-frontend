@@ -1,28 +1,34 @@
 import { useState } from 'react';
 import { authService } from '../api/authService';
-import { AuthRequest } from '../types/auth.types';
-import { useAuthContext } from '../context/AuthContext'; // Import our new context hook
+import { useAuthContext } from '../context/AuthContext';
 
 export const useAuth = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const { saveAuth } = useAuthContext(); // Get the save function
 
-    const performAction = async (action: 'login' | 'register', data: AuthRequest) => {
+    // Destructure 'login' from context (previously you had 'saveAuth')
+    const { login } = useAuthContext();
+
+    const performAction = async (action: 'login' | 'register', form: any) => {
         setIsLoading(true);
         setError(null);
         try {
-            const response = await authService[action](data);
+            const response = await (action === 'login'
+                ? authService.login(form)
+                : authService.register(form));
 
-            // If Java returns tokens, save them globally
-            if (response.token && response.refreshToken) {
-                saveAuth(response.token, response.refreshToken);
-            }
+            // Use the login function from context to update global state
+            // response.token comes from your AuthResponse type
+            login(
+                { username: form.username },
+                response.token,
+                response.refreshToken
+            );
 
             return response;
         } catch (err: any) {
-            const msg = err.response?.data?.message || 'Connection Error';
-            setError(msg);
+            const message = err.response?.data?.message || 'Authentication failed';
+            setError(message);
             throw err;
         } finally {
             setIsLoading(false);
