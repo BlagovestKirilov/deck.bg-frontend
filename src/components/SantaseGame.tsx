@@ -60,38 +60,41 @@ const SantaseGame: React.FC = () => {
 
     // 1. Move this UP so it's defined before it's called
     const handleGameUpdate = (updatedState: GameState) => {
+        console.log("Processing update for user:", username);
+
         if (updatedState.winnerUsername) {
             alert(`🏆 GAME OVER! ${updatedState.winnerUsername} won the match!`);
         }
+
+        if (updatedState.trickWinnerUsername) {
+            alert(`🏆 Trick OVER! ${updatedState.trickWinnerUsername} won the trick!`);
+        }
+
+        // This ensures you are always working with the freshest state
         setGameState(updatedState);
     };
 
-    // 2. Move this UP so startSearch can find it
     const connectToGameRoom = (gameId: string) => {
         if (!stompClient.current || !username) return;
 
         const topic = `/topic/game/${gameId}/${username}`;
-        console.log("Attempting to subscribe to:", topic);
 
-        // Subscribe
-        const subscription = stompClient.current.subscribe(topic, (message: any) => {
+        // Subscribe to game updates
+        stompClient.current.subscribe(topic, (message: any) => {
             console.log("Update received from WS!", message.body);
-            setGameState(JSON.parse(message.body));
+
+            // FIX: Call your custom function here!
+            handleGameUpdate(JSON.parse(message.body));
         });
 
-        // Instead of waiting for a receipt (which requires backend config),
-        // Call the initial state AFTER the subscription call.
+        // Fetch initial state
         gameService.getInitialState()
             .then(res => {
-                console.log("REST API Response:", res.data);
                 if (res.data) {
-                    setGameState(res.data);
+                    // FIX: Use handleGameUpdate here too for consistency
+                    handleGameUpdate(res.data);
                     setStatusMessage("CONNECTED");
                 }
-            })
-            .catch(err => {
-                console.error("Failed to fetch initial state:", err);
-                setError("Game started but could not fetch data.");
             });
     };
 
