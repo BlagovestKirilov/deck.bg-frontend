@@ -5,7 +5,10 @@ export const gameService = {
         apiClient.post('/game/search'),
 
     playCard: (cardId: string) =>
-        apiClient.post('/game/play-card', { cardId }),
+        apiClient.post('/game/play-card', {cardId}),
+
+    announce: (cardId: string) =>
+        apiClient.post('/game/announce', {cardId}),
 
     replaceCard: () =>
         apiClient.post('/game/replace-card'),

@@ -4,7 +4,7 @@ import AuthPage from './components/AuthPage';
 import SantaseGame from './components/SantaseGame';
 
 const App: React.FC = () => {
-    const { isAuthenticated, logout, user } = useAuthContext();
+    const { isAuthenticated} = useAuthContext();
 
     return (
         <div style={styles.appContainer}>
@@ -12,18 +12,7 @@ const App: React.FC = () => {
                 <AuthPage />
             ) : (
                 <div style={styles.gameWrapper}>
-                    {/* Persistent Navigation Bar */}
-                    <nav style={styles.nav}>
-                        <div style={styles.logoSection}>
-                            <span style={styles.logo}>🎴 Santase Online</span>
-                            <span style={styles.welcomeText}>User: <strong>{user?.username || 'Player'}</strong></span>
-                        </div>
-                        <button onClick={logout} style={styles.logoutBtn}>
-                            Exit Game & Logout
-                        </button>
-                    </nav>
-
-                    {/* The Game Component */}
+                    {/* Main Content strictly fills the rest of the screen height */}
                     <main style={styles.mainContent}>
                         <SantaseGame />
                     </main>
@@ -36,52 +25,58 @@ const App: React.FC = () => {
 const styles: Record<string, React.CSSProperties> = {
     appContainer: {
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        minHeight: '100vh',
-        backgroundColor: '#f0f2f5'
+        height: '100vh',
+        width: '100vw',
+        overflow: 'hidden', // Blocks any scrollbars at the root level
+        backgroundColor: '#1a3a16'
     },
     gameWrapper: {
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh'
+        height: '100vh',
+        width: '100vw'
     },
     nav: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: '10px 25px',
+        padding: '0 15px',
+        height: '50px', // Fixed height for navbar
         backgroundColor: '#ffffff',
         boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
-        zIndex: 100
+        zIndex: 1000,
+        flexShrink: 0 // Prevents navbar from squishing
     },
     logoSection: {
         display: 'flex',
         alignItems: 'center',
-        gap: '20px'
+        gap: '15px'
     },
     logo: {
-        fontSize: '1.4rem',
+        fontSize: '1.1rem',
         fontWeight: 'bold',
         color: '#2d5a27'
     },
     welcomeText: {
-        fontSize: '0.9rem',
+        fontSize: '0.8rem',
         color: '#555',
         borderLeft: '1px solid #ddd',
-        paddingLeft: '20px'
+        paddingLeft: '15px'
     },
     logoutBtn: {
-        padding: '8px 16px',
+        padding: '6px 12px',
         backgroundColor: '#e74c3c',
         color: 'white',
         border: 'none',
         borderRadius: '5px',
         cursor: 'pointer',
         fontWeight: 'bold',
-        transition: 'background 0.2s'
+        fontSize: '0.8rem'
     },
     mainContent: {
-        flex: 1,
-        overflowY: 'auto'
+        flex: 1, // Takes all remaining space below navbar
+        position: 'relative',
+        overflow: 'hidden' // Blocks scrolling inside the game area
     }
 };
 

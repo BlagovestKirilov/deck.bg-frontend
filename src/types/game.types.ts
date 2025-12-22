@@ -6,6 +6,7 @@ export interface Card {
     suit: Suit;
     rank: Rank;
     points: number;
+    isPlayable: boolean;
 }
 
 export interface GameState {
