@@ -200,16 +200,36 @@ const SantaseGame: React.FC = () => {
     };
 
     const startSearch = () => {
+        // 1. Guard Clause: If already searching, exit the function immediately
+        if (isSearching) {
+            console.log("Search already in progress...");
+            return;
+        }
+
         setIsSearching(true);
+
         const socket = new SockJS(`https://localhost/ws-game?token=${token}`);
         const client = Stomp.over(socket);
         stompClient.current = client;
+
         client.connect({ Authorization: `Bearer ${token}` }, () => {
             client.subscribe(`/topic/game/${username}`, (msg: any) => {
                 const data = JSON.parse(msg.body);
-                if (data.status === 'GAME_STARTED') connectToGameRoom(data.gameId);
+                if (data.status === 'GAME_STARTED') {
+                    setIsSearching(false); // Reset search state when game starts
+                    connectToGameRoom(data.gameId);
+                }
             });
-            gameService.searchGame();
+
+            gameService.searchGame().catch(err => {
+                // Reset state if the backend request fails
+                setIsSearching(false);
+                console.error("Search failed:", err);
+            });
+        }, (error) => {
+            // Handle connection errors
+            setIsSearching(false);
+            console.error("STOMP error:", error);
         });
     };
 
@@ -248,7 +268,13 @@ const SantaseGame: React.FC = () => {
                     <div style={styles.lobbyContent}>
                         <h1 style={styles.welcomeTitle}>Добре дошли, {username}</h1>
                         <p style={styles.welcomeSub}>Готови ли сте за нова игра на Сантасе?</p>
-                        <button onClick={startSearch} style={styles.btnMain}>
+                        <button
+                            onClick={startSearch}
+                            style={{
+                                ...styles.btnMain,
+                                opacity: isSearching ? 0.6 : 1
+                            }}
+                        >
                             {isSearching ? 'ТЪРСЕНЕ НА ОПОНЕНТ...' : 'ЗАПОЧНИ ИГРА'}
                         </button>
                     </div>
