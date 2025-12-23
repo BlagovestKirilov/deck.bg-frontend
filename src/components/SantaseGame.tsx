@@ -116,15 +116,12 @@ const AppModal: React.FC<{
     </div>
 );
 
-// --- Main Component ---
-
 const SantaseGame: React.FC = () => {
     const { token, user, logout } = useAuthContext();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [announcedSuit, setAnnouncedSuit] = useState<Suit | null>(null);
 
-    // UI Notification States
     const [activeBonuses, setActiveBonuses] = useState<{id: number, val: number, isOpponent: boolean}[]>([]);
     const [confirmAction, setConfirmAction] = useState<null | { title: string; message: string; action: () => void; onCancel?: () => void }>(null);
     const [trickResult, setTrickResult] = useState<null | { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number }>(null);
@@ -133,7 +130,6 @@ const SantaseGame: React.FC = () => {
     const stompClient = useRef<any>(null);
     const username = user?.username || "Играч";
 
-    // Detect Bonus/Announcements to show Bubbles
     useEffect(() => {
         if (!gameState) return;
         const newBubbles: {id: number, val: number, isOpponent: boolean}[] = [];
@@ -168,6 +164,21 @@ const SantaseGame: React.FC = () => {
         }
         setGameState(updatedState);
         setAnnouncedSuit(null);
+    };
+
+    const handleLeaveGame = () => {
+        setConfirmAction({
+            title: 'Напускане',
+            message: 'Сигурни ли сте, че искате да напуснете играта? Това ще доведе до загуба.',
+            action: async () => {
+                try {
+                    await gameService.finishGame();
+                    window.location.reload(); // Returns to lobby
+                } catch (e) {
+                    console.error("Error finishing game", e);
+                }
+            }
+        });
     };
 
     const getSortedCards = (cards: Card[]) => {
@@ -245,7 +256,6 @@ const SantaseGame: React.FC = () => {
                 </div>
             ) : (
                 <div style={styles.gameWrapper}>
-                    {/* Bonus Bubbles */}
                     {activeBonuses.map(b => (
                         <div key={b.id} className="bonus-bubble" style={{ top: b.isOpponent ? '20%' : '70%' }}>
                             +{b.val} Обявяване
@@ -266,6 +276,7 @@ const SantaseGame: React.FC = () => {
                     </div>
 
                     <div style={styles.midSection}>
+                        {/* DECK LEFT AREA */}
                         <div style={styles.deckContainer}>
                             {gameState.remainingCardsCount > 0 && !gameState.isClosed ? (
                                 <div style={{ position: 'relative', width: '150px', height: '140px' }}>
@@ -306,6 +317,7 @@ const SantaseGame: React.FC = () => {
                             )}
                         </div>
 
+                        {/* CENTER CARDS */}
                         <div style={styles.tableCenter}>
                             <div style={styles.cardSlot}>
                                 {gameState.opponentPlayedCard && <CardComponent card={gameState.opponentPlayedCard} />}
@@ -315,7 +327,9 @@ const SantaseGame: React.FC = () => {
                             </div>
                         </div>
 
+                        {/* ACTION BUTTONS (66 and Leave) */}
                         <div style={styles.actionContainer}>
+                            <div style={styles.btnLeave} onClick={handleLeaveGame}>✖</div>
                             <div style={styles.icon66} onClick={() => setConfirmAction({
                                 title: 'Край на ръката',
                                 message: 'Сигурни ли сте, че искате да приключите ръката (66)?',
@@ -340,7 +354,6 @@ const SantaseGame: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Final Winner Modal - Shown only after trick result is cleared */}
                     {finalWinner && !trickResult && (
                         <div style={styles.resultOverlay}>
                             <div style={styles.resultBox}>
@@ -408,18 +421,18 @@ const styles: Record<string, React.CSSProperties> = {
     handOpponent: { display: 'flex', gap: '8px' },
     cardBack: { width: '18vw', maxWidth: '100px', height: '26vw', maxHeight: '140px', background: 'linear-gradient(#900, #700)', border: '2px solid #fff', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.4)' },
 
-    // Static mid-section layout
     midSection: { position: 'absolute', top: '50%', left: '0', right: '0', transform: 'translateY(-50%)', height: '200px', display: 'flex', alignItems: 'center', padding: '0 5vw' },
     deckContainer: { width: '180px', display: 'flex', justifyContent: 'center', position: 'relative' },
     tableCenter: { flex: 1, display: 'flex', justifyContent: 'center', gap: '20px' },
     cardSlot: { width: '100px', height: '140px', display: 'flex', justifyContent: 'center' },
-    actionContainer: { width: '180px', display: 'flex', justifyContent: 'center' },
+    actionContainer: { width: '180px', display: 'flex', justifyContent: 'center', gap: '20px' },
 
     deckPile: { position: 'absolute', top: '0', left: '0', width: '18vw', maxWidth: '100px', height: '26vw', maxHeight: '140px', background: '#900', borderRadius: '6px', border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, boxShadow: '4px 0 10px rgba(0,0,0,0.3)' },
     deckCount: { fontSize: '1.5rem', fontWeight: 'bold', color: 'white' },
     trumpUnder: { position: 'absolute', top: '10px', left: '90px', transform: 'rotate(90deg)', zIndex: 1 },
     closedTrump: { fontSize: '3rem', opacity: 0.2, border: '2px dashed white', borderRadius: '50%', padding: '15px', color: 'white' },
     icon66: { width: '65px', height: '65px', borderRadius: '50%', background: '#ff9800', border: '3px solid white', color: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.6rem', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', cursor: 'pointer' },
+    btnLeave: { width: '45px', height: '45px', borderRadius: '50%', background: '#ff5252', border: '2px solid white', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 4px 10px rgba(0,0,0,0.4)', cursor: 'pointer' },
 
     bottomSection: { position: 'absolute', bottom: '3vh', width: '100%' },
     handPlayer: { display: 'flex', justifyContent: 'center', gap: '8px' },

@@ -20,5 +20,8 @@ export const gameService = {
         apiClient.post('/game/finish-deal'),
 
     getInitialState: () =>
-        apiClient.get(`/game/state`)
+        apiClient.get(`/game/state`),
+
+    finishGame: () =>
+        apiClient.post(`/game/finish-game`)
 };
