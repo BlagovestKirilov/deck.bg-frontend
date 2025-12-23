@@ -19,11 +19,13 @@ export const useAuth = () => {
 
             // Use the login function from context to update global state
             // response.token comes from your AuthResponse type
-            login(
-                { username: form.username },
-                response.token,
-                response.refreshToken
-            );
+            if(action === 'login') {
+                login(
+                    {username: form.username},
+                    response.token,
+                    response.refreshToken
+                );
+            }
 
             return response;
         } catch (err: any) {

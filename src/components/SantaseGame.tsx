@@ -173,7 +173,6 @@ const SantaseGame: React.FC = () => {
             action: async () => {
                 try {
                     await gameService.finishGame();
-                    window.location.reload(); // Returns to lobby
                 } catch (e) {
                     console.error("Error finishing game", e);
                 }
