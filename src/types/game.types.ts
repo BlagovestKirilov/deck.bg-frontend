@@ -26,5 +26,7 @@ export interface GameState {
     trickWinnerUsername?: string;
     trickFirstPlayerScore?: number;
     trickSecondPlayerScore?: number;
+    bonus?: number;
+    opponentPlayerBonus?: number;
     status?: 'WAITING' | 'GAME_STARTED';
 }

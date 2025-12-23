@@ -1,7 +1,6 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 
 const apiClient = axios.create({
-    // Use the FULL URL to bypass the React Dev Server 404/403
     baseURL: 'https://localhost/api',
     headers: {
         'Content-Type': 'application/json',
@@ -11,17 +10,52 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         const token = localStorage.getItem('token');
-
         if (token && config.headers) {
-            // Standard way to set headers in Axios 1.x+
             config.headers.set('Authorization', `Bearer ${token}`);
-
-            // Console log to verify in the browser
-            console.log(`Sending token to: ${config.url}`);
         }
         return config;
     },
-    (error) => {
+    (error) => Promise.reject(error)
+);
+
+// Response Interceptor: Handle 401 and Refresh Token
+apiClient.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        // If error is 401 and we haven't already tried to refresh
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                const refreshToken = localStorage.getItem('refreshToken');
+
+                // We use axios (not apiClient) to avoid an infinite loop of 401s
+                const response = await axios.post('https://localhost/api/auth/refresh', {
+                    refreshToken: refreshToken
+                });
+
+                const { token, refreshToken: newRefreshToken } = response.data;
+
+                // Update Storage
+                localStorage.setItem('token', token);
+                if (newRefreshToken) {
+                    localStorage.setItem('refreshToken', newRefreshToken);
+                }
+
+                // Update Header and Retry original request
+                originalRequest.headers.set('Authorization', `Bearer ${token}`);
+                return apiClient(originalRequest);
+            } catch (refreshError) {
+                // If refresh fails, clear everything and redirect to login
+                localStorage.removeItem('token');
+                localStorage.removeItem('refreshToken');
+                localStorage.removeItem('username');
+                window.location.href = '/login';
+                return Promise.reject(refreshError);
+            }
+        }
         return Promise.reject(error);
     }
 );
