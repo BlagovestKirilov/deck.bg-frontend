@@ -117,7 +117,7 @@ const AppModal: React.FC<{
 );
 
 const SantaseGame: React.FC = () => {
-    const { token, user, logout } = useAuthContext();
+    const {user, logout } = useAuthContext();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [announcedSuit, setAnnouncedSuit] = useState<Suit | null>(null);
@@ -236,36 +236,43 @@ const SantaseGame: React.FC = () => {
     };
 
     const startSearch = () => {
-        // 1. Guard Clause: If already searching, exit the function immediately
         if (isSearching) {
             console.log("Search already in progress...");
             return;
         }
 
         setIsSearching(true);
+        const sockToken = localStorage.getItem('token');
 
-        const socket = new SockJS(`https://localhost/ws-game?token=${token}`);
+        // 1. Pass the token as a query parameter for the HTTP Handshake
+        // This allows your Java 'request.getParameter("token")' or a custom interceptor to find it.
+        const socket = new SockJS(`https://localhost/ws-game?token=${sockToken}`);
+
         const client = Stomp.over(socket);
         stompClient.current = client;
 
-        client.connect({ Authorization: `Bearer ${token}` }, () => {
+        // 2. Also pass it in the STOMP connect headers for internal message security
+        const headers = {
+            'Authorization': `Bearer ${sockToken}`
+        };
+
+        client.connect(headers, () => {
+            // Success: Subscribe to the matchmaking topic
             client.subscribe(`/topic/game/${username}`, (msg: any) => {
                 const data = JSON.parse(msg.body);
                 if (data.status === 'GAME_STARTED') {
-                    setIsSearching(false); // Reset search state when game starts
+                    setIsSearching(false);
                     connectToGameRoom(data.gameId);
                 }
             });
 
             gameService.searchGame().catch(err => {
-                // Reset state if the backend request fails
                 setIsSearching(false);
                 console.error("Search failed:", err);
             });
         }, (error) => {
-            // Handle connection errors
             setIsSearching(false);
-            console.error("STOMP error:", error);
+            console.error("STOMP connection error:", error);
         });
     };
 
