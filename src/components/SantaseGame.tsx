@@ -149,21 +149,57 @@ const SantaseGame: React.FC = () => {
         }
     }, [gameState?.bonus, gameState?.opponentPlayerBonus]);
 
-    const handleGameUpdate = (updatedState: GameState) => {
-        if (updatedState.trickWinnerUsername) {
+    const [isUiLocked, setIsUiLocked] = useState(false);
+    const messageQueue = useRef<GameState[]>([]);
+    const isProcessingQueue = useRef(false);
+
+// This is the main function called by the WebSocket subscription
+    const handleGameUpdate = (newState: GameState) => {
+        messageQueue.current.push(newState);
+        processNextMessage();
+    };
+
+    const processNextMessage = async () => {
+        // If we are already busy waiting 2 seconds, don't start another process
+        if (isProcessingQueue.current || messageQueue.current.length === 0) return;
+
+        isProcessingQueue.current = true;
+        const nextState = messageQueue.current.shift()!;
+
+        // Check if this specific state shows both cards played
+        const isTrickFull = nextState.playedCard && nextState.opponentPlayedCard;
+
+        if (isTrickFull) {
+            // 1. Show the cards
+            setGameState(nextState);
+            setIsUiLocked(true);
+
+            // 2. Wait exactly 2 seconds
+            await new Promise(resolve => setTimeout(resolve, 2000));
+
+            setIsUiLocked(false);
+        } else {
+            // Normal update (one card or drawing) - no delay needed
+            setGameState(nextState);
+        }
+
+        // Check for results/winners
+        if (nextState.trickWinnerUsername) {
             setTrickResult({
-                winner: updatedState.trickWinnerUsername,
-                p1Name: updatedState.firstPlayerUsername,
-                p1Score: updatedState.trickFirstPlayerScore || 0,
-                p2Name: updatedState.secondPlayerUsername,
-                p2Score: updatedState.trickSecondPlayerScore || 0
+                winner: nextState.trickWinnerUsername,
+                p1Name: nextState.firstPlayerUsername,
+                p1Score: nextState.trickFirstPlayerScore || 0,
+                p2Name: nextState.secondPlayerUsername,
+                p2Score: nextState.trickSecondPlayerScore || 0
             });
         }
-        if (updatedState.winnerUsername) {
-            setFinalWinner(updatedState.winnerUsername);
+        if (nextState.winnerUsername) {
+            setFinalWinner(nextState.winnerUsername);
         }
-        setGameState(updatedState);
-        setAnnouncedSuit(null);
+
+        // Move to the next message in the queue
+        isProcessingQueue.current = false;
+        processNextMessage();
     };
 
     const handleLeaveGame = () => {
@@ -234,7 +270,7 @@ const SantaseGame: React.FC = () => {
     };
 
     const handlePlayCard = async (card: Card) => {
-        if (!gameState || !card.isPlayable || !gameState.isOnTurn) return;
+        if (!gameState || !card.isPlayable || !gameState.isOnTurn || isUiLocked) return;
         const isKingOrQueen = card.rank === 'KING' || card.rank === 'QUEEN';
         const partnerRank = card.rank === 'KING' ? 'QUEEN' : 'KING';
         const hasPartner = gameState.deck.some(c => c.rank === partnerRank && c.suit === card.suit);
