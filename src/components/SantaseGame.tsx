@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 import { useAuthContext } from '../context/AuthContext';
@@ -9,10 +9,10 @@ import { GameState, Card, Suit } from '../types/game.types';
 if (typeof document !== 'undefined') {
     const style = document.createElement('style');
     style.innerHTML = `
-        body, html { margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body, html { margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background: #132a18; }
         #root { height: 100%; width: 100%; }
-        button { cursor: pointer; transition: opacity 0.2s; }
-        button:hover { opacity: 0.9; }
+        button { cursor: pointer; transition: all 0.2s; border: none; }
+        button:hover { transform: translateY(-2px); filter: brightness(1.1); }
         button:active { transform: scale(0.98); }
         
         @keyframes floatUpFade {
@@ -24,17 +24,17 @@ if (typeof document !== 'undefined') {
         .bonus-bubble {
             position: absolute;
             left: 50%;
-            background: #ffeb3b;
+            background: linear-gradient(135deg, #ffeb3b, #fbc02d);
             color: #000;
-            font-weight: bold;
-            padding: 10px 25px;
+            font-weight: 800;
+            padding: 12px 30px;
             border-radius: 50px;
-            border: 2px solid #fbc02d;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
             animation: floatUpFade 2.5s ease-out forwards;
             z-index: 1000;
             pointer-events: none;
-            font-size: 1.2rem;
+            font-size: 1.3rem;
+            text-transform: uppercase;
         }
     `;
     document.head.appendChild(style);
@@ -42,29 +42,14 @@ if (typeof document !== 'undefined') {
 
 const SUIT_MAP: Record<Suit, { symbol: string; color: string }> = {
     SPADES: { symbol: '♠', color: '#1a1a1a' },
-    HEARTS: { symbol: '♥', color: '#cc0000' },
-    DIAMONDS: { symbol: '♦', color: '#cc0000' },
+    HEARTS: { symbol: '♥', color: '#d32f2f' },
+    DIAMONDS: { symbol: '♦', color: '#d32f2f' },
     CLUBS: { symbol: '♣', color: '#1a1a1a' }
 };
 
 const RANK_ORDER: Record<string, number> = {
     'ACE': 0, 'TEN': 1, 'KING': 2, 'QUEEN': 3, 'JACK': 4, 'NINE': 5
 };
-
-// --- Sub-Components ---
-
-const Navbar: React.FC<{ username: string; onLogout: () => void }> = ({ username, onLogout }) => (
-    <nav style={styles.navbar}>
-        <div style={styles.navLogo}>SANTASE 66</div>
-        <div style={styles.navLinks}>
-            <div style={styles.userInfo}>
-                <span style={styles.userIcon}>👤</span>
-                <span>{username}</span>
-            </div>
-            <button onClick={onLogout} style={styles.btnLogout}>ИЗХОД</button>
-        </div>
-    </nav>
-);
 
 const CardComponent: React.FC<{
     card: Card;
@@ -78,23 +63,57 @@ const CardComponent: React.FC<{
 
     const cardStyle = {
         ...styles.card,
-        width: isSmall ? '14vw' : '18vw',
-        maxWidth: isSmall ? '75px' : '100px',
-        height: isSmall ? '20vw' : '26vw',
-        maxHeight: isSmall ? '105px' : '140px',
-        color: isPlayable ? suit.color : '#777',
-        border: isSelected ? '3px solid #4CAF50' : '1px solid #333',
-        backgroundColor: isPlayable ? '#fff' : '#ccc',
-        transform: isSelected ? 'translateY(-15px)' : 'none',
+        width: isSmall ? '75px' : '100px',
+        height: isSmall ? '110px' : '145px',
+        color: isPlayable ? suit.color : '#999',
+        border: isSelected ? '3px solid #ffeb3b' : '1px solid rgba(0,0,0,0.1)',
+        backgroundColor: isPlayable ? '#fff' : '#e0e0e0',
+        transform: isSelected ? 'translateY(-20px) scale(1.05)' : 'none',
+        display: 'flex',
+        flexDirection: 'column' as const,
+        justifyContent: 'space-between',
+        padding: '8px',
+        position: 'relative' as const,
+    };
+
+    const cornerStyle = {
+        display: 'flex',
+        flexDirection: 'column' as const,
+        alignItems: 'center',
+        lineHeight: '1',
+        fontWeight: 'bold' as const,
+        fontSize: isSmall ? '0.9rem' : '1.1rem',
     };
 
     return (
         <div onClick={isPlayable ? onClick : undefined} style={cardStyle}>
-            <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{displayRank}</div>
-            <div style={styles.cardSuitCenter}>{suit.symbol}</div>
+            <div style={{ ...cornerStyle, alignSelf: 'flex-start' }}>
+                <span>{displayRank}</span>
+                <span style={{ fontSize: isSmall ? '0.8rem' : '1rem' }}>{suit.symbol}</span>
+            </div>
+            <div style={{ fontSize: isSmall ? '1.8rem' : '2.5rem', alignSelf: 'center', opacity: 0.9 }}>
+                {suit.symbol}
+            </div>
+            <div style={{ ...cornerStyle, alignSelf: 'flex-end', transform: 'rotate(180deg)' }}>
+                <span>{displayRank}</span>
+                <span style={{ fontSize: isSmall ? '0.8rem' : '1rem' }}>{suit.symbol}</span>
+            </div>
         </div>
     );
 };
+
+const Navbar: React.FC<{ username: string; onLogout: () => void }> = ({ username, onLogout }) => (
+    <nav style={styles.navbar}>
+        <div style={styles.navLogo}>SANTASE <span style={{color: '#fff'}}>66</span></div>
+        <div style={styles.navLinks}>
+            <div style={styles.userInfo}>
+                <span style={styles.userIcon}>👤</span>
+                <span style={{fontWeight: 600}}>{username}</span>
+            </div>
+            <button onClick={onLogout} style={styles.btnLogout}>ИЗХОД</button>
+        </div>
+    </nav>
+);
 
 const AppModal: React.FC<{
     title?: string;
@@ -106,8 +125,8 @@ const AppModal: React.FC<{
 }> = ({ title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ" }) => (
     <div style={styles.modalOverlay}>
         <div style={styles.modalBox}>
-            {title && <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>{title}</h3>}
-            {message && <div style={{ marginBottom: '20px' }}>{message}</div>}
+            {title && <h3 style={{ margin: '0 0 15px 0', color: '#1a1a1a', fontSize: '1.5rem' }}>{title}</h3>}
+            {message && <div style={{ marginBottom: '25px', color: '#444', fontSize: '1.1rem' }}>{message}</div>}
             <div style={{ ...styles.modalActions, justifyContent: onCancel ? 'space-between' : 'center' }}>
                 {onCancel && <button onClick={onCancel} style={styles.btnCancel}>{cancelText}</button>}
                 <button onClick={onConfirm} style={styles.btnConfirm}>{confirmText}</button>
@@ -121,107 +140,51 @@ const SantaseGame: React.FC = () => {
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [announcedSuit, setAnnouncedSuit] = useState<Suit | null>(null);
-
-    const [activeBonuses, setActiveBonuses] = useState<{id: number, val: number, isOpponent: boolean}[]>([]);
     const [confirmAction, setConfirmAction] = useState<null | { title: string; message: string; action: () => void; onCancel?: () => void }>(null);
     const [trickResult, setTrickResult] = useState<null | { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number }>(null);
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
 
     const stompClient = useRef<any>(null);
     const username = user?.username || "Играч";
-
-    useEffect(() => {
-        if (!gameState) return;
-        const newBubbles: {id: number, val: number, isOpponent: boolean}[] = [];
-
-        if (gameState.bonus && gameState.bonus > 0) {
-            newBubbles.push({ id: Date.now(), val: gameState.bonus, isOpponent: false });
-        }
-        if (gameState.opponentPlayerBonus && gameState.opponentPlayerBonus > 0) {
-            newBubbles.push({ id: Date.now() + 1, val: gameState.opponentPlayerBonus, isOpponent: true });
-        }
-
-        if (newBubbles.length > 0) {
-            setActiveBonuses(prev => [...prev, ...newBubbles]);
-            setTimeout(() => {
-                setActiveBonuses(prev => prev.filter(b => !newBubbles.find(nb => nb.id === b.id)));
-            }, 2500);
-        }
-    }, [gameState?.bonus, gameState?.opponentPlayerBonus]);
-
     const [isUiLocked, setIsUiLocked] = useState(false);
     const messageQueue = useRef<GameState[]>([]);
     const isProcessingQueue = useRef(false);
 
-// This is the main function called by the WebSocket subscription
+    const processNextMessage = async () => {
+        if (isProcessingQueue.current || messageQueue.current.length === 0) return;
+        isProcessingQueue.current = true;
+        const nextState = messageQueue.current.shift()!;
+        const isTrickFinished = nextState.playedCard && nextState.opponentPlayedCard;
+
+        if (isTrickFinished) {
+            setGameState(nextState);
+            setIsUiLocked(true);
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            setIsUiLocked(false);
+            setAnnouncedSuit(null); // Fix for reset highlight
+        } else {
+            setGameState(nextState);
+        }
+
+        if (nextState.trickWinnerUsername) setTrickResult({ winner: nextState.trickWinnerUsername, p1Name: nextState.firstPlayerUsername, p1Score: nextState.trickFirstPlayerScore || 0, p2Name: nextState.secondPlayerUsername, p2Score: nextState.trickSecondPlayerScore || 0 });
+        if (nextState.winnerUsername) setFinalWinner(nextState.winnerUsername);
+
+        isProcessingQueue.current = false;
+        processNextMessage();
+    };
+
     const handleGameUpdate = (newState: GameState) => {
         messageQueue.current.push(newState);
         processNextMessage();
     };
 
-    const processNextMessage = async () => {
-        // If we are already busy waiting 2 seconds, don't start another process
-        if (isProcessingQueue.current || messageQueue.current.length === 0) return;
-
-        isProcessingQueue.current = true;
-        const nextState = messageQueue.current.shift()!;
-
-        // Check if this specific state shows both cards played
-        const isTrickFull = nextState.playedCard && nextState.opponentPlayedCard;
-
-        if (isTrickFull) {
-            // 1. Show the cards
-            setGameState(nextState);
-            setIsUiLocked(true);
-
-            // 2. Wait exactly 2 seconds
-            await new Promise(resolve => setTimeout(resolve, 2000));
-
-            setIsUiLocked(false);
-        } else {
-            // Normal update (one card or drawing) - no delay needed
-            setGameState(nextState);
-        }
-
-        // Check for results/winners
-        if (nextState.trickWinnerUsername) {
-            setTrickResult({
-                winner: nextState.trickWinnerUsername,
-                p1Name: nextState.firstPlayerUsername,
-                p1Score: nextState.trickFirstPlayerScore || 0,
-                p2Name: nextState.secondPlayerUsername,
-                p2Score: nextState.trickSecondPlayerScore || 0
-            });
-        }
-        if (nextState.winnerUsername) {
-            setFinalWinner(nextState.winnerUsername);
-        }
-
-        // Move to the next message in the queue
-        isProcessingQueue.current = false;
-        processNextMessage();
-    };
-
-    const handleLeaveGame = () => {
-        setConfirmAction({
-            title: 'Напускане',
-            message: 'Сигурни ли сте, че искате да напуснете играта? Това ще доведе до загуба.',
-            action: async () => {
-                try {
-                    await gameService.finishGame();
-                } catch (e) {
-                    console.error("Error finishing game", e);
-                }
-            }
-        });
-    };
-
+    // restored ordering logic
     const getSortedCards = (cards: Card[]) => {
         if (!gameState?.trumpCard) return cards;
         const trumpSuit = gameState.trumpCard.suit;
         return [...cards].sort((a, b) => {
             if (a.suit !== b.suit) {
-                if (a.suit === trumpSuit) return -1;
+                if (a.suit === trumpSuit) return -1; // Trump at the end
                 if (b.suit === trumpSuit) return 1;
                 return a.suit.localeCompare(b.suit);
             }
@@ -229,51 +192,24 @@ const SantaseGame: React.FC = () => {
         });
     };
 
-    const connectToGameRoom = (gameId: string) => {
-        if (!stompClient.current || !username) return;
-        stompClient.current.subscribe(`/topic/game/${gameId}/${username}`, (msg: any) => handleGameUpdate(JSON.parse(msg.body)));
-        gameService.getInitialState().then(res => { if (res.data) handleGameUpdate(res.data); });
-    };
-
     const startSearch = () => {
-        if (isSearching) {
-            console.log("Search already in progress...");
-            return;
-        }
-
+        if (isSearching) return;
         setIsSearching(true);
         const sockToken = localStorage.getItem('token');
-
-        // 1. Pass the token as a query parameter for the HTTP Handshake
-        // This allows your Java 'request.getParameter("token")' or a custom interceptor to find it.
         const socket = new SockJS(`https://localhost/ws-game?token=${sockToken}`);
-
         const client = Stomp.over(socket);
         stompClient.current = client;
-
-        // 2. Also pass it in the STOMP connect headers for internal message security
-        const headers = {
-            'Authorization': `Bearer ${sockToken}`
-        };
-
-        client.connect(headers, () => {
-            // Success: Subscribe to the matchmaking topic
+        client.connect({ 'Authorization': `Bearer ${sockToken}` }, () => {
             client.subscribe(`/topic/game/${username}`, (msg: any) => {
                 const data = JSON.parse(msg.body);
                 if (data.status === 'GAME_STARTED') {
                     setIsSearching(false);
-                    connectToGameRoom(data.gameId);
+                    client.subscribe(`/topic/game/${data.gameId}/${username}`, (m: any) => handleGameUpdate(JSON.parse(m.body)));
+                    gameService.getInitialState().then(res => { if (res.data) handleGameUpdate(res.data); });
                 }
             });
-
-            gameService.searchGame().catch(err => {
-                setIsSearching(false);
-                console.error("Search failed:", err);
-            });
-        }, (error) => {
-            setIsSearching(false);
-            console.error("STOMP connection error:", error);
-        });
+            gameService.searchGame().catch(() => setIsSearching(false));
+        }, () => setIsSearching(false));
     };
 
     const handlePlayCard = async (card: Card) => {
@@ -302,6 +238,8 @@ const SantaseGame: React.FC = () => {
         gameService.playCard(card.id).catch(console.error);
     };
 
+    const isFirstPlayerMe = gameState?.firstPlayerUsername === username;
+
     return (
         <div style={styles.table}>
             {!gameState && <Navbar username={username} onLogout={logout} />}
@@ -309,30 +247,36 @@ const SantaseGame: React.FC = () => {
             {!gameState ? (
                 <div style={styles.lobby}>
                     <div style={styles.lobbyContent}>
+                        <div style={styles.logoBadge}>66</div>
                         <h1 style={styles.welcomeTitle}>Добре дошли, {username}</h1>
-                        <p style={styles.welcomeSub}>Готови ли сте за нова игра на Сантасе?</p>
+                        <p style={styles.welcomeSub}>Класическо Сантасе срещу реални опоненти</p>
                         <button
                             onClick={startSearch}
                             style={{
                                 ...styles.btnMain,
-                                opacity: isSearching ? 0.6 : 1
+                                background: isSearching ? '#555' : '#ff9800'
                             }}
                         >
-                            {isSearching ? 'ТЪРСЕНЕ НА ОПОНЕНТ...' : 'ЗАПОЧНИ ИГРА'}
+                            {isSearching ? 'ТЪРСЕНЕ...' : 'НОВА ИГРА'}
                         </button>
                     </div>
                 </div>
             ) : (
                 <div style={styles.gameWrapper}>
-                    {activeBonuses.map(b => (
-                        <div key={b.id} className="bonus-bubble" style={{ top: b.isOpponent ? '20%' : '70%' }}>
-                            +{b.val} Обявяване
-                        </div>
-                    ))}
-
+                    {/* PERSPECTIVE FIXED SCOREBOARD */}
                     <div style={styles.scoreBoard}>
-                        <div style={styles.scoreRow}><span>{gameState.firstPlayerUsername}:</span> <b>{gameState.firstPlayerResult}</b></div>
-                        <div style={styles.scoreRow}><span>{gameState.secondPlayerUsername}:</span> <b>{gameState.secondPlayerResult}</b></div>
+                        <div style={{...styles.scoreRow, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', marginBottom: '8px'}}>
+                            <span>{isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}</span>
+                            <span style={{fontSize: '1.4rem', fontWeight: 800, color: '#ff5252'}}>
+                                {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
+                            </span>
+                        </div>
+                        <div style={styles.scoreRow}>
+                            <span>{username} (Вие)</span>
+                            <span style={{fontSize: '1.4rem', fontWeight: 800, color: '#4CAF50'}}>
+                                {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
+                            </span>
+                        </div>
                     </div>
 
                     <div style={styles.topSection}>
@@ -344,92 +288,68 @@ const SantaseGame: React.FC = () => {
                     </div>
 
                     <div style={styles.midSection}>
-                        {/* DECK LEFT AREA */}
-                        <div style={styles.deckContainer}>
+                        <div style={styles.deckSide}>
                             {gameState.remainingCardsCount > 0 && !gameState.isClosed ? (
-                                <div style={{ position: 'relative', width: '150px', height: '140px' }}>
-                                    <div
-                                        style={{
-                                            ...styles.trumpUnder,
-                                            cursor: (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) ? 'pointer' : 'not-allowed',
-                                            opacity: (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) ? 1 : 0.7
-                                        }}
-                                        onClick={() => {
-                                            if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) gameService.replaceCard();
-                                        }}
-                                    >
+                                <div style={{ position: 'relative', width: '120px', height: '140px' }}>
+                                    {/* Restored Replace Nine logic on Click */}
+                                    <div style={styles.trumpUnder} onClick={() => {
+                                        if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) gameService.replaceCard();
+                                    }}>
                                         <CardComponent card={gameState.trumpCard!} isSmall />
                                     </div>
-                                    <div
-                                        style={{
-                                            ...styles.deckPile,
-                                            cursor: (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) ? 'pointer' : 'not-allowed'
-                                        }}
-                                        onClick={() => {
-                                            if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
-                                                setConfirmAction({
-                                                    title: 'Затваряне',
-                                                    message: 'Сигурни ли сте, че искате да затворите тестето?',
-                                                    action: async () => { await gameService.closeDeck(); setConfirmAction(null); }
-                                                });
-                                            }
-                                        }}
-                                    >
+                                    <div style={styles.deckPile} onClick={() => {
+                                        if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
+                                            setConfirmAction({ title: 'Затваряне', message: 'Затваряте ли тестето?', action: async () => { await gameService.closeDeck(); setConfirmAction(null); } });
+                                        }
+                                    }}>
                                         <div style={styles.deckCount}>{gameState.remainingCardsCount}</div>
                                     </div>
                                 </div>
                             ) : (
                                 <div style={styles.closedTrump}>
+                                    <span style={{fontSize: '0.8rem', display: 'block'}}>КОЗ</span>
                                     {gameState.trumpCard && SUIT_MAP[gameState.trumpCard.suit].symbol}
                                 </div>
                             )}
                         </div>
 
-                        {/* CENTER CARDS */}
                         <div style={styles.tableCenter}>
-                            <div style={styles.cardSlot}>
-                                {gameState.opponentPlayedCard && <CardComponent card={gameState.opponentPlayedCard} />}
-                            </div>
-                            <div style={styles.cardSlot}>
-                                {gameState.playedCard && <CardComponent card={gameState.playedCard} />}
+                            <div style={styles.feltArea}>
+                                <div style={styles.cardSlot}>{gameState.opponentPlayedCard && <CardComponent card={gameState.opponentPlayedCard} />}</div>
+                                <div style={styles.cardSlot}>{gameState.playedCard && <CardComponent card={gameState.playedCard} />}</div>
                             </div>
                         </div>
 
-                        {/* ACTION BUTTONS (66 and Leave) */}
-                        <div style={styles.actionContainer}>
-                            <div style={styles.btnLeave} onClick={handleLeaveGame}>✖</div>
-                            <div style={styles.icon66} onClick={() => setConfirmAction({
-                                title: 'Край на ръката',
-                                message: 'Сигурни ли сте, че искате да приключите ръката (66)?',
-                                action: async () => { await gameService.finishDeal(); setConfirmAction(null); }
-                            })}>66</div>
+                        <div style={styles.actionsSide}>
+                            <div style={styles.icon66} onClick={() => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } })}>66</div>
+                            {/* Restored Leave Game button */}
+                            <div style={styles.btnLeave} onClick={() => setConfirmAction({ title: 'Напускане', message: 'Сигурни ли сте? Това е автоматична загуба.', action: () => gameService.finishGame() })}>✕</div>
                         </div>
                     </div>
 
                     <div style={styles.bottomSection}>
-                        <div style={styles.handPlayer}>
-                            {getSortedCards(gameState.deck).map(card => (
-                                <CardComponent
-                                    key={card.id} card={card}
-                                    isPlayable={card.isPlayable && gameState.isOnTurn}
-                                    isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')}
-                                    onClick={() => handlePlayCard(card)}
-                                />
-                            ))}
+                        <div style={styles.turnIndicator}>
+                            <div style={{ ...styles.pulse, backgroundColor: gameState.isOnTurn ? '#4CAF50' : '#ff5252' }} />
+                            {gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТЪТ ИГРАЕ...'}
                         </div>
-                        <div style={{ ...styles.turnText, color: gameState.isOnTurn ? '#4CAF50' : '#ff5252' }}>
-                            {gameState.isOnTurn ? 'Ваш ход' : 'Ход на противника'}
+                        <div style={styles.handPlayer}>
+                            {getSortedCards(gameState.deck).map((card) => (
+                                <CardComponent key={card.id} card={card} isPlayable={card.isPlayable && gameState.isOnTurn} isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')} onClick={() => handlePlayCard(card)} />
+                            ))}
                         </div>
                     </div>
 
                     {finalWinner && !trickResult && (
                         <div style={styles.resultOverlay}>
                             <div style={styles.resultBox}>
-                                <h2 style={{ margin: '0 0 10px 0' }}>ИГРАТА ПРИКЛЮЧИ</h2>
-                                <p style={{ fontSize: '1.2rem' }}>
-                                    {finalWinner === username ? '🏆 Вие победихте!' : `${finalWinner} победи!`}
+                                <div style={{fontSize: '4rem', marginBottom: '10px'}}>
+                                    {finalWinner === username ? '🏆' : '🏳️'}
+                                </div>
+                                <h2 style={{ margin: '0 0 10px 0', fontSize: '2rem' }}>ИГРАТА ПРИКЛЮЧИ</h2>
+                                <p style={{ fontSize: '1.4rem', marginBottom: '30px', fontWeight: 300 }}>
+                                    {finalWinner === username ? 'Брилянтна победа!' : `${finalWinner} спечели тази игра.`}
                                 </p>
-                                <button onClick={() => window.location.reload()} style={styles.btnMain}>КЪМ ЛОБИТО</button>
+                                <button onClick={() => window.location.reload()} style={styles.btnMain}>КЪМ НАЧАЛО</button>
                             </div>
                         </div>
                     )}
@@ -447,19 +367,20 @@ const SantaseGame: React.FC = () => {
 
             {trickResult && (
                 <AppModal
-                    confirmText="OK"
+                    confirmText="ПРОДЪЛЖИ"
+                    title="Край на раздаването"
                     message={
-                        <div style={{ textAlign: 'left', fontSize: '1rem', minWidth: '240px' }}>
-                            <p style={{ textAlign: 'center', fontWeight: 'bold', color: '#4CAF50', fontSize: '1.1rem', marginBottom: '15px' }}>
-                                Раздаването спечели: {trickResult.winner}
-                            </p>
+                        <div style={{ textAlign: 'left', minWidth: '280px' }}>
+                            <div style={{ textAlign: 'center', fontWeight: 'bold', color: '#4CAF50', fontSize: '1.2rem', marginBottom: '20px', padding: '10px', background: '#f1f8e9', borderRadius: '8px' }}>
+                                Победител: {trickResult.winner}
+                            </div>
                             <div style={styles.trickScoreRow}>
                                 <span>{trickResult.p1Name}</span>
-                                <span style={{fontWeight: 'bold'}}>{trickResult.p1Score} т.</span>
+                                <span style={{fontWeight: 800}}>{trickResult.p1Score} т.</span>
                             </div>
                             <div style={styles.trickScoreRow}>
                                 <span>{trickResult.p2Name}</span>
-                                <span style={{fontWeight: 'bold'}}>{trickResult.p2Score} т.</span>
+                                <span style={{fontWeight: 800}}>{trickResult.p2Score} т.</span>
                             </div>
                         </div>
                     }
@@ -471,51 +392,49 @@ const SantaseGame: React.FC = () => {
 };
 
 const styles: Record<string, React.CSSProperties> = {
-    table: { width: '100vw', height: '100vh', background: 'radial-gradient(circle, #35692f 0%, #1a3a16 100%)', position: 'fixed', top: 0, left: 0, overflow: 'hidden' },
-    gameWrapper: { width: '100%', height: '100%', position: 'relative' },
-    lobby: { height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
-    lobbyContent: { textAlign: 'center', color: 'white', padding: '20px' },
-    welcomeTitle: { fontSize: '2.2rem', marginBottom: '10px', fontWeight: 'bold' },
-    welcomeSub: { fontSize: '1.1rem', marginBottom: '30px', opacity: 0.8 },
-    navbar: { height: '60px', width: '100%', background: 'rgba(0, 0, 0, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', position: 'absolute', top: 0, zIndex: 100 },
-    navLogo: { color: '#ff9800', fontSize: '1.4rem', fontWeight: 'bold', letterSpacing: '2px' },
+    table: { width: '100vw', height: '100vh', position: 'fixed', top: 0, left: 0, overflow: 'hidden', background: `radial-gradient(circle at center, #2e7d32 0%, #1b5e20 100%)` },
+    gameWrapper: { width: '100%', height: '100%', position: 'relative', display: 'flex', flexDirection: 'column' },
+    lobby: { height: '80%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' },
+    lobbyContent: { textAlign: 'center', color: 'white', padding: '40px', background: 'rgba(0,0,0,0.2)', borderRadius: '30px', backdropFilter: 'blur(10px)' },
+    logoBadge: { width: '80px', height: '80px', borderRadius: '50%', background: '#ff9800', margin: '0 auto 20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 900, border: '4px solid white' },
+    welcomeTitle: { fontSize: '2rem', marginBottom: '30px', color: '#fff' },
+    navbar: { height: '70px', width: '100%', background: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 40px', boxSizing: 'border-box' },
+    navLogo: { color: '#ff9800', fontSize: '1.6rem', fontWeight: 900 },
     navLinks: { display: 'flex', alignItems: 'center', gap: '20px' },
-    userInfo: { color: 'white', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.95rem' },
-    userIcon: { background: 'rgba(255,255,255,0.1)', padding: '6px', borderRadius: '50%', fontSize: '1rem' },
-    btnLogout: { background: 'transparent', border: '1px solid #ff5252', color: '#ff5252', padding: '6px 15px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' },
-    scoreBoard: { position: 'absolute', top: '10px', left: '10px', zIndex: 10, background: 'rgba(0,0,0,0.5)', padding: '8px 15px', borderRadius: '8px', color: 'white' },
-    scoreRow: { display: 'flex', justifyContent: 'space-between', gap: '20px', minWidth: '120px' },
-    topSection: { position: 'absolute', top: '5vh', width: '100%', display: 'flex', justifyContent: 'center' },
-    handOpponent: { display: 'flex', gap: '8px' },
-    cardBack: { width: '18vw', maxWidth: '100px', height: '26vw', maxHeight: '140px', background: 'linear-gradient(#900, #700)', border: '2px solid #fff', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.4)' },
-
-    midSection: { position: 'absolute', top: '50%', left: '0', right: '0', transform: 'translateY(-50%)', height: '200px', display: 'flex', alignItems: 'center', padding: '0 5vw' },
-    deckContainer: { width: '180px', display: 'flex', justifyContent: 'center', position: 'relative' },
-    tableCenter: { flex: 1, display: 'flex', justifyContent: 'center', gap: '20px' },
-    cardSlot: { width: '100px', height: '140px', display: 'flex', justifyContent: 'center' },
-    actionContainer: { width: '180px', display: 'flex', justifyContent: 'center', gap: '20px' },
-
-    deckPile: { position: 'absolute', top: '0', left: '0', width: '18vw', maxWidth: '100px', height: '26vw', maxHeight: '140px', background: '#900', borderRadius: '6px', border: '2px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, boxShadow: '4px 0 10px rgba(0,0,0,0.3)' },
-    deckCount: { fontSize: '1.5rem', fontWeight: 'bold', color: 'white' },
-    trumpUnder: { position: 'absolute', top: '10px', left: '90px', transform: 'rotate(90deg)', zIndex: 1 },
-    closedTrump: { fontSize: '3rem', opacity: 0.2, border: '2px dashed white', borderRadius: '50%', padding: '15px', color: 'white' },
-    icon66: { width: '65px', height: '65px', borderRadius: '50%', background: '#ff9800', border: '3px solid white', color: 'black', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.6rem', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', cursor: 'pointer' },
-    btnLeave: { width: '45px', height: '45px', borderRadius: '50%', background: '#ff5252', border: '2px solid white', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 4px 10px rgba(0,0,0,0.4)', cursor: 'pointer' },
-
-    bottomSection: { position: 'absolute', bottom: '3vh', width: '100%' },
-    handPlayer: { display: 'flex', justifyContent: 'center', gap: '8px' },
-    turnText: { textAlign: 'center', fontSize: '1.1rem', marginTop: '15px', fontWeight: 'bold', textShadow: '1px 1px 2px rgba(0,0,0,0.5)' },
-    card: { borderRadius: '8px', padding: '8px', display: 'flex', flexDirection: 'column', userSelect: 'none', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', transition: 'all 0.2s ease' },
-    cardSuitCenter: { fontSize: '3rem', textAlign: 'center', flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    btnMain: { padding: '15px 45px', fontSize: '1.2rem', background: '#ff9800', border: 'none', borderRadius: '30px', color: 'white', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(0,0,0,0.3)' },
-    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.75)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    modalBox: { background: '#fff', padding: '30px', borderRadius: '15px', width: '90%', maxWidth: '360px', textAlign: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.5)' },
-    modalActions: { display: 'flex', gap: '10px', marginTop: '10px' },
-    btnCancel: { flex: 1, padding: '12px', background: '#f0f0f0', border: 'none', borderRadius: '8px', fontWeight: 'bold', color: '#555' },
-    btnConfirm: { flex: 1, padding: '12px', background: '#ff9800', border: 'none', borderRadius: '8px', fontWeight: 'bold', color: '#fff' },
-    trickScoreRow: { display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' },
-    resultOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.9)', zIndex: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' },
-    resultBox: { background: '#fff', padding: '40px', borderRadius: '20px', color: '#000', textAlign: 'center' },
+    userInfo: { color: 'white', display: 'flex', alignItems: 'center', gap: '10px' },
+    userIcon: { background: 'rgba(255,255,255,0.1)', padding: '5px', borderRadius: '50%' },
+    btnLogout: { background: 'transparent', border: '1px solid #ff5252', color: '#ff5252', padding: '5px 15px', borderRadius: '5px' },
+    scoreBoard: { position: 'absolute', top: '40px', left: '20px', zIndex: 10, background: 'rgba(0,0,0,0.6)', padding: '15px', borderRadius: '12px', color: 'white', minWidth: '180px', border: '1px solid rgba(255,255,255,0.1)' },
+    scoreRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
+    topSection: { height: '25vh', display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    handOpponent: { display: 'flex' },
+    cardBack: { width: '85px', height: '125px', background: 'linear-gradient(135deg, #d32f2f, #b71c1c)', border: '3px solid #fff', borderRadius: '10px', marginLeft: '-15px', boxShadow: '0 4px 8px rgba(0,0,0,0.5)' },
+    midSection: { flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 60px' },
+    deckSide: { width: '150px', position: 'relative' },
+    tableCenter: { flex: 1, display: 'flex', justifyContent: 'center' },
+    feltArea: { padding: '30px 50px', borderRadius: '100px', display: 'flex', gap: '30px' },
+    cardSlot: { width: '100px', height: '145px', borderRadius: '10px' },
+    actionsSide: { width: '150px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' },
+    deckPile: { position: 'absolute', top: 0, left: 0, width: '90px', height: '130px', background: '#b71c1c', border: '3px solid white', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2, cursor: 'pointer' },
+    deckCount: { color: 'white', fontSize: '1.8rem', fontWeight: 900 },
+    trumpUnder: { position: 'absolute', top: '5px', left: '40px', transform: 'rotate(90deg)', zIndex: 1, cursor: 'pointer' },
+    closedTrump: { width: '80px', height: '80px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', border: '3px solid rgba(255,255,255,0.3)', borderRadius: '50%', color: 'white', fontSize: '2.5rem', background: 'rgba(0,0,0,0.2)' },
+    icon66: { width: '70px', height: '70px', borderRadius: '50%', background: '#ff9800', border: '4px solid white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.5rem', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.3)' },
+    btnLeave: { width: '40px', height: '40px', borderRadius: '50%', background: 'rgba(0,0,0,0.3)', border: '1px solid white', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+    bottomSection: { height: '35vh', display: 'flex', flexDirection: 'column', alignItems: 'center' },
+    turnIndicator: { background: 'rgba(0,0,0,0.5)', padding: '5px 20px', borderRadius: '20px', color: 'white', marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' },
+    pulse: { width: '8px', height: '8px', borderRadius: '50%' },
+    handPlayer: { display: 'flex', gap: '10px' },
+    card: { borderRadius: '10px', boxShadow: '0 4px 10px rgba(0,0,0,0.3)', transition: 'all 0.2s', cursor: 'pointer' },
+    btnMain: { padding: '15px 40px', background: '#ff9800', color: 'white', borderRadius: '30px', fontWeight: 800, fontSize: '1.1rem' },
+    modalOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    modalBox: { background: 'white', padding: '30px', borderRadius: '20px', textAlign: 'center', minWidth: '300px' },
+    modalActions: { display: 'flex', gap: '10px', marginTop: '20px' },
+    btnCancel: { flex: 1, padding: '10px', background: '#eee', borderRadius: '10px' },
+    btnConfirm: { flex: 1, padding: '10px', background: '#2e7d32', color: 'white', borderRadius: '10px' },
+    resultOverlay: { position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.9)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+    resultBox: { background: 'white', padding: '50px', borderRadius: '30px', textAlign: 'center' },
+    trickScoreRow: { display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #eee', fontSize: '1.1rem' },
 };
 
 export default SantaseGame;
