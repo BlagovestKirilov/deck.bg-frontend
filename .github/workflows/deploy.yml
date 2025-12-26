@@ -47,7 +47,7 @@ jobs:
             
             echo "Restarting frontend and refreshing nginx..."
             # Using --no-deps ensures we only restart the specific services needed
-            docker compose up -d --no-deps frontend nginx_proxy
+            docker compose up -d --no-deps frontend nginx
             
             echo "Cleaning up old images..."
             docker image prune -f
