@@ -1,7 +1,7 @@
 import axios, { InternalAxiosRequestConfig } from 'axios';
 
 const apiClient = axios.create({
-    baseURL: 'http://18.193.73.81/api',
+    baseURL: 'https://deck.bg/api',
     headers: {
         'Content-Type': 'application/json',
     },
@@ -32,7 +32,7 @@ apiClient.interceptors.response.use(
                 const refreshToken = localStorage.getItem('refreshToken');
 
                 // We use axios (not apiClient) to avoid an infinite loop of 401s
-                const response = await axios.post('http://18.193.73.81/api/auth/refresh', {
+                const response = await axios.post('https://deck.bg/api/auth/refresh', {
                     refreshToken: refreshToken
                 });
 
