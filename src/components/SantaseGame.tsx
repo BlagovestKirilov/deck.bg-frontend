@@ -196,7 +196,7 @@ const SantaseGame: React.FC = () => {
         if (isSearching) return;
         setIsSearching(true);
         const sockToken = localStorage.getItem('token');
-        const socket = new SockJS(`http://18.193.73.81/ws-game?token=${sockToken}`);
+        const socket = new SockJS(`https://deck.bg/ws-game?token=${sockToken}`);
         const client = Stomp.over(socket);
         stompClient.current = client;
         client.connect({ 'Authorization': `Bearer ${sockToken}` }, () => {
