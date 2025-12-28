@@ -113,8 +113,7 @@ const AuthPage: React.FC = () => {
             return "Потребителското име е заето";
         }
         
-        if (msg === "Username is already in use") return "Потребителското име е заето";
-        if (msg === "Username or password is incorrect") return "Грешно потребителско име или парола.";
+        if (msg === "Username or password is incorrect.") return "Невалидно потребителско име или парола.";
 
         if (msg === "Validation Error") {
             if (details.includes("username")) {
@@ -127,7 +126,7 @@ const AuthPage: React.FC = () => {
             }
             return "Невалидни данни.";
         }
-        return "Възникна грешка. Моля, опитайте пак.";
+        return "Невалидно потребителско име или парола.";
     };
 
     useEffect(() => {

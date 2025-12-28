@@ -36,6 +36,12 @@ if (typeof document !== 'undefined') {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.1); }
         }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
         .bonus-bubble {
             position: absolute;
             left: 50%;
@@ -265,9 +271,18 @@ const SantaseGame: React.FC = () => {
     const [trickResult, setTrickResult] = useState<null | { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number }>(null);
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
     const [activeBonuses, setActiveBonuses] = useState<{id: number, val: number, isOpponent: boolean}[]>([]);
+    const [notifications, setNotifications] = useState<{id: number, message: string}[]>([]);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    const prevGameStateRef = useRef<GameState | null>(null);
 
     const stompClient = useRef<any>(null);
+    const gameIdRef = useRef<string | null>(null);
+    const gameSubscriptionRef = useRef<any>(null);
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isReconnectingRef = useRef<boolean>(false);
+    const connectionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const lastMessageTimeRef = useRef<number>(Date.now());
+    const reconnectStartTimeRef = useRef<number | null>(null);
     const username = user?.username || "Играч";
 
     // Handle window resize for responsive design
@@ -282,21 +297,72 @@ const SantaseGame: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Handle page close - leave game automatically (only when closing, not minimizing)
+    // Auto-reconnect on mount if we have an active game
     useEffect(() => {
-        if (!gameState) return;
-
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            // Automatically leave the game when page is closed (red X button)
-            gameService.finishGame();
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
+        // Check if we have a game state but no active connection
+        if (gameState && gameIdRef.current && (!stompClient.current || !stompClient.current.connected)) {
+            if (!isReconnectingRef.current) {
+                isReconnectingRef.current = true;
+                connectWebSocket(true);
+            }
+        }
     }, [gameState]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+            }
+            if (gameSubscriptionRef.current) {
+                gameSubscriptionRef.current.unsubscribe();
+            }
+            if (stompClient.current) {
+                try {
+                    stompClient.current.disconnect();
+                } catch (e) {
+                    console.error('Error disconnecting on unmount:', e);
+                }
+            }
+        };
+    }, []);
+
+    // Handle leaving the game
+    const handleLeaveGame = () => {
+        setConfirmAction({
+            title: 'Напускане на играта',
+            message: 'Сигурни ли сте, че искате да напуснете играта?',
+            action: async () => {
+                try {
+                    await gameService.finishGame();
+                    setGameState(null);
+                    setIsSearching(false);
+                    gameIdRef.current = null;
+                    if (gameSubscriptionRef.current) {
+                        gameSubscriptionRef.current.unsubscribe();
+                        gameSubscriptionRef.current = null;
+                    }
+                    if (reconnectTimeoutRef.current) {
+                        clearTimeout(reconnectTimeoutRef.current);
+                        reconnectTimeoutRef.current = null;
+                    }
+                    isReconnectingRef.current = false;
+                    if (stompClient.current) {
+                        stompClient.current.disconnect();
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+                setConfirmAction(null);
+            },
+            onCancel: () => {
+                setConfirmAction(null);
+            }
+        });
+    };
 
     useEffect(() => {
         if (!gameState) return;
@@ -325,7 +391,34 @@ const SantaseGame: React.FC = () => {
         if (isProcessingQueue.current || messageQueue.current.length === 0) return;
         isProcessingQueue.current = true;
         const nextState = messageQueue.current.shift()!;
-        const isTrickFinished = nextState.playedCard && nextState.opponentPlayedCard;
+        const prevState = prevGameStateRef.current;
+        const isTrickFinished = (nextState.playedCard && nextState.opponentPlayedCard) 
+        || (nextState.remainingCardsCount === 24 && !nextState.playedCard && !nextState.opponentPlayedCard);
+
+        // Detect card replacement - when trump card changes but remainingCardsCount stays same
+        if (prevState && prevState.trumpCard && nextState.trumpCard && 
+            prevState.trumpCard.id !== nextState.trumpCard.id &&
+            prevState.remainingCardsCount === nextState.remainingCardsCount &&
+            prevState.remainingCardsCount < 12 && prevState.remainingCardsCount > 2) {
+            // Card was replaced - determine who replaced it
+            const replacedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
+            const notificationId = Date.now();
+            setNotifications(prev => [...prev, { id: notificationId, message: `${replacedBy} замени карта` }]);
+            setTimeout(() => {
+                setNotifications(prev => prev.filter(n => n.id !== notificationId));
+            }, 3000);
+        }
+
+        // Detect deck closing - isClosed changed from false to true
+        if (prevState && !prevState.isClosed && nextState.isClosed) {
+            // Deck was closed - determine who closed it
+            const closedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
+            const notificationId = Date.now();
+            setNotifications(prev => [...prev, { id: notificationId, message: `${closedBy} затвори тестето` }]);
+            setTimeout(() => {
+                setNotifications(prev => prev.filter(n => n.id !== notificationId));
+            }, 3000);
+        }
 
         if (isTrickFinished) {
             setGameState(nextState);
@@ -337,6 +430,8 @@ const SantaseGame: React.FC = () => {
             setGameState(nextState);
         }
 
+        prevGameStateRef.current = nextState;
+
         if (nextState.trickWinnerUsername) setTrickResult({ winner: nextState.trickWinnerUsername, p1Name: nextState.firstPlayerUsername, p1Score: nextState.trickFirstPlayerScore || 0, p2Name: nextState.secondPlayerUsername, p2Score: nextState.trickSecondPlayerScore || 0 });
         if (nextState.winnerUsername) setFinalWinner(nextState.winnerUsername);
 
@@ -345,6 +440,17 @@ const SantaseGame: React.FC = () => {
     };
 
     const handleGameUpdate = (newState: GameState) => {
+        // Update last message time
+        lastMessageTimeRef.current = Date.now();
+        
+        // Store gameId when we receive game state
+        if (newState.gameId && !gameIdRef.current) {
+            gameIdRef.current = newState.gameId;
+        }
+        // Initialize prevGameStateRef on first game state
+        if (!prevGameStateRef.current && newState) {
+            prevGameStateRef.current = newState;
+        }
         messageQueue.current.push(newState);
         processNextMessage();
     };
@@ -363,24 +469,213 @@ const SantaseGame: React.FC = () => {
         });
     };
 
+    const connectWebSocket = (isReconnect: boolean = false) => {
+        console.log('connectWebSocket called', isReconnect ? '(reconnect)' : '(initial)');
+        const sockToken = localStorage.getItem('refreshToken');
+        if (!sockToken) {
+            console.error('No refresh token found');
+            return;
+        }
+
+        console.log('Creating new SockJS connection...');
+        const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
+        const client = Stomp.over(socket);
+        
+        // Configure reconnection
+        client.reconnect_delay = 5000; // 5 seconds delay between reconnection attempts
+        
+        // Handle socket close events for reconnection
+        socket.onclose = (event: CloseEvent) => {
+            console.log('WebSocket closed:', event, 'wasClean:', event.wasClean, 'code:', event.code);
+            // Stop connection monitoring
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+                connectionCheckIntervalRef.current = null;
+            }
+            // Only attempt reconnect if we have an active game and not already reconnecting
+            // Reconnect even if wasClean is true (backend might have restarted)
+            if (gameIdRef.current && !isReconnectingRef.current) {
+                console.log('Socket closed, attempting to reconnect...');
+                isReconnectingRef.current = true;
+                reconnectStartTimeRef.current = Date.now();
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    if (stompClient.current) {
+                        try {
+                            // Only disconnect if actually connected
+                            if (stompClient.current.connected) {
+                                stompClient.current.disconnect();
+                            }
+                        } catch (e) {
+                            // Ignore errors - connection might already be dead
+                            console.log('Disconnect error (expected if already disconnected)');
+                        }
+                    }
+                    connectWebSocket(true);
+                }, 5000);
+            } else if (gameIdRef.current && isReconnectingRef.current) {
+                console.log('Socket closed but reconnection already in progress');
+            }
+        };
+        
+        // Handle socket error events
+        socket.onerror = (error: Event) => {
+            console.error('WebSocket error:', error);
+        };
+        
+        stompClient.current = client;
+        
+        const onConnect = () => {
+            console.log('WebSocket connected', isReconnect ? '(reconnected)' : '');
+            isReconnectingRef.current = false;
+            reconnectStartTimeRef.current = null;
+            lastMessageTimeRef.current = Date.now();
+            
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
+
+            // Start connection monitoring
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+            }
+            connectionCheckIntervalRef.current = setInterval(() => {
+                const now = Date.now();
+                const timeSinceLastMessage = now - lastMessageTimeRef.current;
+                
+                // Check STOMP connection status
+                const isConnected = stompClient.current && stompClient.current.connected;
+                
+                // Check if connection is still alive (no messages for 30 seconds means connection is likely dead)
+                // OR if STOMP client reports disconnected
+                if (gameIdRef.current && (!isConnected || timeSinceLastMessage > 30000)) {
+                    console.log('Connection appears dead or disconnected. STOMP connected:', isConnected, 'Time since last message:', timeSinceLastMessage);
+                    
+                    // If we've been trying to reconnect for more than 30 seconds, reset the flag and try again
+                    if (isReconnectingRef.current && reconnectStartTimeRef.current) {
+                        const reconnectDuration = Date.now() - reconnectStartTimeRef.current;
+                        if (reconnectDuration > 30000) {
+                            console.log('Reconnection attempt timed out, resetting and retrying...');
+                            isReconnectingRef.current = false;
+                            reconnectStartTimeRef.current = null;
+                        }
+                    }
+                    
+                    if (stompClient.current) {
+                        try {
+                            // Only try to disconnect if actually connected
+                            if (stompClient.current.connected) {
+                                stompClient.current.disconnect();
+                            }
+                        } catch (e) {
+                            // Ignore errors - connection might already be dead
+                            console.log('Disconnect error (expected if already disconnected):', e);
+                        }
+                    }
+                    
+                    if (!isReconnectingRef.current) {
+                        console.log('Calling connectWebSocket for reconnection...');
+                        isReconnectingRef.current = true;
+                        reconnectStartTimeRef.current = Date.now();
+                        connectWebSocket(true);
+                    } else {
+                        console.log('Reconnection already in progress, waiting...');
+                    }
+                }
+            }, 10000); // Check every 10 seconds
+
+            // If we have an active game, reconnect to it (use gameIdRef instead of gameState in case state was lost)
+            if (gameIdRef.current) {
+                console.log('Reconnecting to game topic:', `/topic/game/${gameIdRef.current}/${username}`);
+                // Unsubscribe from old subscription if exists
+                if (gameSubscriptionRef.current) {
+                    try {
+                        gameSubscriptionRef.current.unsubscribe();
+                    } catch (e) {
+                        console.log('Error unsubscribing (expected if already unsubscribed):', e);
+                    }
+                }
+                // Resubscribe to game updates
+                gameSubscriptionRef.current = client.subscribe(
+                    `/topic/game/${gameIdRef.current}/${username}`, 
+                    (m: any) => {
+                        lastMessageTimeRef.current = Date.now();
+                        handleGameUpdate(JSON.parse(m.body));
+                    }
+                );
+                console.log('Resubscribed to game topic');
+                // Get current state
+                gameService.getInitialState().then(res => { 
+                    if (res.data) {
+                        lastMessageTimeRef.current = Date.now();
+                        handleGameUpdate(res.data); 
+                        console.log('Game state restored on reconnect');
+                    }
+                }).catch(err => {
+                    console.error('Failed to get initial state on reconnect:', err);
+                });
+            } else if (!isReconnect) {
+                // Only subscribe to game search if not reconnecting and no active game
+                client.subscribe(`/topic/game/${username}`, (msg: any) => {
+                    lastMessageTimeRef.current = Date.now();
+                    const data = JSON.parse(msg.body);
+                    if (data.status === 'GAME_STARTED') {
+                        setIsSearching(false);
+                        gameIdRef.current = data.gameId;
+                        gameSubscriptionRef.current = client.subscribe(
+                            `/topic/game/${data.gameId}/${username}`, 
+                            (m: any) => {
+                                lastMessageTimeRef.current = Date.now();
+                                handleGameUpdate(JSON.parse(m.body));
+                            }
+                        );
+                        gameService.getInitialState().then(res => { 
+                            if (res.data) {
+                                lastMessageTimeRef.current = Date.now();
+                                handleGameUpdate(res.data); 
+                            }
+                        });
+                    }
+                });
+                gameService.searchGame().catch(() => setIsSearching(false));
+            }
+        };
+
+        const onError = (error: any) => {
+            console.error('WebSocket connection error:', error);
+            if (!isReconnect && !isSearching) {
+                setIsSearching(false);
+            }
+            
+            // Attempt to reconnect if we have an active game (use gameIdRef to avoid closure issues)
+            if (gameIdRef.current && !isReconnectingRef.current) {
+                console.log('Connection error detected, scheduling reconnection...');
+                isReconnectingRef.current = true;
+                reconnectStartTimeRef.current = Date.now();
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    if (stompClient.current) {
+                        try {
+                            // Only disconnect if actually connected
+                            if (stompClient.current.connected) {
+                                stompClient.current.disconnect();
+                            }
+                        } catch (e) {
+                            // Ignore errors - connection might already be dead
+                            console.log('Disconnect error (expected if already disconnected)');
+                        }
+                    }
+                    connectWebSocket(true);
+                }, 5000); // Wait 5 seconds before reconnecting
+            }
+        };
+
+        client.connect({ 'Authorization': `Bearer ${sockToken}` }, onConnect, onError);
+    };
+
     const startSearch = () => {
         if (isSearching) return;
         setIsSearching(true);
-        const sockToken = localStorage.getItem('refreshToken');
-        const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
-        const client = Stomp.over(socket);
-        stompClient.current = client;
-        client.connect({ 'Authorization': `Bearer ${sockToken}` }, () => {
-            client.subscribe(`/topic/game/${username}`, (msg: any) => {
-                const data = JSON.parse(msg.body);
-                if (data.status === 'GAME_STARTED') {
-                    setIsSearching(false);
-                    client.subscribe(`/topic/game/${data.gameId}/${username}`, (m: any) => handleGameUpdate(JSON.parse(m.body)));
-                    gameService.getInitialState().then(res => { if (res.data) handleGameUpdate(res.data); });
-                }
-            });
-            gameService.searchGame().catch(() => setIsSearching(false));
-        }, () => setIsSearching(false));
+        connectWebSocket(false);
     };
 
     const handlePlayCard = async (card: Card) => {
@@ -459,72 +754,154 @@ const SantaseGame: React.FC = () => {
                 </div>
             ) : (
                 <div style={styles.gameWrapper}>
+                    {/* Leave Game Button - Desktop only */}
+                    {(() => {
+                        const isMobile = windowWidth <= 768;
+                        const isSmallMobile = windowWidth <= 480;
+                        // Only show standalone button on desktop
+                        if (isMobile) return null;
+                        return (
+                            <button
+                                onClick={handleLeaveGame}
+                                style={{
+                                    position: 'absolute',
+                                    top: '20px',
+                                    right: '20px',
+                                    zIndex: 1000,
+                                    ...styles.btnLeave,
+                                    width: '50px',
+                                    height: '50px',
+                                    fontSize: '1.2rem',
+                                }}
+                            >
+                                ✕
+                            </button>
+                        );
+                    })()}
+                    
                     {activeBonuses.map(b => (
                         <div key={b.id} className="bonus-bubble" style={{ top: b.isOpponent ? '25%' : '65%' }}>
                             +{b.val} ТОЧКИ
                         </div>
                     ))}
                     
+                    {/* Notifications in the middle of screen */}
+                    {notifications.map(notification => {
+                        const isMobile = windowWidth <= 768;
+                        const isSmallMobile = windowWidth <= 480;
+                        return (
+                            <div 
+                                key={notification.id}
+                                style={{
+                                    position: 'fixed',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    background: 'linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.9) 100%)',
+                                    backdropFilter: 'blur(20px) saturate(180%)',
+                                    borderRadius: '20px',
+                                    padding: isSmallMobile ? '15px 25px' : isMobile ? '18px 30px' : '20px 40px',
+                                    color: 'white',
+                                    fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : '1.3rem',
+                                    fontWeight: 700,
+                                    zIndex: 2000,
+                                    boxShadow: '0 12px 32px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                    border: '2px solid rgba(255,255,255,0.2)',
+                                    textAlign: 'center',
+                                    whiteSpace: 'nowrap',
+                                    animation: 'fadeInOut 3s ease-out forwards',
+                                    pointerEvents: 'none',
+                                }}
+                            >
+                                {notification.message}
+                            </div>
+                        );
+                    })}
+                    
                     {/* SCOREBOARD - Different layout for mobile vs desktop */}
                     {(() => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
                         
-                        // Mobile: horizontal scoreboard above opponent cards
+                        // Mobile: vertical scoreboard above opponent cards (same structure as desktop)
                         if (isMobile) {
                             return (
-                                <div style={{
-                                    ...styles.scoreBoardMobile,
-                                    padding: isSmallMobile ? '8px 12px' : '10px 15px',
-                                    fontSize: isSmallMobile ? '0.75rem' : '0.85rem',
-                                }}>
+                                <>
+                                    {/* Scoreboard on the left */}
                                     <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: isSmallMobile ? '12px' : '16px',
+                                        ...styles.scoreBoardMobile,
+                                        top: '10px',
+                                        left: '10px',
+                                        right: 'auto',
+                                        width: isSmallMobile ? '160px' : '180px',
+                                        padding: isSmallMobile ? '8px 12px' : '10px 14px',
+                                        fontSize: isSmallMobile ? '0.75rem' : '0.85rem',
+                                        position: 'absolute',
+                                        flexDirection: 'column',
+                                        alignItems: 'stretch',
+                                        justifyContent: 'flex-start',
                                     }}>
-                                        {/* First player: username result */}
-                                        <span style={{
-                                            fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
-                                            maxWidth: isSmallMobile ? '70px' : '90px',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
+                                        <div style={{
+                                            ...styles.scoreRow,
+                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                            paddingBottom: isSmallMobile ? '6px' : '8px',
+                                            marginBottom: isSmallMobile ? '6px' : '8px',
                                         }}>
-                                            {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
-                                        </span>
-                                        <span style={{
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
+                                                maxWidth: isSmallMobile ? '70px' : '85px',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
+                                            </span>
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '1rem' : '1.1rem',
+                                                fontWeight: 800,
+                                                color: '#ff5252',
+                                                textShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
+                                            }}>
+                                {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
+                            </span>
+                        </div>
+                        <div style={styles.scoreRow}>
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
+                                                maxWidth: isSmallMobile ? '70px' : '85px',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {username}
+                                            </span>
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '1rem' : '1.1rem',
+                                                fontWeight: 800,
+                                                color: '#4CAF50',
+                                                textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
+                                            }}>
+                                {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
+                            </span>
+                        </div>
+                    </div>
+                                    {/* Leave Game Button - Mobile - positioned on right */}
+                                    <button
+                                        onClick={handleLeaveGame}
+                                        style={{
+                                            ...styles.btnLeave,
+                                            position: 'absolute',
+                                            top: isSmallMobile ? '10px' : '12px',
+                                            right: isSmallMobile ? '10px' : '12px',
+                                            width: isSmallMobile ? '36px' : '40px',
+                                            height: isSmallMobile ? '36px' : '40px',
                                             fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                            fontWeight: 800,
-                                            color: '#ff5252',
-                                            textShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
-                                        }}>
-                                            {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
-                                        </span>
-                                        <span style={{
-                                            margin: '0 8px',
-                                            color: 'rgba(255,255,255,0.3)',
-                                        }}>|</span>
-                                        {/* Second player: result username */}
-                                        <span style={{
-                                            fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                            fontWeight: 800,
-                                            color: '#4CAF50',
-                                            textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
-                                        }}>
-                                            {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
-                                        </span>
-                                        <span style={{
-                                            fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
-                                            maxWidth: isSmallMobile ? '70px' : '90px',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}>
-                                            {username}
-                                        </span>
-                                    </div>
-                                </div>
+                                            zIndex: 1000,
+                                        }}
+                                    >
+                                        ✕
+                                    </button>
+                                </>
                             );
                         }
                         
@@ -595,7 +972,7 @@ const SantaseGame: React.FC = () => {
                                 <div style={{
                                     ...styles.topSection,
                                     height: isSmallMobile ? '18vh' : isMobile ? '22vh' : '25vh',
-                                    paddingTop: isMobile ? (isSmallMobile ? '50px' : '55px') : '0',
+                                    paddingTop: isMobile ? (isSmallMobile ? '70px' : '75px') : '0',
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -643,7 +1020,9 @@ const SantaseGame: React.FC = () => {
                                                     top: isSmallMobile ? '3px' : '5px',
                                                     left: isSmallMobile ? '25px' : isMobile ? '30px' : '40px',
                                                 }} onClick={() => {
-                                        if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) gameService.replaceCard();
+                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
+                                            gameService.replaceCard();
+                                        }
                                     }}>
                                                     <CardComponent card={gameState.trumpCard!} isSmall windowWidth={windowWidth} />
                                     </div>
@@ -652,7 +1031,7 @@ const SantaseGame: React.FC = () => {
                                                     width: isSmallMobile ? '60px' : isMobile ? '75px' : '90px',
                                                     height: isSmallMobile ? '85px' : isMobile ? '110px' : '130px',
                                                 }} onClick={() => {
-                                        if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
+                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
                                             setConfirmAction({ title: 'Затваряне', message: 'Затваряте ли тестето?', action: async () => { await gameService.closeDeck(); setConfirmAction(null); } });
                                         }
                                     }}>
@@ -734,7 +1113,7 @@ const SantaseGame: React.FC = () => {
                                                 ? (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТ...')
                                                 : (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТЪТ ИГРАЕ...')
                                             }
-                                        </div>
+                        </div>
                                         
                                         {/* 66 button next to turn indicator (to the right) */}
                                         <div 
@@ -762,7 +1141,7 @@ const SantaseGame: React.FC = () => {
                                                 e.currentTarget.style.boxShadow = styles.icon66.boxShadow as string;
                                             } : undefined}
                                         >66</div>
-                                    </div>
+                    </div>
 
                                     {/* Cards section */}
                                     <div style={{
@@ -1036,8 +1415,6 @@ const styles: Record<string, React.CSSProperties> = {
         border: '2px solid rgba(255,255,255,0.2)',
         boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     scoreRow: {
         display: 'flex',
