@@ -36,6 +36,12 @@ if (typeof document !== 'undefined') {
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.1); }
         }
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
         .bonus-bubble {
             position: absolute;
             left: 50%;
@@ -265,7 +271,9 @@ const SantaseGame: React.FC = () => {
     const [trickResult, setTrickResult] = useState<null | { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number }>(null);
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
     const [activeBonuses, setActiveBonuses] = useState<{id: number, val: number, isOpponent: boolean}[]>([]);
+    const [notifications, setNotifications] = useState<{id: number, message: string}[]>([]);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    const prevGameStateRef = useRef<GameState | null>(null);
 
     const stompClient = useRef<any>(null);
     const username = user?.username || "Играч";
@@ -325,8 +333,34 @@ const SantaseGame: React.FC = () => {
         if (isProcessingQueue.current || messageQueue.current.length === 0) return;
         isProcessingQueue.current = true;
         const nextState = messageQueue.current.shift()!;
+        const prevState = prevGameStateRef.current;
         const isTrickFinished = (nextState.playedCard && nextState.opponentPlayedCard) 
         || (nextState.remainingCardsCount === 24 && !nextState.playedCard && !nextState.opponentPlayedCard);
+
+        // Detect card replacement - when trump card changes but remainingCardsCount stays same
+        if (prevState && prevState.trumpCard && nextState.trumpCard && 
+            prevState.trumpCard.id !== nextState.trumpCard.id &&
+            prevState.remainingCardsCount === nextState.remainingCardsCount &&
+            prevState.remainingCardsCount < 12 && prevState.remainingCardsCount > 2) {
+            // Card was replaced - determine who replaced it
+            const replacedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
+            const notificationId = Date.now();
+            setNotifications(prev => [...prev, { id: notificationId, message: `${replacedBy} замени карта` }]);
+            setTimeout(() => {
+                setNotifications(prev => prev.filter(n => n.id !== notificationId));
+            }, 3000);
+        }
+
+        // Detect deck closing - isClosed changed from false to true
+        if (prevState && !prevState.isClosed && nextState.isClosed) {
+            // Deck was closed - determine who closed it
+            const closedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
+            const notificationId = Date.now();
+            setNotifications(prev => [...prev, { id: notificationId, message: `${closedBy} затвори тестето` }]);
+            setTimeout(() => {
+                setNotifications(prev => prev.filter(n => n.id !== notificationId));
+            }, 3000);
+        }
 
         if (isTrickFinished) {
             setGameState(nextState);
@@ -338,6 +372,8 @@ const SantaseGame: React.FC = () => {
             setGameState(nextState);
         }
 
+        prevGameStateRef.current = nextState;
+
         if (nextState.trickWinnerUsername) setTrickResult({ winner: nextState.trickWinnerUsername, p1Name: nextState.firstPlayerUsername, p1Score: nextState.trickFirstPlayerScore || 0, p2Name: nextState.secondPlayerUsername, p2Score: nextState.trickSecondPlayerScore || 0 });
         if (nextState.winnerUsername) setFinalWinner(nextState.winnerUsername);
 
@@ -346,6 +382,10 @@ const SantaseGame: React.FC = () => {
     };
 
     const handleGameUpdate = (newState: GameState) => {
+        // Initialize prevGameStateRef on first game state
+        if (!prevGameStateRef.current && newState) {
+            prevGameStateRef.current = newState;
+        }
         messageQueue.current.push(newState);
         processNextMessage();
     };
@@ -465,6 +505,39 @@ const SantaseGame: React.FC = () => {
                             +{b.val} ТОЧКИ
                         </div>
                     ))}
+                    
+                    {/* Notifications in the middle of screen */}
+                    {notifications.map(notification => {
+                        const isMobile = windowWidth <= 768;
+                        const isSmallMobile = windowWidth <= 480;
+                        return (
+                            <div 
+                                key={notification.id}
+                                style={{
+                                    position: 'fixed',
+                                    top: '50%',
+                                    left: '50%',
+                                    transform: 'translate(-50%, -50%)',
+                                    background: 'linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.9) 100%)',
+                                    backdropFilter: 'blur(20px) saturate(180%)',
+                                    borderRadius: '20px',
+                                    padding: isSmallMobile ? '15px 25px' : isMobile ? '18px 30px' : '20px 40px',
+                                    color: 'white',
+                                    fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : '1.3rem',
+                                    fontWeight: 700,
+                                    zIndex: 2000,
+                                    boxShadow: '0 12px 32px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                    border: '2px solid rgba(255,255,255,0.2)',
+                                    textAlign: 'center',
+                                    whiteSpace: 'nowrap',
+                                    animation: 'fadeInOut 3s ease-out forwards',
+                                    pointerEvents: 'none',
+                                }}
+                            >
+                                {notification.message}
+                            </div>
+                        );
+                    })}
                     
                     {/* SCOREBOARD - Different layout for mobile vs desktop */}
                     {(() => {
@@ -644,7 +717,9 @@ const SantaseGame: React.FC = () => {
                                                     top: isSmallMobile ? '3px' : '5px',
                                                     left: isSmallMobile ? '25px' : isMobile ? '30px' : '40px',
                                                 }} onClick={() => {
-                                        if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) gameService.replaceCard();
+                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
+                                            gameService.replaceCard();
+                                        }
                                     }}>
                                                     <CardComponent card={gameState.trumpCard!} isSmall windowWidth={windowWidth} />
                                     </div>
@@ -653,7 +728,7 @@ const SantaseGame: React.FC = () => {
                                                     width: isSmallMobile ? '60px' : isMobile ? '75px' : '90px',
                                                     height: isSmallMobile ? '85px' : isMobile ? '110px' : '130px',
                                                 }} onClick={() => {
-                                        if (gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
+                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
                                             setConfirmAction({ title: 'Затваряне', message: 'Затваряте ли тестето?', action: async () => { await gameService.closeDeck(); setConfirmAction(null); } });
                                         }
                                     }}>
@@ -735,7 +810,7 @@ const SantaseGame: React.FC = () => {
                                                 ? (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТ...')
                                                 : (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТЪТ ИГРАЕ...')
                                             }
-                                        </div>
+                        </div>
                                         
                                         {/* 66 button next to turn indicator (to the right) */}
                                         <div 
@@ -763,7 +838,7 @@ const SantaseGame: React.FC = () => {
                                                 e.currentTarget.style.boxShadow = styles.icon66.boxShadow as string;
                                             } : undefined}
                                         >66</div>
-                                    </div>
+                    </div>
 
                                     {/* Cards section */}
                                     <div style={{
