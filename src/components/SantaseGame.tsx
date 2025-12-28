@@ -10,7 +10,13 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 if (typeof document !== 'undefined') {
     const style = document.createElement('style');
     style.innerHTML = `
-        body, html { margin: 0; padding: 0; overflow: hidden; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background: #0a1f0f; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background: #0a1f0f; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        body { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
+        @media (min-width: 769px) {
+            body { overflow: hidden; }
+        }
+        * { -webkit-tap-highlight-color: transparent; }
+        button:focus { outline: none; }
         #root { height: 100%; width: 100%; }
         button { 
             cursor: pointer; 
@@ -131,6 +137,7 @@ const CardComponent: React.FC<{
         padding: isSmallMobile ? '5px' : isMobile ? '7px' : '10px',
         position: 'relative' as const,
         touchAction: 'manipulation' as const,
+        outline: 'none',
         boxShadow: isSelected 
             ? '0 12px 28px rgba(255, 215, 0, 0.4), 0 6px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.8)' 
             : isPlayable 
@@ -1592,6 +1599,8 @@ const styles: Record<string, React.CSSProperties> = {
         cursor: 'pointer',
         touchAction: 'manipulation',
         userSelect: 'none',
+        outline: 'none',
+        WebkitTapHighlightColor: 'transparent',
         background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
     },
     btnMain: {
