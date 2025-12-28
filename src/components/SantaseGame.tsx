@@ -276,6 +276,13 @@ const SantaseGame: React.FC = () => {
     const prevGameStateRef = useRef<GameState | null>(null);
 
     const stompClient = useRef<any>(null);
+    const gameIdRef = useRef<string | null>(null);
+    const gameSubscriptionRef = useRef<any>(null);
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const isReconnectingRef = useRef<boolean>(false);
+    const connectionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const lastMessageTimeRef = useRef<number>(Date.now());
+    const reconnectStartTimeRef = useRef<number | null>(null);
     const username = user?.username || "Играч";
 
     // Handle window resize for responsive design
@@ -290,6 +297,39 @@ const SantaseGame: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
+    // Auto-reconnect on mount if we have an active game
+    useEffect(() => {
+        // Check if we have a game state but no active connection
+        if (gameState && gameIdRef.current && (!stompClient.current || !stompClient.current.connected)) {
+            if (!isReconnectingRef.current) {
+                isReconnectingRef.current = true;
+                connectWebSocket(true);
+            }
+        }
+    }, [gameState]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+            }
+            if (gameSubscriptionRef.current) {
+                gameSubscriptionRef.current.unsubscribe();
+            }
+            if (stompClient.current) {
+                try {
+                    stompClient.current.disconnect();
+                } catch (e) {
+                    console.error('Error disconnecting on unmount:', e);
+                }
+            }
+        };
+    }, []);
+
     // Handle leaving the game
     const handleLeaveGame = () => {
         setConfirmAction({
@@ -300,6 +340,16 @@ const SantaseGame: React.FC = () => {
                     await gameService.finishGame();
                     setGameState(null);
                     setIsSearching(false);
+                    gameIdRef.current = null;
+                    if (gameSubscriptionRef.current) {
+                        gameSubscriptionRef.current.unsubscribe();
+                        gameSubscriptionRef.current = null;
+                    }
+                    if (reconnectTimeoutRef.current) {
+                        clearTimeout(reconnectTimeoutRef.current);
+                        reconnectTimeoutRef.current = null;
+                    }
+                    isReconnectingRef.current = false;
                     if (stompClient.current) {
                         stompClient.current.disconnect();
                     }
@@ -390,6 +440,13 @@ const SantaseGame: React.FC = () => {
     };
 
     const handleGameUpdate = (newState: GameState) => {
+        // Update last message time
+        lastMessageTimeRef.current = Date.now();
+        
+        // Store gameId when we receive game state
+        if (newState.gameId && !gameIdRef.current) {
+            gameIdRef.current = newState.gameId;
+        }
         // Initialize prevGameStateRef on first game state
         if (!prevGameStateRef.current && newState) {
             prevGameStateRef.current = newState;
@@ -412,24 +469,213 @@ const SantaseGame: React.FC = () => {
         });
     };
 
+    const connectWebSocket = (isReconnect: boolean = false) => {
+        console.log('connectWebSocket called', isReconnect ? '(reconnect)' : '(initial)');
+        const sockToken = localStorage.getItem('refreshToken');
+        if (!sockToken) {
+            console.error('No refresh token found');
+            return;
+        }
+
+        console.log('Creating new SockJS connection...');
+        const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
+        const client = Stomp.over(socket);
+        
+        // Configure reconnection
+        client.reconnect_delay = 5000; // 5 seconds delay between reconnection attempts
+        
+        // Handle socket close events for reconnection
+        socket.onclose = (event: CloseEvent) => {
+            console.log('WebSocket closed:', event, 'wasClean:', event.wasClean, 'code:', event.code);
+            // Stop connection monitoring
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+                connectionCheckIntervalRef.current = null;
+            }
+            // Only attempt reconnect if we have an active game and not already reconnecting
+            // Reconnect even if wasClean is true (backend might have restarted)
+            if (gameIdRef.current && !isReconnectingRef.current) {
+                console.log('Socket closed, attempting to reconnect...');
+                isReconnectingRef.current = true;
+                reconnectStartTimeRef.current = Date.now();
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    if (stompClient.current) {
+                        try {
+                            // Only disconnect if actually connected
+                            if (stompClient.current.connected) {
+                                stompClient.current.disconnect();
+                            }
+                        } catch (e) {
+                            // Ignore errors - connection might already be dead
+                            console.log('Disconnect error (expected if already disconnected)');
+                        }
+                    }
+                    connectWebSocket(true);
+                }, 5000);
+            } else if (gameIdRef.current && isReconnectingRef.current) {
+                console.log('Socket closed but reconnection already in progress');
+            }
+        };
+        
+        // Handle socket error events
+        socket.onerror = (error: Event) => {
+            console.error('WebSocket error:', error);
+        };
+        
+        stompClient.current = client;
+        
+        const onConnect = () => {
+            console.log('WebSocket connected', isReconnect ? '(reconnected)' : '');
+            isReconnectingRef.current = false;
+            reconnectStartTimeRef.current = null;
+            lastMessageTimeRef.current = Date.now();
+            
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
+
+            // Start connection monitoring
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+            }
+            connectionCheckIntervalRef.current = setInterval(() => {
+                const now = Date.now();
+                const timeSinceLastMessage = now - lastMessageTimeRef.current;
+                
+                // Check STOMP connection status
+                const isConnected = stompClient.current && stompClient.current.connected;
+                
+                // Check if connection is still alive (no messages for 30 seconds means connection is likely dead)
+                // OR if STOMP client reports disconnected
+                if (gameIdRef.current && (!isConnected || timeSinceLastMessage > 30000)) {
+                    console.log('Connection appears dead or disconnected. STOMP connected:', isConnected, 'Time since last message:', timeSinceLastMessage);
+                    
+                    // If we've been trying to reconnect for more than 30 seconds, reset the flag and try again
+                    if (isReconnectingRef.current && reconnectStartTimeRef.current) {
+                        const reconnectDuration = Date.now() - reconnectStartTimeRef.current;
+                        if (reconnectDuration > 30000) {
+                            console.log('Reconnection attempt timed out, resetting and retrying...');
+                            isReconnectingRef.current = false;
+                            reconnectStartTimeRef.current = null;
+                        }
+                    }
+                    
+                    if (stompClient.current) {
+                        try {
+                            // Only try to disconnect if actually connected
+                            if (stompClient.current.connected) {
+                                stompClient.current.disconnect();
+                            }
+                        } catch (e) {
+                            // Ignore errors - connection might already be dead
+                            console.log('Disconnect error (expected if already disconnected):', e);
+                        }
+                    }
+                    
+                    if (!isReconnectingRef.current) {
+                        console.log('Calling connectWebSocket for reconnection...');
+                        isReconnectingRef.current = true;
+                        reconnectStartTimeRef.current = Date.now();
+                        connectWebSocket(true);
+                    } else {
+                        console.log('Reconnection already in progress, waiting...');
+                    }
+                }
+            }, 10000); // Check every 10 seconds
+
+            // If we have an active game, reconnect to it (use gameIdRef instead of gameState in case state was lost)
+            if (gameIdRef.current) {
+                console.log('Reconnecting to game topic:', `/topic/game/${gameIdRef.current}/${username}`);
+                // Unsubscribe from old subscription if exists
+                if (gameSubscriptionRef.current) {
+                    try {
+                        gameSubscriptionRef.current.unsubscribe();
+                    } catch (e) {
+                        console.log('Error unsubscribing (expected if already unsubscribed):', e);
+                    }
+                }
+                // Resubscribe to game updates
+                gameSubscriptionRef.current = client.subscribe(
+                    `/topic/game/${gameIdRef.current}/${username}`, 
+                    (m: any) => {
+                        lastMessageTimeRef.current = Date.now();
+                        handleGameUpdate(JSON.parse(m.body));
+                    }
+                );
+                console.log('Resubscribed to game topic');
+                // Get current state
+                gameService.getInitialState().then(res => { 
+                    if (res.data) {
+                        lastMessageTimeRef.current = Date.now();
+                        handleGameUpdate(res.data); 
+                        console.log('Game state restored on reconnect');
+                    }
+                }).catch(err => {
+                    console.error('Failed to get initial state on reconnect:', err);
+                });
+            } else if (!isReconnect) {
+                // Only subscribe to game search if not reconnecting and no active game
+                client.subscribe(`/topic/game/${username}`, (msg: any) => {
+                    lastMessageTimeRef.current = Date.now();
+                    const data = JSON.parse(msg.body);
+                    if (data.status === 'GAME_STARTED') {
+                        setIsSearching(false);
+                        gameIdRef.current = data.gameId;
+                        gameSubscriptionRef.current = client.subscribe(
+                            `/topic/game/${data.gameId}/${username}`, 
+                            (m: any) => {
+                                lastMessageTimeRef.current = Date.now();
+                                handleGameUpdate(JSON.parse(m.body));
+                            }
+                        );
+                        gameService.getInitialState().then(res => { 
+                            if (res.data) {
+                                lastMessageTimeRef.current = Date.now();
+                                handleGameUpdate(res.data); 
+                            }
+                        });
+                    }
+                });
+                gameService.searchGame().catch(() => setIsSearching(false));
+            }
+        };
+
+        const onError = (error: any) => {
+            console.error('WebSocket connection error:', error);
+            if (!isReconnect && !isSearching) {
+                setIsSearching(false);
+            }
+            
+            // Attempt to reconnect if we have an active game (use gameIdRef to avoid closure issues)
+            if (gameIdRef.current && !isReconnectingRef.current) {
+                console.log('Connection error detected, scheduling reconnection...');
+                isReconnectingRef.current = true;
+                reconnectStartTimeRef.current = Date.now();
+                reconnectTimeoutRef.current = setTimeout(() => {
+                    if (stompClient.current) {
+                        try {
+                            // Only disconnect if actually connected
+                            if (stompClient.current.connected) {
+                                stompClient.current.disconnect();
+                            }
+                        } catch (e) {
+                            // Ignore errors - connection might already be dead
+                            console.log('Disconnect error (expected if already disconnected)');
+                        }
+                    }
+                    connectWebSocket(true);
+                }, 5000); // Wait 5 seconds before reconnecting
+            }
+        };
+
+        client.connect({ 'Authorization': `Bearer ${sockToken}` }, onConnect, onError);
+    };
+
     const startSearch = () => {
         if (isSearching) return;
         setIsSearching(true);
-        const sockToken = localStorage.getItem('refreshToken');
-        const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
-        const client = Stomp.over(socket);
-        stompClient.current = client;
-        client.connect({ 'Authorization': `Bearer ${sockToken}` }, () => {
-            client.subscribe(`/topic/game/${username}`, (msg: any) => {
-                const data = JSON.parse(msg.body);
-                if (data.status === 'GAME_STARTED') {
-                    setIsSearching(false);
-                    client.subscribe(`/topic/game/${data.gameId}/${username}`, (m: any) => handleGameUpdate(JSON.parse(m.body)));
-                    gameService.getInitialState().then(res => { if (res.data) handleGameUpdate(res.data); });
-                }
-            });
-            gameService.searchGame().catch(() => setIsSearching(false));
-        }, () => setIsSearching(false));
+        connectWebSocket(false);
     };
 
     const handlePlayCard = async (card: Card) => {
