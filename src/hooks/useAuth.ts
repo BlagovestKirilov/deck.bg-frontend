@@ -19,7 +19,7 @@ export const useAuth = () => {
 
             // Use the login function from context to update global state
             // response.token comes from your AuthResponse type
-            if(action === 'login') {
+            if(action === 'login' && response.token) {
                 login(
                     {username: form.username},
                     response.token,
@@ -29,8 +29,13 @@ export const useAuth = () => {
 
             return response;
         } catch (err: any) {
-            const message = err.response?.data?.message || 'Authentication failed';
-            setError(message);
+            // Include status code in error object for better error handling
+            const errorInfo = {
+                message: err.response?.data?.message || 'Authentication failed',
+                status: err.response?.status,
+                data: err.response?.data
+            };
+            setError(JSON.stringify(errorInfo));
             throw err;
         } finally {
             setIsLoading(false);

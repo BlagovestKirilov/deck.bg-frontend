@@ -93,10 +93,27 @@ const AuthPage: React.FC = () => {
 
     const mapErrorToBulgarian = (errorData: any): string => {
         if (!errorData) return "";
-        const msg = errorData.message || (typeof errorData === 'string' ? errorData : "");
-        const details = errorData.details || "";
+        
+        // Try to parse if it's a JSON string
+        let parsedError: any = errorData;
+        if (typeof errorData === 'string') {
+            try {
+                parsedError = JSON.parse(errorData);
+            } catch {
+                parsedError = { message: errorData };
+            }
+        }
+        
+        const msg = parsedError.message || (typeof errorData === 'string' ? errorData : "");
+        const status = parsedError.status;
+        const details = parsedError.details || parsedError.data?.details || "";
 
-        if (msg === "Username is already in use") return "Това потребителско име вече е заето.";
+        // Check for conflict status (409) - username already taken
+        if (status === 409 || msg?.toLowerCase().includes('conflict') || msg?.toLowerCase().includes('already in use')) {
+            return "Потребителското име е заето";
+        }
+        
+        if (msg === "Username is already in use") return "Потребителското име е заето";
         if (msg === "Username or password is incorrect") return "Грешно потребителско име или парола.";
 
         if (msg === "Validation Error") {
