@@ -290,21 +290,29 @@ const SantaseGame: React.FC = () => {
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
-    // Handle page close - leave game automatically (only when closing, not minimizing)
-    useEffect(() => {
-        if (!gameState) return;
-
-        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-            // Automatically leave the game when page is closed (red X button)
-            gameService.finishGame();
-        };
-
-        window.addEventListener('beforeunload', handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload);
-        };
-    }, [gameState]);
+    // Handle leaving the game
+    const handleLeaveGame = () => {
+        setConfirmAction({
+            title: 'Напускане на играта',
+            message: 'Сигурни ли сте, че искате да напуснете играта?',
+            action: async () => {
+                try {
+                    await gameService.finishGame();
+                    setGameState(null);
+                    setIsSearching(false);
+                    if (stompClient.current) {
+                        stompClient.current.disconnect();
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+                setConfirmAction(null);
+            },
+            onCancel: () => {
+                setConfirmAction(null);
+            }
+        });
+    };
 
     useEffect(() => {
         if (!gameState) return;
@@ -500,6 +508,31 @@ const SantaseGame: React.FC = () => {
                 </div>
             ) : (
                 <div style={styles.gameWrapper}>
+                    {/* Leave Game Button - Desktop only */}
+                    {(() => {
+                        const isMobile = windowWidth <= 768;
+                        const isSmallMobile = windowWidth <= 480;
+                        // Only show standalone button on desktop
+                        if (isMobile) return null;
+                        return (
+                            <button
+                                onClick={handleLeaveGame}
+                                style={{
+                                    position: 'absolute',
+                                    top: '20px',
+                                    right: '20px',
+                                    zIndex: 1000,
+                                    ...styles.btnLeave,
+                                    width: '50px',
+                                    height: '50px',
+                                    fontSize: '1.2rem',
+                                }}
+                            >
+                                ✕
+                            </button>
+                        );
+                    })()}
+                    
                     {activeBonuses.map(b => (
                         <div key={b.id} className="bonus-bubble" style={{ top: b.isOpponent ? '25%' : '65%' }}>
                             +{b.val} ТОЧКИ
@@ -544,61 +577,85 @@ const SantaseGame: React.FC = () => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
                         
-                        // Mobile: horizontal scoreboard above opponent cards
+                        // Mobile: vertical scoreboard above opponent cards (same structure as desktop)
                         if (isMobile) {
                             return (
-                                <div style={{
-                                    ...styles.scoreBoardMobile,
-                                    padding: isSmallMobile ? '8px 12px' : '10px 15px',
-                                    fontSize: isSmallMobile ? '0.75rem' : '0.85rem',
-                                }}>
+                                <>
+                                    {/* Scoreboard on the left */}
                                     <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: isSmallMobile ? '12px' : '16px',
+                                        ...styles.scoreBoardMobile,
+                                        top: '10px',
+                                        left: '10px',
+                                        right: 'auto',
+                                        width: isSmallMobile ? '160px' : '180px',
+                                        padding: isSmallMobile ? '8px 12px' : '10px 14px',
+                                        fontSize: isSmallMobile ? '0.75rem' : '0.85rem',
+                                        position: 'absolute',
+                                        flexDirection: 'column',
+                                        alignItems: 'stretch',
+                                        justifyContent: 'flex-start',
                                     }}>
-                                        {/* First player: username result */}
-                                        <span style={{
-                                            fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
-                                            maxWidth: isSmallMobile ? '70px' : '90px',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
+                                        <div style={{
+                                            ...styles.scoreRow,
+                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
+                                            paddingBottom: isSmallMobile ? '6px' : '8px',
+                                            marginBottom: isSmallMobile ? '6px' : '8px',
                                         }}>
-                                            {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
-                                        </span>
-                                        <span style={{
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
+                                                maxWidth: isSmallMobile ? '70px' : '85px',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
+                                            </span>
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '1rem' : '1.1rem',
+                                                fontWeight: 800,
+                                                color: '#ff5252',
+                                                textShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
+                                            }}>
+                                {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
+                            </span>
+                        </div>
+                        <div style={styles.scoreRow}>
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
+                                                maxWidth: isSmallMobile ? '70px' : '85px',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {username}
+                                            </span>
+                                            <span style={{
+                                                fontSize: isSmallMobile ? '1rem' : '1.1rem',
+                                                fontWeight: 800,
+                                                color: '#4CAF50',
+                                                textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
+                                            }}>
+                                {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
+                            </span>
+                        </div>
+                    </div>
+                                    {/* Leave Game Button - Mobile - positioned on right */}
+                                    <button
+                                        onClick={handleLeaveGame}
+                                        style={{
+                                            ...styles.btnLeave,
+                                            position: 'absolute',
+                                            top: isSmallMobile ? '10px' : '12px',
+                                            right: isSmallMobile ? '10px' : '12px',
+                                            width: isSmallMobile ? '36px' : '40px',
+                                            height: isSmallMobile ? '36px' : '40px',
                                             fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                            fontWeight: 800,
-                                            color: '#ff5252',
-                                            textShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
-                                        }}>
-                                            {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
-                                        </span>
-                                        <span style={{
-                                            margin: '0 8px',
-                                            color: 'rgba(255,255,255,0.3)',
-                                        }}>|</span>
-                                        {/* Second player: result username */}
-                                        <span style={{
-                                            fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                            fontWeight: 800,
-                                            color: '#4CAF50',
-                                            textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
-                                        }}>
-                                            {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
-                                        </span>
-                                        <span style={{
-                                            fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
-                                            maxWidth: isSmallMobile ? '70px' : '90px',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}>
-                                            {username}
-                                        </span>
-                                    </div>
-                                </div>
+                                            zIndex: 1000,
+                                        }}
+                                    >
+                                        ✕
+                                    </button>
+                                </>
                             );
                         }
                         
@@ -669,7 +726,7 @@ const SantaseGame: React.FC = () => {
                                 <div style={{
                                     ...styles.topSection,
                                     height: isSmallMobile ? '18vh' : isMobile ? '22vh' : '25vh',
-                                    paddingTop: isMobile ? (isSmallMobile ? '50px' : '55px') : '0',
+                                    paddingTop: isMobile ? (isSmallMobile ? '70px' : '75px') : '0',
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -1112,8 +1169,6 @@ const styles: Record<string, React.CSSProperties> = {
         border: '2px solid rgba(255,255,255,0.2)',
         boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
         display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     scoreRow: {
         display: 'flex',
