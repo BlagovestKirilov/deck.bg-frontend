@@ -367,7 +367,7 @@ const SantaseGame: React.FC = () => {
         if (isSearching) return;
         setIsSearching(true);
         const sockToken = localStorage.getItem('refreshToken');
-        const socket = new SockJS(`http://localhost/ws-game?token=${sockToken}`);
+        const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
         const client = Stomp.over(socket);
         stompClient.current = client;
         client.connect({ 'Authorization': `Bearer ${sockToken}` }, () => {
