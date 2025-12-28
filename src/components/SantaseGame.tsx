@@ -1,9 +1,10 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 import { useAuthContext } from '../context/AuthContext';
 import { gameService } from '../api/gameService';
 import { GameState, Card, Suit } from '../types/game.types';
+const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // Global styles and animations
 if (typeof document !== 'undefined') {
@@ -143,9 +144,30 @@ const SantaseGame: React.FC = () => {
     const [confirmAction, setConfirmAction] = useState<null | { title: string; message: string; action: () => void; onCancel?: () => void }>(null);
     const [trickResult, setTrickResult] = useState<null | { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number }>(null);
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
+    const [activeBonuses, setActiveBonuses] = useState<{id: number, val: number, isOpponent: boolean}[]>([]);
 
     const stompClient = useRef<any>(null);
     const username = user?.username || "Играч";
+
+    useEffect(() => {
+        if (!gameState) return;
+        const newBubbles: {id: number, val: number, isOpponent: boolean}[] = [];
+
+        if (gameState.bonus && gameState.bonus > 0) {
+            newBubbles.push({ id: Date.now(), val: gameState.bonus, isOpponent: false });
+        }
+        if (gameState.opponentPlayerBonus && gameState.opponentPlayerBonus > 0) {
+            newBubbles.push({ id: Date.now() + 1, val: gameState.opponentPlayerBonus, isOpponent: true });
+        }
+
+        if (newBubbles.length > 0) {
+            setActiveBonuses(prev => [...prev, ...newBubbles]);
+            setTimeout(() => {
+                setActiveBonuses(prev => prev.filter(b => !newBubbles.find(nb => nb.id === b.id)));
+            }, 2500);
+        }
+    }, [gameState?.bonus, gameState?.opponentPlayerBonus]);
+
     const [isUiLocked, setIsUiLocked] = useState(false);
     const messageQueue = useRef<GameState[]>([]);
     const isProcessingQueue = useRef(false);
@@ -195,8 +217,8 @@ const SantaseGame: React.FC = () => {
     const startSearch = () => {
         if (isSearching) return;
         setIsSearching(true);
-        const sockToken = localStorage.getItem('token');
-        const socket = new SockJS(`https://deck.bg/ws-game?token=${sockToken}`);
+        const sockToken = localStorage.getItem('refreshToken');
+        const socket = new SockJS(`http://localhost/ws-game?token=${sockToken}`);
         const client = Stomp.over(socket);
         stompClient.current = client;
         client.connect({ 'Authorization': `Bearer ${sockToken}` }, () => {
@@ -263,6 +285,11 @@ const SantaseGame: React.FC = () => {
                 </div>
             ) : (
                 <div style={styles.gameWrapper}>
+                    {activeBonuses.map(b => (
+                        <div key={b.id} className="bonus-bubble" style={{ top: b.isOpponent ? '25%' : '65%' }}>
+                            +{b.val} ТОЧКИ
+                        </div>
+                    ))}
                     {/* PERSPECTIVE FIXED SCOREBOARD */}
                     <div style={styles.scoreBoard}>
                         <div style={{...styles.scoreRow, borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '8px', marginBottom: '8px'}}>
