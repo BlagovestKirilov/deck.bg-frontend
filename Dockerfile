@@ -8,9 +8,7 @@ RUN npm run build
 
 # Stage 2: Serve with Nginx
 FROM nginx:alpine
-# If using Vite, change /app/build to /app/dist below
-COPY --from=build /app/build /usr/share/nginx/html
-# Copy the frontend-specific nginx config
+COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
