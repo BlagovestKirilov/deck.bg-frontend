@@ -7,8 +7,21 @@ const AuthPage: React.FC = () => {
     const [localError, setLocalError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [showServerError, setShowServerError] = useState(true);
+    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
 
     const { performAction, isLoading, error: serverError } = useAuth();
+
+    // Handle window resize for responsive design
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        handleResize(); // Initial call
+        
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     // Добавяне на CSS анимациите динамично
     useEffect(() => {
@@ -160,52 +173,93 @@ const AuthPage: React.FC = () => {
         });
     }, []); // Празният масив гарантира, че се генерират само веднъж
 
+    const isMobile = windowWidth <= 768;
+    const isSmallMobile = windowWidth <= 480;
+
     return (
         <div style={styles.container}>
             {floatingSymbols}
 
-            <div style={styles.card}>
-                <div style={styles.logo}>♠</div>
-                <h2 style={styles.title}>{isLogin ? 'SANTASE' : 'РЕГИСТРАЦИЯ'}</h2>
-                <p style={styles.subtitle}>{isLogin ? 'Влез в кралството на картите' : 'Стани част от елита'}</p>
+            <div style={{
+                ...styles.card,
+                padding: isSmallMobile ? '20px 15px' : isMobile ? '25px 20px' : '40px',
+                maxWidth: isSmallMobile ? '280px' : isMobile ? '320px' : '360px',
+            }}>
+                <div style={{
+                    ...styles.logo,
+                    fontSize: isSmallMobile ? '40px' : isMobile ? '50px' : '60px',
+                }}>♠</div>
+                <h2 style={{
+                    ...styles.title,
+                    fontSize: isSmallMobile ? '20px' : isMobile ? '24px' : '28px',
+                }}>{isLogin ? 'SANTASE' : 'РЕГИСТРАЦИЯ'}</h2>
+                <p style={{
+                    ...styles.subtitle,
+                    fontSize: isSmallMobile ? '11px' : isMobile ? '12px' : '13px',
+                    marginBottom: isSmallMobile ? '15px' : '25px',
+                }}>{isLogin ? 'Влез в кралството на картите' : 'Стани част от елита'}</p>
 
                 <form onSubmit={handleSubmit} style={styles.form}>
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Потребителско име</label>
+                    <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
+                        <label style={{
+                            ...styles.label,
+                            fontSize: isSmallMobile ? '10px' : '12px',
+                            marginBottom: isSmallMobile ? '4px' : '5px',
+                        }}>Потребителско име</label>
                         <input
                             type="text"
                             name="username"
                             value={form.username}
                             onChange={handleInputChange}
                             placeholder="Потребителско име"
-                            style={styles.input}
+                            style={{
+                                ...styles.input,
+                                padding: isSmallMobile ? '10px' : '12px',
+                                fontSize: isSmallMobile ? '14px' : '16px',
+                            }}
                             required
                         />
                     </div>
 
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Парола</label>
+                    <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
+                        <label style={{
+                            ...styles.label,
+                            fontSize: isSmallMobile ? '10px' : '12px',
+                            marginBottom: isSmallMobile ? '4px' : '5px',
+                        }}>Парола</label>
                         <input
                             type="password"
                             name="password"
                             value={form.password}
                             onChange={handleInputChange}
                             placeholder="••••••••"
-                            style={styles.input}
+                            style={{
+                                ...styles.input,
+                                padding: isSmallMobile ? '10px' : '12px',
+                                fontSize: isSmallMobile ? '14px' : '16px',
+                            }}
                             required
                         />
                     </div>
 
                     {!isLogin && (
-                        <div style={styles.inputGroup}>
-                            <label style={styles.label}>Потвърди паролата</label>
+                        <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
+                            <label style={{
+                                ...styles.label,
+                                fontSize: isSmallMobile ? '10px' : '12px',
+                                marginBottom: isSmallMobile ? '4px' : '5px',
+                            }}>Потвърди паролата</label>
                             <input
                                 type="password"
                                 name="confirmPassword"
                                 value={form.confirmPassword}
                                 onChange={handleInputChange}
                                 placeholder="••••••••"
-                                style={styles.input}
+                                style={{
+                                    ...styles.input,
+                                    padding: isSmallMobile ? '10px' : '12px',
+                                    fontSize: isSmallMobile ? '14px' : '16px',
+                                }}
                                 required
                             />
                         </div>
@@ -217,12 +271,21 @@ const AuthPage: React.FC = () => {
 
                     {successMessage && <div style={styles.successBox}> {successMessage}</div>}
 
-                    <button type="submit" disabled={isLoading} style={{...styles.button, opacity: isLoading ? 0.7 : 1}}>
+                    <button type="submit" disabled={isLoading} style={{
+                        ...styles.button,
+                        opacity: isLoading ? 0.7 : 1,
+                        padding: isSmallMobile ? '12px' : isMobile ? '13px' : '15px',
+                        fontSize: isSmallMobile ? '14px' : isMobile ? '16px' : '18px',
+                    }}>
                         {isLoading ? '...' : (isLogin ? 'Влез' : 'Регистрирай се')}
                     </button>
                 </form>
 
-                <p style={styles.toggleText}>
+                <p style={{
+                    ...styles.toggleText,
+                    marginTop: isSmallMobile ? '15px' : '20px',
+                    fontSize: isSmallMobile ? '12px' : '14px',
+                }}>
                     {isLogin ? "Нямаш профил?" : "Вече имаш профил?"}
                     <span onClick={() => setIsLogin(!isLogin)} style={styles.toggleLink}>
                         {isLogin ? 'Създай сега' : 'Влез тук'}
