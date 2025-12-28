@@ -325,7 +325,8 @@ const SantaseGame: React.FC = () => {
         if (isProcessingQueue.current || messageQueue.current.length === 0) return;
         isProcessingQueue.current = true;
         const nextState = messageQueue.current.shift()!;
-        const isTrickFinished = nextState.playedCard && nextState.opponentPlayedCard;
+        const isTrickFinished = (nextState.playedCard && nextState.opponentPlayedCard) 
+        || (nextState.remainingCardsCount === 24 && !nextState.playedCard && !nextState.opponentPlayedCard);
 
         if (isTrickFinished) {
             setGameState(nextState);
