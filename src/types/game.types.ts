@@ -28,5 +28,6 @@ export interface GameState {
     trickSecondPlayerScore?: number;
     bonus?: number;
     opponentPlayerBonus?: number;
+    opponentPlayerCardsCount?: number;
     status?: 'WAITING' | 'GAME_STARTED';
 }
