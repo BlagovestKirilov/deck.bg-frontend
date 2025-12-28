@@ -423,7 +423,8 @@ const SantaseGame: React.FC = () => {
                         return (
                             <div style={{
                                 ...styles.lobbyContent,
-                                padding: isSmallMobile ? '30px 20px' : isMobile ? '35px 30px' : '40px',
+                                padding: isSmallMobile ? '25px 15px' : isMobile ? '30px 20px' : '40px',
+                                maxWidth: isSmallMobile ? '280px' : isMobile ? '350px' : '500px',
                             }}>
                                 <div style={{
                                     ...styles.logoBadge,
@@ -482,6 +483,7 @@ const SantaseGame: React.FC = () => {
                                         alignItems: 'center',
                                         gap: isSmallMobile ? '12px' : '16px',
                                     }}>
+                                        {/* First player: username result */}
                                         <span style={{
                                             fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
                                             maxWidth: isSmallMobile ? '70px' : '90px',
@@ -503,6 +505,15 @@ const SantaseGame: React.FC = () => {
                                             margin: '0 8px',
                                             color: 'rgba(255,255,255,0.3)',
                                         }}>|</span>
+                                        {/* Second player: result username */}
+                                        <span style={{
+                                            fontSize: isSmallMobile ? '1rem' : '1.1rem',
+                                            fontWeight: 800,
+                                            color: '#4CAF50',
+                                            textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
+                                        }}>
+                                            {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
+                                        </span>
                                         <span style={{
                                             fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
                                             maxWidth: isSmallMobile ? '70px' : '90px',
@@ -511,14 +522,6 @@ const SantaseGame: React.FC = () => {
                                             whiteSpace: 'nowrap',
                                         }}>
                                             {username}
-                                        </span>
-                                        <span style={{
-                                            fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                            fontWeight: 800,
-                                            color: '#4CAF50',
-                                            textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
-                                        }}>
-                                            {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
                                         </span>
                                     </div>
                                 </div>
@@ -745,16 +748,19 @@ const SantaseGame: React.FC = () => {
                                                 top: '50%',
                                                 transform: 'translateY(-50%)',
                                                 marginLeft: isSmallMobile ? '12px' : isMobile ? '15px' : '18px',  // Gap between turn indicator and button
+                                                opacity: gameState.isOnTurn ? 1 : 0.4,  // Dimmed when not player's turn
+                                                cursor: gameState.isOnTurn ? 'pointer' : 'not-allowed',
+                                                pointerEvents: gameState.isOnTurn ? 'auto' : 'none',  // Disable clicks when not player's turn
                                             }} 
-                                            onClick={() => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } })}
-                                            onMouseEnter={(e) => {
+                                            onClick={gameState.isOnTurn ? () => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } }) : undefined}
+                                            onMouseEnter={gameState.isOnTurn ? (e) => {
                                                 e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
                                                 e.currentTarget.style.boxShadow = '0 10px 28px rgba(255, 152, 0, 0.6), 0 5px 14px rgba(0,0,0,0.3)';
-                                            }}
-                                            onMouseLeave={(e) => {
+                                            } : undefined}
+                                            onMouseLeave={gameState.isOnTurn ? (e) => {
                                                 e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
                                                 e.currentTarget.style.boxShadow = styles.icon66.boxShadow as string;
-                                            }}
+                                            } : undefined}
                                         >66</div>
                                     </div>
 
@@ -944,6 +950,7 @@ const styles: Record<string, React.CSSProperties> = {
         maxWidth: '500px',
         border: '2px solid rgba(255,255,255,0.2)',
         boxShadow: '0 20px 56px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
+        // Responsive maxWidth will be set inline
     },
     logoBadge: {
         borderRadius: '50%',
