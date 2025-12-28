@@ -1123,31 +1123,36 @@ const SantaseGame: React.FC = () => {
                         </div>
                                         
                                         {/* 66 button next to turn indicator (to the right) */}
-                                        <div 
-                                            style={{
-                                                ...styles.icon66,
-                                                width: isSmallMobile ? '45px' : isMobile ? '45px' : '55px',
-                                                height: isSmallMobile ? '45px' : isMobile ? '45px' : '55px',
-                                                fontSize: isSmallMobile ? '1.05rem' : isMobile ? '1.15rem' : '1.25rem',
-                                                position: 'absolute',
-                                                left: isSmallMobile ? 'calc(50% + 80px)' : isMobile ? 'calc(50% + 95px)' : 'calc(50% + 110px)',  // Position next to turn indicator
-                                                top: '50%',
-                                                transform: 'translateY(-50%)',
-                                                marginLeft: isSmallMobile ? '12px' : isMobile ? '15px' : '18px',  // Gap between turn indicator and button
-                                                opacity: gameState.isOnTurn ? 1 : 0.4,  // Dimmed when not player's turn
-                                                cursor: gameState.isOnTurn ? 'pointer' : 'not-allowed',
-                                                pointerEvents: gameState.isOnTurn ? 'auto' : 'none',  // Disable clicks when not player's turn
-                                            }} 
-                                            onClick={gameState.isOnTurn ? () => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } }) : undefined}
-                                            onMouseEnter={gameState.isOnTurn ? (e) => {
-                                                e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                                                e.currentTarget.style.boxShadow = '0 10px 28px rgba(255, 152, 0, 0.6), 0 5px 14px rgba(0,0,0,0.3)';
-                                            } : undefined}
-                                            onMouseLeave={gameState.isOnTurn ? (e) => {
-                                                e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                                                e.currentTarget.style.boxShadow = styles.icon66.boxShadow as string;
-                                            } : undefined}
-                                        >66</div>
+                                        {(() => {
+                                            const canFinishDeal = gameState.isOnTurn && !gameState.playedCard && !gameState.opponentPlayedCard;
+                                            return (
+                                                <div 
+                                                    style={{
+                                                        ...styles.icon66,
+                                                        width: isSmallMobile ? '45px' : isMobile ? '45px' : '55px',
+                                                        height: isSmallMobile ? '45px' : isMobile ? '45px' : '55px',
+                                                        fontSize: isSmallMobile ? '1.05rem' : isMobile ? '1.15rem' : '1.25rem',
+                                                        position: 'absolute',
+                                                        left: isSmallMobile ? 'calc(50% + 80px)' : isMobile ? 'calc(50% + 95px)' : 'calc(50% + 110px)',  // Position next to turn indicator
+                                                        top: '50%',
+                                                        transform: 'translateY(-50%)',
+                                                        marginLeft: isSmallMobile ? '12px' : isMobile ? '15px' : '18px',  // Gap between turn indicator and button
+                                                        opacity: canFinishDeal ? 1 : 0.4,  // Dimmed when not player's turn or cards are played
+                                                        cursor: canFinishDeal ? 'pointer' : 'not-allowed',
+                                                        pointerEvents: canFinishDeal ? 'auto' : 'none',  // Disable clicks when not player's turn or cards are played
+                                                    }} 
+                                                    onClick={canFinishDeal ? () => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } }) : undefined}
+                                                    onMouseEnter={canFinishDeal ? (e) => {
+                                                        e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                                                        e.currentTarget.style.boxShadow = '0 10px 28px rgba(255, 152, 0, 0.6), 0 5px 14px rgba(0,0,0,0.3)';
+                                                    } : undefined}
+                                                    onMouseLeave={canFinishDeal ? (e) => {
+                                                        e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                                                        e.currentTarget.style.boxShadow = styles.icon66.boxShadow as string;
+                                                    } : undefined}
+                                                >66</div>
+                                            );
+                                        })()}
                     </div>
 
                                     {/* Cards section */}
