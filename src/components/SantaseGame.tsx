@@ -172,7 +172,8 @@ const CardComponent: React.FC<{
         maxHeight: cardHeight,
         flexShrink: 0,  // Include border in width/height to prevent size changes
         borderRadius: isMobile ? '14px' : '14px',
-        color: isPlayable ? suit.color : '#999',
+        color: suit.color,
+        opacity: isPlayable ? 1 : 0.4,
         border: isSelected 
             ? '3px solid #ffd700' 
             : isPlayable 
