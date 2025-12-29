@@ -619,7 +619,7 @@ const SantaseGame: React.FC = () => {
     const getSortedCards = (cards: Card[]) => {
         if (!gameState?.trumpCard) return cards;
         const trumpSuit = gameState.trumpCard.suit;
-        
+
         // Group cards by suit
         const cardsBySuit: Record<Suit, Card[]> = {
             SPADES: [],
@@ -639,26 +639,26 @@ const SantaseGame: React.FC = () => {
             });
         });
         
-        // Build result: trump first, then alternate red and black suits
+        // Build result: trump first, then alternate red and black suit groups
         const result: Card[] = [];
         
-        // Add trump cards first
+        // Add trump cards first (all cards of trump suit together, sorted high to low)
         result.push(...cardsBySuit[trumpSuit]);
         
-        // Get red and black suits (excluding trump)
+        // Get red and black suits that have cards (excluding trump)
         const redSuits: Suit[] = [];
         const blackSuits: Suit[] = [];
         
-        if (trumpSuit !== 'HEARTS') redSuits.push('HEARTS');
-        if (trumpSuit !== 'DIAMONDS') redSuits.push('DIAMONDS');
-        if (trumpSuit !== 'SPADES') blackSuits.push('SPADES');
-        if (trumpSuit !== 'CLUBS') blackSuits.push('CLUBS');
+        if (trumpSuit !== 'HEARTS' && cardsBySuit.HEARTS.length > 0) redSuits.push('HEARTS');
+        if (trumpSuit !== 'DIAMONDS' && cardsBySuit.DIAMONDS.length > 0) redSuits.push('DIAMONDS');
+        if (trumpSuit !== 'SPADES' && cardsBySuit.SPADES.length > 0) blackSuits.push('SPADES');
+        if (trumpSuit !== 'CLUBS' && cardsBySuit.CLUBS.length > 0) blackSuits.push('CLUBS');
         
         // Sort suits alphabetically for consistent ordering
         redSuits.sort();
         blackSuits.sort();
         
-        // Interleave red and black suit groups
+        // Interleave red and black suit groups (red, black, red, black pattern)
         const maxLength = Math.max(redSuits.length, blackSuits.length);
         for (let i = 0; i < maxLength; i++) {
             if (i < redSuits.length) {
