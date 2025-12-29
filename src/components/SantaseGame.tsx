@@ -172,7 +172,8 @@ const CardComponent: React.FC<{
         maxHeight: cardHeight,
         flexShrink: 0,  // Include border in width/height to prevent size changes
         borderRadius: isMobile ? '14px' : '14px',
-        color: isPlayable ? suit.color : '#999',
+        color: suit.color,
+        opacity: isPlayable ? 1 : 0.4,
         border: isSelected 
             ? '3px solid #ffd700' 
             : isPlayable 
@@ -207,13 +208,13 @@ const CardComponent: React.FC<{
         lineHeight: '1',
         fontWeight: 'bold' as const,
         fontSize: isSmall 
-            ? (isSmallMobile ? '0.7rem' : isMobile ? '0.8rem' : '1.3rem')
-            : (isSmallMobile ? '0.8rem' : isMobile ? '1rem' : '1.1rem'),
+            ? (isSmallMobile ? '1.1rem' : isMobile ? '1.2rem' : '1.7rem')
+            : (isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.5rem'),
     };
 
     const centerSymbolSize = isSmall
-        ? (isSmallMobile ? '1.2rem' : isMobile ? '1.5rem' : '2.6rem')
-        : (isSmallMobile ? '1.8rem' : isMobile ? '2rem' : '2.5rem');
+        ? (isSmallMobile ? '1.6rem' : isMobile ? '1.9rem' : '3rem')
+        : (isSmallMobile ? '2.2rem' : isMobile ? '2.4rem' : '2.9rem');
 
     return (
         <div 
@@ -223,14 +224,14 @@ const CardComponent: React.FC<{
         >
             <div style={{ ...cornerStyle, alignSelf: 'flex-start' }}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '1.2rem' : '1rem') }}>{suit.symbol}</span>
+                <span style={{ fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem') }}>{suit.symbol}</span>
             </div>
             <div style={{ fontSize: centerSymbolSize, alignSelf: 'center', opacity: 0.9 }}>
                 {suit.symbol}
             </div>
             <div style={{ ...cornerStyle, alignSelf: 'flex-end', transform: 'rotate(180deg)' }}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '1.2rem' : '1rem') }}>{suit.symbol}</span>
+                <span style={{ fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem') }}>{suit.symbol}</span>
             </div>
         </div>
     );
@@ -1475,7 +1476,7 @@ const SantaseGame: React.FC = () => {
                                                 key={card.id}
                                                 style={{
                                                     marginLeft: isMobile && index > 0 
-                                                        ? (isSmallMobile ? '-42.5px' : '-50px')  // Half overlap: each card shows half, next card starts
+                                                        ? (isSmallMobile ? '-50.5px' : '-58px')  // Half overlap: each card shows half, next card starts
                                                         : '0',
                                                 }}
                                             >
