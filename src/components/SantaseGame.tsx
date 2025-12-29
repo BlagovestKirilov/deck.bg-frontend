@@ -171,6 +171,7 @@ const CardComponent: React.FC<{
         maxWidth: cardWidth,
         maxHeight: cardHeight,
         flexShrink: 0,  // Include border in width/height to prevent size changes
+        borderRadius: isMobile ? '14px' : '14px',
         color: isPlayable ? suit.color : '#999',
         border: isSelected 
             ? '3px solid #ffd700' 
@@ -1274,6 +1275,7 @@ const SantaseGame: React.FC = () => {
                                                     ...styles.cardBack,
                                                     width: isSmallMobile ? '50px' : isMobile ? '65px' : '130px',
                                                     height: isSmallMobile ? '75px' : isMobile ? '95px' : '175px',
+                                                    borderRadius: isMobile ? '5px' : '14px',
                                                 }}
                                             />
                             ))}
@@ -1304,7 +1306,7 @@ const SantaseGame: React.FC = () => {
                                                 <div style={{
                                                     ...styles.trumpUnder,
                                                     top: isSmallMobile ? '3px' : isMobile ? '5px' : '10px',
-                                                    left: isSmallMobile ? '25px' : isMobile ? '30px' : '90px',
+                                                    left: isSmallMobile ? '45px' : isMobile ? '30px' : '90px',
                                                     zIndex: 1,
                                                 }} onClick={() => {
                                         if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
@@ -1315,8 +1317,9 @@ const SantaseGame: React.FC = () => {
                                     </div>
                                                 <div style={{
                                                     ...styles.deckPile,
-                                                    width: isSmallMobile ? '60px' : isMobile ? '75px' : '140px',
-                                                    height: isSmallMobile ? '85px' : isMobile ? '110px' : '210px',
+                                                    width: isSmallMobile ? '70px' : isMobile ? '75px' : '140px',
+                                                    height: isSmallMobile ? '100px' : isMobile ? '110px' : '210px',
+                                                    borderRadius: isMobile ? '5px' : '14px',
                                                     top: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
                                                     left: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
                                                     zIndex: 2,
@@ -1748,7 +1751,6 @@ const styles: Record<string, React.CSSProperties> = {
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         // border: '3px solid rgba(255,255,255,0.95)',
-        borderRadius: '14px',
         // boxShadow: '0 8px 20px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.25), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.3)',
         position: 'relative' as const,
         overflow: 'hidden',
@@ -1795,7 +1797,6 @@ const styles: Record<string, React.CSSProperties> = {
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',
         // border: '3px solid rgba(255,255,255,0.95)',
-        borderRadius: '14px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
