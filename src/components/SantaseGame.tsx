@@ -616,8 +616,18 @@ const SantaseGame: React.FC = () => {
     };
 
     // restored ordering logic
-    const getSortedCards = (cards: Card[]) => {
+    const RANK_ORDER: Record<string, number> = {
+        ACE: 0,
+        TEN: 1,
+        KING: 2,
+        QUEEN: 3,
+        JACK: 4,
+        NINE: 5,
+    };
+
+    const getSortedCards = (cards: Card[]): Card[] => {
         if (!gameState?.trumpCard) return cards;
+
         const trumpSuit = gameState.trumpCard.suit;
 
         // Group cards by suit
@@ -625,50 +635,33 @@ const SantaseGame: React.FC = () => {
             SPADES: [],
             HEARTS: [],
             DIAMONDS: [],
-            CLUBS: []
+            CLUBS: [],
         };
-        
+
         cards.forEach(card => {
             cardsBySuit[card.suit].push(card);
         });
-        
-        // Sort each suit group by rank (highest to lowest: ACE=0, TEN=1, KING=2, QUEEN=3, JACK=4, NINE=5)
+
+        // Sort each suit group by rank: ACE > TEN > KING > QUEEN > JACK > NINE
         Object.keys(cardsBySuit).forEach(suit => {
             cardsBySuit[suit as Suit].sort((a, b) => {
                 return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
             });
         });
-        
-        // Build result: trump first, then alternate red and black suit groups
-        const result: Card[] = [];
-        
-        // Add trump cards first (all cards of trump suit together, sorted high to low)
-        result.push(...cardsBySuit[trumpSuit]);
-        
-        // Get red and black suits that have cards (excluding trump)
-        const redSuits: Suit[] = [];
-        const blackSuits: Suit[] = [];
-        
-        if (trumpSuit !== 'HEARTS' && cardsBySuit.HEARTS.length > 0) redSuits.push('HEARTS');
-        if (trumpSuit !== 'DIAMONDS' && cardsBySuit.DIAMONDS.length > 0) redSuits.push('DIAMONDS');
-        if (trumpSuit !== 'SPADES' && cardsBySuit.SPADES.length > 0) blackSuits.push('SPADES');
-        if (trumpSuit !== 'CLUBS' && cardsBySuit.CLUBS.length > 0) blackSuits.push('CLUBS');
-        
-        // Sort suits alphabetically for consistent ordering
-        redSuits.sort();
-        blackSuits.sort();
-        
-        // Interleave red and black suit groups (red, black, red, black pattern)
-        const maxLength = Math.max(redSuits.length, blackSuits.length);
-        for (let i = 0; i < maxLength; i++) {
-            if (i < redSuits.length) {
-                result.push(...cardsBySuit[redSuits[i]]);
+
+        // Function to sort descending
+        const sortDesc = (arr: Card[]) => arr.sort((a, b) => (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99));
+
+        // Add trump cards first
+        const result: Card[] = sortDesc(cardsBySuit[trumpSuit]);
+
+        // Add other suits in any order (ACE high)
+        Object.keys(cardsBySuit).forEach(suit => {
+            if (suit !== trumpSuit) {
+                result.push(...sortDesc(cardsBySuit[suit as Suit]));
             }
-            if (i < blackSuits.length) {
-                result.push(...cardsBySuit[blackSuits[i]]);
-            }
-        }
-        
+        });
+
         return result;
     };
 
