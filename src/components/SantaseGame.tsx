@@ -179,7 +179,7 @@ const CardComponent: React.FC<{
             color: suit.color, 
             
             // 3. BLUR & DIM: Increased blur slightly for a "pushed back" feel
-            filter: isPlayable ? 'none' : 'blur(0.8px) brightness(0.85)',
+            filter: isPlayable ? 'none' : 'brightness(0.75)',
         
             // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
             background: isPlayable 
