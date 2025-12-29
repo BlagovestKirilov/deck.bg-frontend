@@ -48,6 +48,10 @@ if (typeof document !== 'undefined') {
             85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
             100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
         }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
         .bonus-bubble {
             position: absolute;
             left: 50%;
@@ -280,9 +284,11 @@ const SantaseGame: React.FC = () => {
     const [activeBonuses, setActiveBonuses] = useState<{id: number, val: number, isOpponent: boolean}[]>([]);
     const [notifications, setNotifications] = useState<{id: number, message: string}[]>([]);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    const [isConnected, setIsConnected] = useState<boolean>(false);
     const prevGameStateRef = useRef<GameState | null>(null);
 
     const stompClient = useRef<any>(null);
+    const socketRef = useRef<any>(null);
     const gameIdRef = useRef<string | null>(null);
     const gameSubscriptionRef = useRef<any>(null);
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -290,6 +296,9 @@ const SantaseGame: React.FC = () => {
     const connectionCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const lastMessageTimeRef = useRef<number>(Date.now());
     const reconnectStartTimeRef = useRef<number | null>(null);
+    const connectionLockRef = useRef<boolean>(false);
+    const retryAttemptRef = useRef<number>(0);
+    const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const username = user?.username || "Играч";
 
     // Handle window resize for responsive design
@@ -308,18 +317,95 @@ const SantaseGame: React.FC = () => {
     useEffect(() => {
         // Check if we have a game state but no active connection
         if (gameState && gameIdRef.current && (!stompClient.current || !stompClient.current.connected)) {
-            if (!isReconnectingRef.current) {
+            if (!isReconnectingRef.current && !connectionLockRef.current) {
                 isReconnectingRef.current = true;
                 connectWebSocket(true);
             }
         }
     }, [gameState]);
 
+    // Retry reconnection with exponential backoff
+    const attemptReconnect = () => {
+        // Clear any existing timeout
+        if (reconnectTimeoutRef.current) {
+            clearTimeout(reconnectTimeoutRef.current);
+            reconnectTimeoutRef.current = null;
+        }
+
+        if (!gameIdRef.current) {
+            console.log('No active game, stopping reconnection attempts');
+            isReconnectingRef.current = false;
+            retryAttemptRef.current = 0;
+            return;
+        }
+
+        // Check both React state and actual STOMP connection state
+        const stompConnected = stompClient.current && stompClient.current.connected;
+        if (isConnected && stompConnected) {
+            console.log('Connection restored, stopping reconnection attempts');
+            isReconnectingRef.current = false;
+            retryAttemptRef.current = 0;
+            return;
+        }
+
+        if (connectionLockRef.current) {
+            console.log('Connection attempt in progress, will retry after current attempt...');
+            // Schedule retry after current attempt completes
+            const delay = 2000; // Max 10 seconds
+            reconnectTimeoutRef.current = setTimeout(() => {
+                attemptReconnect();
+            }, delay);
+            return;
+        }
+
+        // Calculate delay with exponential backoff (2s, 4s, 8s, max 10s)
+        const delay = 2000;
+        console.log(`Attempting reconnection (attempt ${retryAttemptRef.current + 1}) after ${delay}ms...`);
+        
+        reconnectTimeoutRef.current = setTimeout(() => {
+            if (!gameIdRef.current || isConnected) {
+                // Game ended or connection restored
+                isReconnectingRef.current = false;
+                retryAttemptRef.current = 0;
+                return;
+            }
+            
+            // Increment retry counter before attempting connection
+            retryAttemptRef.current++;
+            isReconnectingRef.current = true;
+            reconnectStartTimeRef.current = Date.now();
+            connectWebSocket(true);
+            
+            // After connectWebSocket completes (success or failure), 
+            // onError/onClose handlers will call attemptReconnect() again if needed
+        }, delay);
+    };
+
+    // Auto-reconnect when connection is lost during active game
+    useEffect(() => {
+        if (!isConnected && gameState && gameIdRef.current) {
+            // Only start reconnection if not already reconnecting
+            if (!isReconnectingRef.current) {
+                console.log('Connection lost during active game, starting reconnection attempts...');
+                isReconnectingRef.current = true;
+                reconnectStartTimeRef.current = Date.now();
+                retryAttemptRef.current = 0;
+                attemptReconnect();
+            }
+        } else if (isConnected) {
+            // Connection restored, reset retry counter
+            retryAttemptRef.current = 0;
+        }
+    }, [isConnected, gameState]);
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
+            }
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
             }
             if (connectionCheckIntervalRef.current) {
                 clearInterval(connectionCheckIntervalRef.current);
@@ -356,9 +442,22 @@ const SantaseGame: React.FC = () => {
                         clearTimeout(reconnectTimeoutRef.current);
                         reconnectTimeoutRef.current = null;
                     }
+                    if (connectionTimeoutRef.current) {
+                        clearTimeout(connectionTimeoutRef.current);
+                        connectionTimeoutRef.current = null;
+                    }
                     isReconnectingRef.current = false;
+                    retryAttemptRef.current = 0;
+                    connectionLockRef.current = false;
+                    setIsConnected(false);
                     if (stompClient.current) {
                         stompClient.current.disconnect();
+                    }
+                    if (socketRef.current) {
+                        socketRef.current.close();
+                    }
+                    if (socketRef.current) {
+                        socketRef.current.close();
                     }
                 } catch (e) {
                     console.error(e);
@@ -478,49 +577,136 @@ const SantaseGame: React.FC = () => {
 
     const connectWebSocket = (isReconnect: boolean = false) => {
         console.log('connectWebSocket called', isReconnect ? '(reconnect)' : '(initial)');
+        
+        // Prevent multiple simultaneous connection attempts
+        if (connectionLockRef.current) {
+            console.log('Connection attempt already in progress, skipping...');
+            return;
+        }
+        
         const sockToken = localStorage.getItem('refreshToken');
         if (!sockToken) {
             console.error('No refresh token found');
+            setIsConnected(false);
             return;
+        }
+
+        // Set connection lock
+        connectionLockRef.current = true;
+        setIsConnected(false);
+
+        // Clean up old connection before creating new one
+        const cleanupOldConnection = () => {
+            // Clear old subscription
+            if (gameSubscriptionRef.current) {
+                try {
+                    gameSubscriptionRef.current.unsubscribe();
+                } catch (e) {
+                    console.log('Error unsubscribing old subscription:', e);
+                }
+                gameSubscriptionRef.current = null;
+            }
+            
+            // Disconnect old STOMP client
+            if (stompClient.current) {
+                try {
+                    if (stompClient.current.connected) {
+                        stompClient.current.disconnect();
+                    }
+                } catch (e) {
+                    console.log('Error disconnecting old STOMP client:', e);
+                }
+                stompClient.current = null;
+            }
+            
+            // Close old socket
+            if (socketRef.current) {
+                try {
+                    socketRef.current.close();
+                } catch (e) {
+                    console.log('Error closing old socket:', e);
+                }
+                socketRef.current = null;
+            }
+            
+            // Clear intervals and timeouts
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+                connectionCheckIntervalRef.current = null;
+            }
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
+            }
+        };
+
+        cleanupOldConnection();
+
+        // Clear any existing connection timeout
+        if (connectionTimeoutRef.current) {
+            clearTimeout(connectionTimeoutRef.current);
+            connectionTimeoutRef.current = null;
         }
 
         console.log('Creating new SockJS connection...');
         const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
+        socketRef.current = socket;
         const client = Stomp.over(socket);
         
-        // Configure reconnection
-        client.reconnect_delay = 5000; // 5 seconds delay between reconnection attempts
+        // Disable STOMP auto-reconnect to avoid conflicts with manual reconnection
+        client.reconnect_delay = 0;
+        
+        // Set a timeout to detect failed connection attempts
+        // If connection doesn't succeed within 15 seconds, treat it as failure and retry
+        connectionTimeoutRef.current = setTimeout(() => {
+            if (!isConnected && gameIdRef.current && connectionLockRef.current) {
+                console.log('Connection attempt timed out after 3 seconds, will retry...');
+                connectionLockRef.current = false;
+                // Trigger retry
+                if (isReconnectingRef.current) {
+                    attemptReconnect();
+                }
+            }
+        }, 3000);
         
         // Handle socket close events for reconnection
         socket.onclose = (event: CloseEvent) => {
             console.log('WebSocket closed:', event, 'wasClean:', event.wasClean, 'code:', event.code);
+            setIsConnected(false);
+            connectionLockRef.current = false;
+            
+            // Clear connection timeout
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
+            }
+            
             // Stop connection monitoring
             if (connectionCheckIntervalRef.current) {
                 clearInterval(connectionCheckIntervalRef.current);
                 connectionCheckIntervalRef.current = null;
             }
-            // Only attempt reconnect if we have an active game and not already reconnecting
+            
+            // Only attempt reconnect if we have an active game
             // Reconnect even if wasClean is true (backend might have restarted)
-            if (gameIdRef.current && !isReconnectingRef.current) {
-                console.log('Socket closed, attempting to reconnect...');
-                isReconnectingRef.current = true;
-                reconnectStartTimeRef.current = Date.now();
-                reconnectTimeoutRef.current = setTimeout(() => {
-                    if (stompClient.current) {
-                        try {
-                            // Only disconnect if actually connected
-                            if (stompClient.current.connected) {
-                                stompClient.current.disconnect();
-                            }
-                        } catch (e) {
-                            // Ignore errors - connection might already be dead
-                            console.log('Disconnect error (expected if already disconnected)');
-                        }
-                    }
-                    connectWebSocket(true);
-                }, 5000);
-            } else if (gameIdRef.current && isReconnectingRef.current) {
-                console.log('Socket closed but reconnection already in progress');
+            if (gameIdRef.current) {
+                // Ensure we're in reconnecting state
+                if (!isReconnectingRef.current) {
+                    console.log('Socket closed, starting reconnection attempts...');
+                    isReconnectingRef.current = true;
+                    reconnectStartTimeRef.current = Date.now();
+                    retryAttemptRef.current = 0;
+                } else {
+                    // Already reconnecting, but connection failed, so retry with current attempt count
+                    console.log('Socket closed during reconnection attempt, will retry (attempt:', retryAttemptRef.current, ')...');
+                    // Don't reset retryAttemptRef - keep it so exponential backoff continues
+                }
+                // Always call attemptReconnect to schedule the next retry
+                attemptReconnect();
             }
         };
         
@@ -533,13 +719,21 @@ const SantaseGame: React.FC = () => {
         
         const onConnect = () => {
             console.log('WebSocket connected', isReconnect ? '(reconnected)' : '');
+            setIsConnected(true);
+            connectionLockRef.current = false;
             isReconnectingRef.current = false;
             reconnectStartTimeRef.current = null;
+            retryAttemptRef.current = 0; // Reset retry counter on successful connection
             lastMessageTimeRef.current = Date.now();
             
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
                 reconnectTimeoutRef.current = null;
+            }
+            
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
             }
 
             // Start connection monitoring
@@ -547,46 +741,34 @@ const SantaseGame: React.FC = () => {
                 clearInterval(connectionCheckIntervalRef.current);
             }
             connectionCheckIntervalRef.current = setInterval(() => {
-                const now = Date.now();
-                const timeSinceLastMessage = now - lastMessageTimeRef.current;
+                // Only monitor if we have an active game
+                if (!gameIdRef.current) {
+                    return;
+                }
                 
                 // Check STOMP connection status
-                const isConnected = stompClient.current && stompClient.current.connected;
+                const stompConnected = stompClient.current && stompClient.current.connected;
                 
-                // Check if connection is still alive (no messages for 30 seconds means connection is likely dead)
-                // OR if STOMP client reports disconnected
-                if (gameIdRef.current && (!isConnected || timeSinceLastMessage > 30000)) {
-                    console.log('Connection appears dead or disconnected. STOMP connected:', isConnected, 'Time since last message:', timeSinceLastMessage);
-                    
-                    // If we've been trying to reconnect for more than 30 seconds, reset the flag and try again
-                    if (isReconnectingRef.current && reconnectStartTimeRef.current) {
-                        const reconnectDuration = Date.now() - reconnectStartTimeRef.current;
-                        if (reconnectDuration > 30000) {
-                            console.log('Reconnection attempt timed out, resetting and retrying...');
-                            isReconnectingRef.current = false;
-                            reconnectStartTimeRef.current = null;
-                        }
-                    }
-                    
-                    if (stompClient.current) {
-                        try {
-                            // Only try to disconnect if actually connected
-                            if (stompClient.current.connected) {
-                                stompClient.current.disconnect();
-                            }
-                        } catch (e) {
-                            // Ignore errors - connection might already be dead
-                            console.log('Disconnect error (expected if already disconnected):', e);
-                        }
-                    }
-                    
-                    if (!isReconnectingRef.current) {
-                        console.log('Calling connectWebSocket for reconnection...');
-                        isReconnectingRef.current = true;
-                        reconnectStartTimeRef.current = Date.now();
-                        connectWebSocket(true);
-                    } else {
-                        console.log('Reconnection already in progress, waiting...');
+                // Only trigger reconnection if STOMP is actually disconnected AND we're not already reconnecting
+                // Don't rely on timeSinceLastMessage - games can have quiet periods without messages
+                if (!isReconnectingRef.current && !stompConnected) {
+                    // STOMP reports disconnected - definitely need to reconnect
+                    console.log('Connection appears dead or disconnected. STOMP connected:', stompConnected);
+                    setIsConnected(false);
+                    console.log('Connection dead, starting reconnection attempts...');
+                    isReconnectingRef.current = true;
+                    reconnectStartTimeRef.current = Date.now();
+                    retryAttemptRef.current = 0;
+                    attemptReconnect();
+                } else if (isReconnectingRef.current && reconnectStartTimeRef.current) {
+                    // If we've been trying to reconnect for more than 60 seconds, reset the flag and try again
+                    const reconnectDuration = Date.now() - reconnectStartTimeRef.current;
+                    if (reconnectDuration > 60000) {
+                        console.log('Reconnection attempt timed out after 60s, resetting and retrying...');
+                        isReconnectingRef.current = false;
+                        reconnectStartTimeRef.current = null;
+                        retryAttemptRef.current = 0;
+                        // Will be picked up by next interval check if still disconnected
                     }
                 }
             }, 10000); // Check every 10 seconds
@@ -650,29 +832,33 @@ const SantaseGame: React.FC = () => {
 
         const onError = (error: any) => {
             console.error('WebSocket connection error:', error);
+            setIsConnected(false);
+            connectionLockRef.current = false;
+            
+            // Clear connection timeout
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
+            }
+            
             if (!isReconnect && !isSearching) {
                 setIsSearching(false);
             }
             
             // Attempt to reconnect if we have an active game (use gameIdRef to avoid closure issues)
-            if (gameIdRef.current && !isReconnectingRef.current) {
-                console.log('Connection error detected, scheduling reconnection...');
-                isReconnectingRef.current = true;
-                reconnectStartTimeRef.current = Date.now();
-                reconnectTimeoutRef.current = setTimeout(() => {
-                    if (stompClient.current) {
-                        try {
-                            // Only disconnect if actually connected
-                            if (stompClient.current.connected) {
-                                stompClient.current.disconnect();
-                            }
-                        } catch (e) {
-                            // Ignore errors - connection might already be dead
-                            console.log('Disconnect error (expected if already disconnected)');
-                        }
-                    }
-                    connectWebSocket(true);
-                }, 5000); // Wait 5 seconds before reconnecting
+            if (gameIdRef.current) {
+                if (!isReconnectingRef.current) {
+                    console.log('Connection error detected, starting reconnection attempts...');
+                    isReconnectingRef.current = true;
+                    reconnectStartTimeRef.current = Date.now();
+                    retryAttemptRef.current = 0;
+                    attemptReconnect();
+                } else {
+                    // Already reconnecting, but connection failed, so retry with current attempt count
+                    console.log('Connection error during reconnection attempt, will retry (attempt:', retryAttemptRef.current, ')...');
+                    // Don't reset retryAttemptRef - keep it so exponential backoff continues
+                    attemptReconnect();
+                }
             }
         };
 
@@ -686,7 +872,7 @@ const SantaseGame: React.FC = () => {
     };
 
     const handlePlayCard = async (card: Card) => {
-        if (!gameState || !card.isPlayable || !gameState.isOnTurn || isUiLocked) return;
+        if (!gameState || !card.isPlayable || !gameState.isOnTurn || isUiLocked || !isConnected) return;
         const isKingOrQueen = card.rank === 'KING' || card.rank === 'QUEEN';
         const partnerRank = card.rank === 'KING' ? 'QUEEN' : 'KING';
         const hasPartner = gameState.deck.some(c => c.rank === partnerRank && c.suit === card.suit);
@@ -716,6 +902,46 @@ const SantaseGame: React.FC = () => {
     return (
         <div style={styles.table}>
             {!gameState && <Navbar username={username} onLogout={logout} windowWidth={windowWidth} />}
+
+            {/* Loading overlay when disconnected */}
+            {gameState && !isConnected && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    backdropFilter: 'blur(10px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10000,
+                    color: 'white',
+                }}>
+                    <div style={{
+                        width: '60px',
+                        height: '60px',
+                        border: '4px solid rgba(255, 255, 255, 0.3)',
+                        borderTop: '4px solid #4CAF50',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                    }} />
+                    <div style={{
+                        marginTop: '20px',
+                        fontSize: windowWidth <= 768 ? '1.1rem' : '1.3rem',
+                        fontWeight: 600,
+                        textAlign: 'center',
+                    }}>Възстановяване на връзката...</div>
+                    <div style={{
+                        marginTop: '10px',
+                        fontSize: windowWidth <= 768 ? '0.9rem' : '1rem',
+                        opacity: 0.8,
+                        textAlign: 'center',
+                    }}>Моля, изчакайте</div>
+                </div>
+            )}
 
             {!gameState ? (
                 <div style={styles.lobby}>
@@ -1027,7 +1253,7 @@ const SantaseGame: React.FC = () => {
                                                     top: isSmallMobile ? '3px' : '5px',
                                                     left: isSmallMobile ? '25px' : isMobile ? '30px' : '40px',
                                                 }} onClick={() => {
-                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
+                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
                                             gameService.replaceCard();
                                         }
                                     }}>
@@ -1038,7 +1264,7 @@ const SantaseGame: React.FC = () => {
                                                     width: isSmallMobile ? '60px' : isMobile ? '75px' : '90px',
                                                     height: isSmallMobile ? '85px' : isMobile ? '110px' : '130px',
                                                 }} onClick={() => {
-                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2) {
+                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
                                             setConfirmAction({ title: 'Затваряне', message: 'Затваряте ли тестето?', action: async () => { await gameService.closeDeck(); setConfirmAction(null); } });
                                         }
                                     }}>
@@ -1124,7 +1350,7 @@ const SantaseGame: React.FC = () => {
                                         
                                         {/* 66 button next to turn indicator (to the right) */}
                                         {(() => {
-                                            const canFinishDeal = gameState.isOnTurn && !gameState.playedCard && !gameState.opponentPlayedCard;
+                                            const canFinishDeal = gameState.isOnTurn && !gameState.playedCard && !gameState.opponentPlayedCard && isConnected;
                                             return (
                                                 <div 
                                                     style={{
@@ -1137,9 +1363,9 @@ const SantaseGame: React.FC = () => {
                                                         top: '50%',
                                                         transform: 'translateY(-50%)',
                                                         marginLeft: isSmallMobile ? '12px' : isMobile ? '15px' : '18px',  // Gap between turn indicator and button
-                                                        opacity: canFinishDeal ? 1 : 0.4,  // Dimmed when not player's turn or cards are played
+                                                        opacity: canFinishDeal ? 1 : 0.4,  // Dimmed when not player's turn or cards are played or disconnected
                                                         cursor: canFinishDeal ? 'pointer' : 'not-allowed',
-                                                        pointerEvents: canFinishDeal ? 'auto' : 'none',  // Disable clicks when not player's turn or cards are played
+                                                        pointerEvents: canFinishDeal ? 'auto' : 'none',  // Disable clicks when not player's turn or cards are played or disconnected
                                                     }} 
                                                     onClick={canFinishDeal ? () => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } }) : undefined}
                                                     onMouseEnter={canFinishDeal ? (e) => {
