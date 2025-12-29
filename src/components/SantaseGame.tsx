@@ -619,14 +619,57 @@ const SantaseGame: React.FC = () => {
     const getSortedCards = (cards: Card[]) => {
         if (!gameState?.trumpCard) return cards;
         const trumpSuit = gameState.trumpCard.suit;
-        return [...cards].sort((a, b) => {
-            if (a.suit !== b.suit) {
-                if (a.suit === trumpSuit) return -1; // Trump at the end
-                if (b.suit === trumpSuit) return 1;
-                return a.suit.localeCompare(b.suit);
-            }
-            return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
+        
+        // Group cards by suit
+        const cardsBySuit: Record<Suit, Card[]> = {
+            SPADES: [],
+            HEARTS: [],
+            DIAMONDS: [],
+            CLUBS: []
+        };
+        
+        cards.forEach(card => {
+            cardsBySuit[card.suit].push(card);
         });
+        
+        // Sort each suit group by rank (highest to lowest: ACE=0, TEN=1, KING=2, QUEEN=3, JACK=4, NINE=5)
+        Object.keys(cardsBySuit).forEach(suit => {
+            cardsBySuit[suit as Suit].sort((a, b) => {
+                return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
+            });
+        });
+        
+        // Build result: trump first, then alternate red and black suits
+        const result: Card[] = [];
+        
+        // Add trump cards first
+        result.push(...cardsBySuit[trumpSuit]);
+        
+        // Get red and black suits (excluding trump)
+        const redSuits: Suit[] = [];
+        const blackSuits: Suit[] = [];
+        
+        if (trumpSuit !== 'HEARTS') redSuits.push('HEARTS');
+        if (trumpSuit !== 'DIAMONDS') redSuits.push('DIAMONDS');
+        if (trumpSuit !== 'SPADES') blackSuits.push('SPADES');
+        if (trumpSuit !== 'CLUBS') blackSuits.push('CLUBS');
+        
+        // Sort suits alphabetically for consistent ordering
+        redSuits.sort();
+        blackSuits.sort();
+        
+        // Interleave red and black suit groups
+        const maxLength = Math.max(redSuits.length, blackSuits.length);
+        for (let i = 0; i < maxLength; i++) {
+            if (i < redSuits.length) {
+                result.push(...cardsBySuit[redSuits[i]]);
+            }
+            if (i < blackSuits.length) {
+                result.push(...cardsBySuit[blackSuits[i]]);
+            }
+        }
+        
+        return result;
     };
 
     const connectWebSocket = (isReconnect: boolean = false) => {
