@@ -615,57 +615,17 @@ const SantaseGame: React.FC = () => {
         processNextMessage();
     };
 
-    const getSortedCards = (cards: Card[]): Card[] => {
+    const getSortedCards = (cards: Card[]) => {
         if (!gameState?.trumpCard) return cards;
-    
         const trumpSuit = gameState.trumpCard.suit;
-    
-        // 1. Ранг в Сантасе: 9, J, Q, K, 10, A
-        const RANK_POWER: Record<string, number> = {
-            '9': 0, 'JACK': 1, 'QUEEN': 2, 'KING': 3, '10': 4, 'ACE': 5
-        };
-    
-        // 2. ГРУПИРАНЕ: Разделяме картите по бои и ги сортираме вътрешно
-        const suits: Record<Suit, Card[]> = {
-            SPADES: [], CLUBS: [], HEARTS: [], DIAMONDS: []
-        };
-        
-        cards.forEach(c => suits[c.suit].push(c));
-        Object.keys(suits).forEach(s => {
-            suits[s as Suit].sort((a, b) => RANK_POWER[a.rank] - RANK_POWER[b.rank]);
-        });
-    
-        const result: Card[] = [];
-    
-        // 3. ПЪРВО: Добавяме козовете
-        result.push(...suits[trumpSuit]);
-    
-        // 4. ОПРЕДЕЛЯНЕ НА РЕДА ЗА АЛТЕРНИРАНЕ
-        // Ако козът е ЧЕРЕН (Спатия/Пика), искаме ред: Черен(коз) -> Червен -> Черен -> Червен
-        // Ако козът е ЧЕРВЕН (Купа/Каро), искаме ред: Червен(коз) -> Черен -> Червен -> Черен
-        const isTrumpRed = trumpSuit === 'HEARTS' || trumpSuit === 'DIAMONDS';
-        
-        const blackSuits: Suit[] = (['SPADES', 'CLUBS'] as Suit[]).filter(s => s !== trumpSuit);
-        const redSuits: Suit[] = (['HEARTS', 'DIAMONDS'] as Suit[]).filter(s => s !== trumpSuit);
-    
-        // Подреждаме останалите бои в "зиг-заг" ред
-        const remainingOrder: Suit[] = [];
-        if (isTrumpRed) {
-            // Козът е червен, затова: Черна -> Червена -> Черна
-            remainingOrder.push(blackSuits[0], redSuits[0], blackSuits[1]);
-        } else {
-            // Козът е черен, затова: Червена -> Черна -> Червена
-            remainingOrder.push(redSuits[0], blackSuits[0], redSuits[1]);
-        }
-    
-        // 5. ДОБАВЯНЕ: Пълним масива според новия ред
-        remainingOrder.forEach(suit => {
-            if (suit && suits[suit]) {
-                result.push(...suits[suit]);
+        return [...cards].sort((a, b) => {
+            if (a.suit !== b.suit) {
+                if (a.suit === trumpSuit) return -1; // Trump at the end
+                if (b.suit === trumpSuit) return 1;
+                return a.suit.localeCompare(b.suit);
             }
+            return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
         });
-    
-        return result;
     };
 
     const connectWebSocket = (isReconnect: boolean = false) => {
@@ -1312,8 +1272,8 @@ const SantaseGame: React.FC = () => {
                                                 key={i} 
                                                 style={{
                                                     ...styles.cardBack,
-                                                    width: isSmallMobile ? '50px' : isMobile ? '65px' : '85px',
-                                                    height: isSmallMobile ? '75px' : isMobile ? '95px' : '125px',
+                                                    width: isSmallMobile ? '50px' : isMobile ? '65px' : '130px',
+                                                    height: isSmallMobile ? '75px' : isMobile ? '95px' : '175px',
                                                 }}
                                             />
                             ))}
@@ -1783,11 +1743,15 @@ const styles: Record<string, React.CSSProperties> = {
         justifyContent: 'center',
     },
     cardBack: {
-        background: 'linear-gradient(135deg, #c62828 0%, #b71c1c 40%, #8e0000 100%)',
-        border: '3px solid rgba(255,255,255,0.95)',
+        backgroundImage: 'url(/card-back.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        // border: '3px solid rgba(255,255,255,0.95)',
         borderRadius: '14px',
-        boxShadow: '0 8px 20px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.25), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.3)',
+        // boxShadow: '0 8px 20px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.25), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.3)',
         position: 'relative' as const,
+        overflow: 'hidden',
     },
     midSection: {
         flex: 1,
