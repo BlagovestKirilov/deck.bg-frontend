@@ -1343,8 +1343,8 @@ const SantaseGame: React.FC = () => {
                                             }}>
                                                 <div style={{
                                                     ...styles.trumpUnder,
-                                                    top: isSmallMobile ? '3px' : isMobile ? '5px' : '-3px',
-                                                    left: isSmallMobile ? '25px' : isMobile ? '30px' : '80px',
+                                                    top: isSmallMobile ? '3px' : isMobile ? '5px' : '10px',
+                                                    left: isSmallMobile ? '25px' : isMobile ? '30px' : '90px',
                                                     zIndex: 1,
                                                 }} onClick={() => {
                                         if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
@@ -1355,8 +1355,8 @@ const SantaseGame: React.FC = () => {
                                     </div>
                                                 <div style={{
                                                     ...styles.deckPile,
-                                                    width: isSmallMobile ? '60px' : isMobile ? '75px' : '120px',
-                                                    height: isSmallMobile ? '85px' : isMobile ? '110px' : '170px',
+                                                    width: isSmallMobile ? '60px' : isMobile ? '75px' : '140px',
+                                                    height: isSmallMobile ? '85px' : isMobile ? '110px' : '210px',
                                                     top: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
                                                     left: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
                                                     zIndex: 2,
@@ -1368,6 +1368,8 @@ const SantaseGame: React.FC = () => {
                                                     <div style={{
                                                         ...styles.deckCount,
                                                         fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
+                                                        position: 'relative',
+                                                        zIndex: 10,
                                                     }}>{gameState.remainingCardsCount}</div>
                                     </div>
                                 </div>
@@ -1824,21 +1826,26 @@ const styles: Record<string, React.CSSProperties> = {
         position: 'absolute',
         top: 0,
         left: 0,
-        background: 'linear-gradient(135deg, #b71c1c 0%, #8e0000 100%)',
-        border: '3px solid rgba(255,255,255,0.95)',
+        backgroundImage: 'url(/card-back.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        // border: '3px solid rgba(255,255,255,0.95)',
         borderRadius: '14px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 2,
         cursor: 'pointer',
+        overflow: 'hidden',
+        // boxShadow: '0 8px 20px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 0 0 2px rgba(255,255,255,0.1)',
         touchAction: 'manipulation',
-        boxShadow: '0 8px 20px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 6px rgba(255,255,255,0.25)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1.5)',
     },
     deckCount: {
         color: 'white',
         fontWeight: 900,
+        WebkitTextStroke: '1px black',
     },
     trumpUnder: {
         position: 'absolute',
