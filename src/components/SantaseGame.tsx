@@ -156,10 +156,10 @@ const CardComponent: React.FC<{
     const isSmallMobile = windowWidth <= 480;
     
     const cardWidth = isSmall 
-        ? (isSmallMobile ? '55px' : isMobile ? '65px' : '75px')
+        ? (isSmallMobile ? '55px' : isMobile ? '65px' : '110px')
         : (isSmallMobile ? '85px' : isMobile ? '100px' : '100px');
     const cardHeight = isSmall
-        ? (isSmallMobile ? '80px' : isMobile ? '95px' : '110px')
+        ? (isSmallMobile ? '80px' : isMobile ? '95px' : '150px')
         : (isSmallMobile ? '120px' : isMobile ? '145px' : '145px');
 
     const cardStyle = {
@@ -206,12 +206,12 @@ const CardComponent: React.FC<{
         lineHeight: '1',
         fontWeight: 'bold' as const,
         fontSize: isSmall 
-            ? (isSmallMobile ? '0.7rem' : isMobile ? '0.8rem' : '0.9rem')
+            ? (isSmallMobile ? '0.7rem' : isMobile ? '0.8rem' : '1.3rem')
             : (isSmallMobile ? '0.8rem' : isMobile ? '1rem' : '1.1rem'),
     };
 
     const centerSymbolSize = isSmall
-        ? (isSmallMobile ? '1.2rem' : isMobile ? '1.5rem' : '1.8rem')
+        ? (isSmallMobile ? '1.2rem' : isMobile ? '1.5rem' : '2.6rem')
         : (isSmallMobile ? '1.8rem' : isMobile ? '2rem' : '2.5rem');
 
     return (
@@ -222,14 +222,14 @@ const CardComponent: React.FC<{
         >
             <div style={{ ...cornerStyle, alignSelf: 'flex-start' }}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '0.8rem' : '1rem') }}>{suit.symbol}</span>
+                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '1.2rem' : '1rem') }}>{suit.symbol}</span>
             </div>
             <div style={{ fontSize: centerSymbolSize, alignSelf: 'center', opacity: 0.9 }}>
                 {suit.symbol}
             </div>
             <div style={{ ...cornerStyle, alignSelf: 'flex-end', transform: 'rotate(180deg)' }}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '0.8rem' : '1rem') }}>{suit.symbol}</span>
+                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '1.2rem' : '1rem') }}>{suit.symbol}</span>
             </div>
         </div>
     );
@@ -615,61 +615,17 @@ const SantaseGame: React.FC = () => {
         processNextMessage();
     };
 
-    // restored ordering logic
     const getSortedCards = (cards: Card[]) => {
         if (!gameState?.trumpCard) return cards;
         const trumpSuit = gameState.trumpCard.suit;
-
-        // Group cards by suit
-        const cardsBySuit: Record<Suit, Card[]> = {
-            SPADES: [],
-            HEARTS: [],
-            DIAMONDS: [],
-            CLUBS: []
-        };
-        
-        cards.forEach(card => {
-            cardsBySuit[card.suit].push(card);
-        });
-        
-        // Sort each suit group by rank (highest to lowest: ACE=0, TEN=1, KING=2, QUEEN=3, JACK=4, NINE=5)
-        Object.keys(cardsBySuit).forEach(suit => {
-            cardsBySuit[suit as Suit].sort((a, b) => {
-                return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
-            });
-        });
-        
-        // Build result: trump first, then alternate red and black suit groups
-        const result: Card[] = [];
-        
-        // Add trump cards first (all cards of trump suit together, sorted high to low)
-        result.push(...cardsBySuit[trumpSuit]);
-        
-        // Get red and black suits that have cards (excluding trump)
-        const redSuits: Suit[] = [];
-        const blackSuits: Suit[] = [];
-        
-        if (trumpSuit !== 'HEARTS' && cardsBySuit.HEARTS.length > 0) redSuits.push('HEARTS');
-        if (trumpSuit !== 'DIAMONDS' && cardsBySuit.DIAMONDS.length > 0) redSuits.push('DIAMONDS');
-        if (trumpSuit !== 'SPADES' && cardsBySuit.SPADES.length > 0) blackSuits.push('SPADES');
-        if (trumpSuit !== 'CLUBS' && cardsBySuit.CLUBS.length > 0) blackSuits.push('CLUBS');
-        
-        // Sort suits alphabetically for consistent ordering
-        redSuits.sort();
-        blackSuits.sort();
-        
-        // Interleave red and black suit groups (red, black, red, black pattern)
-        const maxLength = Math.max(redSuits.length, blackSuits.length);
-        for (let i = 0; i < maxLength; i++) {
-            if (i < redSuits.length) {
-                result.push(...cardsBySuit[redSuits[i]]);
+        return [...cards].sort((a, b) => {
+            if (a.suit !== b.suit) {
+                if (a.suit === trumpSuit) return -1; // Trump at the end
+                if (b.suit === trumpSuit) return 1;
+                return a.suit.localeCompare(b.suit);
             }
-            if (i < blackSuits.length) {
-                result.push(...cardsBySuit[blackSuits[i]]);
-            }
-        }
-        
-        return result;
+            return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
+        });
     };
 
     const connectWebSocket = (isReconnect: boolean = false) => {
@@ -1316,8 +1272,8 @@ const SantaseGame: React.FC = () => {
                                                 key={i} 
                                                 style={{
                                                     ...styles.cardBack,
-                                                    width: isSmallMobile ? '50px' : isMobile ? '65px' : '85px',
-                                                    height: isSmallMobile ? '75px' : isMobile ? '95px' : '125px',
+                                                    width: isSmallMobile ? '50px' : isMobile ? '65px' : '130px',
+                                                    height: isSmallMobile ? '75px' : isMobile ? '95px' : '175px',
                                                 }}
                                             />
                             ))}
@@ -1343,12 +1299,13 @@ const SantaseGame: React.FC = () => {
                                             <div style={{
                                                 position: 'relative',
                                                 width: isSmallMobile ? '80px' : isMobile ? '100px' : '120px',
-                                                height: isSmallMobile ? '95px' : isMobile ? '120px' : '140px',
+                                                height: isSmallMobile ? '95px' : isMobile ? '120px' : '150px',
                                             }}>
                                                 <div style={{
                                                     ...styles.trumpUnder,
-                                                    top: isSmallMobile ? '3px' : '5px',
-                                                    left: isSmallMobile ? '25px' : isMobile ? '30px' : '40px',
+                                                    top: isSmallMobile ? '3px' : isMobile ? '5px' : '10px',
+                                                    left: isSmallMobile ? '25px' : isMobile ? '30px' : '90px',
+                                                    zIndex: 1,
                                                 }} onClick={() => {
                                         if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
                                             gameService.replaceCard();
@@ -1358,8 +1315,11 @@ const SantaseGame: React.FC = () => {
                                     </div>
                                                 <div style={{
                                                     ...styles.deckPile,
-                                                    width: isSmallMobile ? '60px' : isMobile ? '75px' : '90px',
-                                                    height: isSmallMobile ? '85px' : isMobile ? '110px' : '130px',
+                                                    width: isSmallMobile ? '60px' : isMobile ? '75px' : '140px',
+                                                    height: isSmallMobile ? '85px' : isMobile ? '110px' : '210px',
+                                                    top: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
+                                                    left: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
+                                                    zIndex: 2,
                                                 }} onClick={() => {
                                         if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
                                             setConfirmAction({ title: 'Затваряне', message: 'Затваряте ли тестето?', action: async () => { await gameService.closeDeck(); setConfirmAction(null); } });
@@ -1368,6 +1328,8 @@ const SantaseGame: React.FC = () => {
                                                     <div style={{
                                                         ...styles.deckCount,
                                                         fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
+                                                        position: 'relative',
+                                                        zIndex: 10,
                                                     }}>{gameState.remainingCardsCount}</div>
                                     </div>
                                 </div>
@@ -1781,11 +1743,15 @@ const styles: Record<string, React.CSSProperties> = {
         justifyContent: 'center',
     },
     cardBack: {
-        background: 'linear-gradient(135deg, #c62828 0%, #b71c1c 40%, #8e0000 100%)',
-        border: '3px solid rgba(255,255,255,0.95)',
+        backgroundImage: 'url(/card-back.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        // border: '3px solid rgba(255,255,255,0.95)',
         borderRadius: '14px',
-        boxShadow: '0 8px 20px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.25), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.3)',
+        // boxShadow: '0 8px 20px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.25), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.3)',
         position: 'relative' as const,
+        overflow: 'hidden',
     },
     midSection: {
         flex: 1,
@@ -1824,21 +1790,26 @@ const styles: Record<string, React.CSSProperties> = {
         position: 'absolute',
         top: 0,
         left: 0,
-        background: 'linear-gradient(135deg, #b71c1c 0%, #8e0000 100%)',
-        border: '3px solid rgba(255,255,255,0.95)',
+        backgroundImage: 'url(/card-back.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+        // border: '3px solid rgba(255,255,255,0.95)',
         borderRadius: '14px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 2,
         cursor: 'pointer',
+        overflow: 'hidden',
+        // boxShadow: '0 8px 20px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 0 0 2px rgba(255,255,255,0.1)',
         touchAction: 'manipulation',
-        boxShadow: '0 8px 20px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 6px rgba(255,255,255,0.25)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1.5)',
     },
     deckCount: {
         color: 'white',
         fontWeight: 900,
+        WebkitTextStroke: '1px black',
     },
     trumpUnder: {
         position: 'absolute',
