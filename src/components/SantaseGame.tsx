@@ -52,6 +52,49 @@ if (typeof document !== 'undefined') {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        @keyframes shimmer {
+            0% { 
+                left: -100%;
+            }
+            100% { 
+                left: 100%;
+            }
+        }
+        .last-drawn-shimmer {
+            position: relative;
+            overflow: hidden;
+            isolation: isolate;
+        }
+        .last-drawn-shimmer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(76, 175, 80, 0.7),
+                rgba(255, 255, 255, 0.8),
+                rgba(76, 175, 80, 0.7),
+                transparent
+            );
+            animation: shimmer 0.6s ease-out;
+            pointer-events: none;
+            z-index: 1;
+            clip-path: inset(0);
+        }
+        @media (max-width: 768px) {
+            .last-drawn-shimmer {
+                overflow: hidden !important;
+                contain: layout style paint;
+            }
+            .last-drawn-shimmer::before {
+                clip-path: inset(0);
+                will-change: left;
+            }
+        }
         .bonus-bubble {
             position: absolute;
             left: 50%;
@@ -103,7 +146,8 @@ const CardComponent: React.FC<{
     isSelected?: boolean;
     isSmall?: boolean;
     windowWidth?: number;
-}> = ({ card, onClick, isPlayable = true, isSelected, isSmall, windowWidth = 1024 }) => {
+    isLastDrawn?: boolean;
+}> = ({ card, onClick, isPlayable = true, isSelected, isSmall, windowWidth = 1024, isLastDrawn = false }) => {
     const suit = SUIT_MAP[card.suit] || { symbol: '?', color: 'black' };
     const displayRank = card.rank === 'NINE' ? '9' : (card.rank === 'TEN' ? '10' : card.rank[0]);
     
@@ -122,12 +166,17 @@ const CardComponent: React.FC<{
         ...styles.card,
         width: cardWidth,
         height: cardHeight,
+        minWidth: cardWidth,
+        minHeight: cardHeight,
+        maxWidth: cardWidth,
+        maxHeight: cardHeight,
+        flexShrink: 0,  // Include border in width/height to prevent size changes
         color: isPlayable ? suit.color : '#999',
         border: isSelected 
             ? '3px solid #ffd700' 
             : isPlayable 
                 ? '2px solid rgba(255,255,255,0.4)' 
-                : '1px solid rgba(0,0,0,0.15)',
+                : '2px solid rgba(0,0,0,0.15)',  // Keep border width consistent at 2px
         backgroundColor: isPlayable 
             ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)' 
             : 'linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%)',
@@ -142,6 +191,7 @@ const CardComponent: React.FC<{
         position: 'relative' as const,
         touchAction: 'manipulation' as const,
         outline: 'none',
+        overflow: isLastDrawn ? 'hidden' as const : 'visible' as const,  // Only clip when shimmer is active
         boxShadow: isSelected 
             ? '0 12px 28px rgba(255, 215, 0, 0.4), 0 6px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.8)' 
             : isPlayable 
@@ -165,7 +215,11 @@ const CardComponent: React.FC<{
         : (isSmallMobile ? '1.8rem' : isMobile ? '2rem' : '2.5rem');
 
     return (
-        <div onClick={isPlayable ? onClick : undefined} style={cardStyle}>
+        <div 
+            onClick={isPlayable ? onClick : undefined} 
+            style={cardStyle}
+            className={isLastDrawn ? 'last-drawn-shimmer' : ''}
+        >
             <div style={{ ...cornerStyle, alignSelf: 'flex-start' }}>
                 <span>{displayRank}</span>
                 <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '0.8rem' : '1rem') }}>{suit.symbol}</span>
@@ -1285,7 +1339,20 @@ const SantaseGame: React.FC = () => {
                                                     fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : '0.8rem',
                                                     display: 'block',
                                                 }}>КОЗ</span>
-                                    {gameState.trumpCard && SUIT_MAP[gameState.trumpCard.suit].symbol}
+                                    {gameState.trumpCard && (() => {
+                                        const suit = SUIT_MAP[gameState.trumpCard.suit] || { symbol: '?', color: '#1a1a1a' };
+                                        return (
+                                            <span style={{
+                                                color: suit.color,
+                                                // Add white text shadow for black suits on dark background to maintain visibility
+                                                textShadow: suit.color === '#1a1a1a' 
+                                                    ? '0 0 3px rgba(255,255,255,0.8), 0 0 6px rgba(255,255,255,0.5)' 
+                                                    : 'none',
+                                            }}>
+                                                {suit.symbol}
+                                            </span>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -1408,6 +1475,7 @@ const SantaseGame: React.FC = () => {
                                                     card={card} 
                                                     isPlayable={card.isPlayable && gameState.isOnTurn} 
                                                     isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')} 
+                                                    isLastDrawn={card.isLastDrawn}
                                                     onClick={() => handlePlayCard(card)} 
                                                     windowWidth={windowWidth} 
                                                 />
@@ -1777,6 +1845,9 @@ const styles: Record<string, React.CSSProperties> = {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         fontWeight: 700,
         textShadow: '0 2px 6px rgba(0,0,0,0.4)',
+        lineHeight: 1,
+        padding: 0,
+        textAlign: 'center' as const,
     },
     menuButton: {
         borderRadius: '50%',
