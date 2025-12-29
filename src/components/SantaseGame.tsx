@@ -156,10 +156,10 @@ const CardComponent: React.FC<{
     const isSmallMobile = windowWidth <= 480;
     
     const cardWidth = isSmall 
-        ? (isSmallMobile ? '55px' : isMobile ? '65px' : '75px')
+        ? (isSmallMobile ? '55px' : isMobile ? '65px' : '110px')
         : (isSmallMobile ? '85px' : isMobile ? '100px' : '100px');
     const cardHeight = isSmall
-        ? (isSmallMobile ? '80px' : isMobile ? '95px' : '110px')
+        ? (isSmallMobile ? '80px' : isMobile ? '95px' : '150px')
         : (isSmallMobile ? '120px' : isMobile ? '145px' : '145px');
 
     const cardStyle = {
@@ -206,12 +206,12 @@ const CardComponent: React.FC<{
         lineHeight: '1',
         fontWeight: 'bold' as const,
         fontSize: isSmall 
-            ? (isSmallMobile ? '0.7rem' : isMobile ? '0.8rem' : '0.9rem')
+            ? (isSmallMobile ? '0.7rem' : isMobile ? '0.8rem' : '1.3rem')
             : (isSmallMobile ? '0.8rem' : isMobile ? '1rem' : '1.1rem'),
     };
 
     const centerSymbolSize = isSmall
-        ? (isSmallMobile ? '1.2rem' : isMobile ? '1.5rem' : '1.8rem')
+        ? (isSmallMobile ? '1.2rem' : isMobile ? '1.5rem' : '2.6rem')
         : (isSmallMobile ? '1.8rem' : isMobile ? '2rem' : '2.5rem');
 
     return (
@@ -222,14 +222,14 @@ const CardComponent: React.FC<{
         >
             <div style={{ ...cornerStyle, alignSelf: 'flex-start' }}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '0.8rem' : '1rem') }}>{suit.symbol}</span>
+                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '1.2rem' : '1rem') }}>{suit.symbol}</span>
             </div>
             <div style={{ fontSize: centerSymbolSize, alignSelf: 'center', opacity: 0.9 }}>
                 {suit.symbol}
             </div>
             <div style={{ ...cornerStyle, alignSelf: 'flex-end', transform: 'rotate(180deg)' }}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '0.8rem' : '1rem') }}>{suit.symbol}</span>
+                <span style={{ fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : (isSmall ? '1.2rem' : '1rem') }}>{suit.symbol}</span>
             </div>
         </div>
     );
@@ -615,53 +615,56 @@ const SantaseGame: React.FC = () => {
         processNextMessage();
     };
 
-    // restored ordering logic
-    const RANK_ORDER: Record<string, number> = {
-        ACE: 0,
-        TEN: 1,
-        KING: 2,
-        QUEEN: 3,
-        JACK: 4,
-        NINE: 5,
-    };
-
     const getSortedCards = (cards: Card[]): Card[] => {
         if (!gameState?.trumpCard) return cards;
-
+    
         const trumpSuit = gameState.trumpCard.suit;
-
-        // Group cards by suit
-        const cardsBySuit: Record<Suit, Card[]> = {
-            SPADES: [],
-            HEARTS: [],
-            DIAMONDS: [],
-            CLUBS: [],
+    
+        // 1. Ранг в Сантасе: 9, J, Q, K, 10, A
+        const RANK_POWER: Record<string, number> = {
+            '9': 0, 'JACK': 1, 'QUEEN': 2, 'KING': 3, '10': 4, 'ACE': 5
         };
-
-        cards.forEach(card => {
-            cardsBySuit[card.suit].push(card);
+    
+        // 2. ГРУПИРАНЕ: Разделяме картите по бои и ги сортираме вътрешно
+        const suits: Record<Suit, Card[]> = {
+            SPADES: [], CLUBS: [], HEARTS: [], DIAMONDS: []
+        };
+        
+        cards.forEach(c => suits[c.suit].push(c));
+        Object.keys(suits).forEach(s => {
+            suits[s as Suit].sort((a, b) => RANK_POWER[a.rank] - RANK_POWER[b.rank]);
         });
-
-        // Sort each suit group by rank: ACE > TEN > KING > QUEEN > JACK > NINE
-        Object.keys(cardsBySuit).forEach(suit => {
-            cardsBySuit[suit as Suit].sort((a, b) => {
-                return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
-            });
-        });
-
-        // Function to sort descending
-        const sortDesc = (arr: Card[]) => arr.sort((a, b) => (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99));
-
-        // Add trump cards first
-        const result: Card[] = sortDesc(cardsBySuit[trumpSuit]);
-
-        // Add other suits in any order (ACE high)
-        Object.keys(cardsBySuit).forEach(suit => {
-            if (suit !== trumpSuit) {
-                result.push(...sortDesc(cardsBySuit[suit as Suit]));
+    
+        const result: Card[] = [];
+    
+        // 3. ПЪРВО: Добавяме козовете
+        result.push(...suits[trumpSuit]);
+    
+        // 4. ОПРЕДЕЛЯНЕ НА РЕДА ЗА АЛТЕРНИРАНЕ
+        // Ако козът е ЧЕРЕН (Спатия/Пика), искаме ред: Черен(коз) -> Червен -> Черен -> Червен
+        // Ако козът е ЧЕРВЕН (Купа/Каро), искаме ред: Червен(коз) -> Черен -> Червен -> Черен
+        const isTrumpRed = trumpSuit === 'HEARTS' || trumpSuit === 'DIAMONDS';
+        
+        const blackSuits: Suit[] = (['SPADES', 'CLUBS'] as Suit[]).filter(s => s !== trumpSuit);
+        const redSuits: Suit[] = (['HEARTS', 'DIAMONDS'] as Suit[]).filter(s => s !== trumpSuit);
+    
+        // Подреждаме останалите бои в "зиг-заг" ред
+        const remainingOrder: Suit[] = [];
+        if (isTrumpRed) {
+            // Козът е червен, затова: Черна -> Червена -> Черна
+            remainingOrder.push(blackSuits[0], redSuits[0], blackSuits[1]);
+        } else {
+            // Козът е черен, затова: Червена -> Черна -> Червена
+            remainingOrder.push(redSuits[0], blackSuits[0], redSuits[1]);
+        }
+    
+        // 5. ДОБАВЯНЕ: Пълним масива според новия ред
+        remainingOrder.forEach(suit => {
+            if (suit && suits[suit]) {
+                result.push(...suits[suit]);
             }
         });
-
+    
         return result;
     };
 
@@ -1336,12 +1339,13 @@ const SantaseGame: React.FC = () => {
                                             <div style={{
                                                 position: 'relative',
                                                 width: isSmallMobile ? '80px' : isMobile ? '100px' : '120px',
-                                                height: isSmallMobile ? '95px' : isMobile ? '120px' : '140px',
+                                                height: isSmallMobile ? '95px' : isMobile ? '120px' : '150px',
                                             }}>
                                                 <div style={{
                                                     ...styles.trumpUnder,
-                                                    top: isSmallMobile ? '3px' : '5px',
-                                                    left: isSmallMobile ? '25px' : isMobile ? '30px' : '40px',
+                                                    top: isSmallMobile ? '3px' : isMobile ? '5px' : '-3px',
+                                                    left: isSmallMobile ? '25px' : isMobile ? '30px' : '80px',
+                                                    zIndex: 1,
                                                 }} onClick={() => {
                                         if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
                                             gameService.replaceCard();
@@ -1351,8 +1355,11 @@ const SantaseGame: React.FC = () => {
                                     </div>
                                                 <div style={{
                                                     ...styles.deckPile,
-                                                    width: isSmallMobile ? '60px' : isMobile ? '75px' : '90px',
-                                                    height: isSmallMobile ? '85px' : isMobile ? '110px' : '130px',
+                                                    width: isSmallMobile ? '60px' : isMobile ? '75px' : '120px',
+                                                    height: isSmallMobile ? '85px' : isMobile ? '110px' : '170px',
+                                                    top: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
+                                                    left: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
+                                                    zIndex: 2,
                                                 }} onClick={() => {
                                         if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
                                             setConfirmAction({ title: 'Затваряне', message: 'Затваряте ли тестето?', action: async () => { await gameService.closeDeck(); setConfirmAction(null); } });
