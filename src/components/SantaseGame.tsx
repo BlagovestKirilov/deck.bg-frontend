@@ -1500,39 +1500,30 @@ const SantaseGame: React.FC = () => {
                                         width: '100%',
                                         maxWidth: '100%',
                                         overflowX: 'auto' as const,
-                                        padding: isSmallMobile ? '0 15px' : isMobile ? '0 20px' : '0 20px',
+                                        padding: isSmallMobile ? '0 10px' : isMobile ? '0 15px' : '0 20px',
                                         marginTop: isMobile ? (isSmallMobile ? '20px' : '25px') : '0',  // Move cards lower on mobile
-                                        WebkitOverflowScrolling: 'touch' as const
+                                        WebkitOverflowScrolling: 'touch' as const,
+                                        boxSizing: 'border-box',
                                     }}>
-                            {(() => {
-                                const sortedCards = getSortedCards(gameState.deck);
-                                return sortedCards.map((card, index) => {
-                                    const isFirst = index === 0;
-                                    const isLast = index === sortedCards.length - 1;
-                                    return (
-                                        <div 
-                                            key={card.id}
-                                            style={{
-                                                marginLeft: isMobile && isFirst 
-                                                    ? (isSmallMobile ? '15px' : '20px')
-                                                    : (isMobile && index > 0 
+                            {getSortedCards(gameState.deck).map((card, index) => (
+                                            <div 
+                                                key={card.id}
+                                                style={{
+                                                    marginLeft: isMobile && index > 0 
                                                         ? (isSmallMobile ? '-42.5px' : '-50px')  // Half overlap: each card shows half, next card starts
-                                                        : '0'),
-                                                marginRight: isMobile && isLast ? (isSmallMobile ? '15px' : '20px') : '0',
-                                            }}
-                                        >
-                                            <CardComponent 
-                                                card={card} 
-                                                isPlayable={card.isPlayable && gameState.isOnTurn} 
-                                                isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')} 
-                                                isLastDrawn={card.isLastDrawn}
-                                                onClick={() => handlePlayCard(card)} 
-                                                windowWidth={windowWidth} 
-                                            />
-                                        </div>
-                                    );
-                                });
-                            })()}
+                                                        : '0',
+                                                }}
+                                            >
+                                                <CardComponent 
+                                                    card={card} 
+                                                    isPlayable={card.isPlayable && gameState.isOnTurn} 
+                                                    isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')} 
+                                                    isLastDrawn={card.isLastDrawn}
+                                                    onClick={() => handlePlayCard(card)} 
+                                                    windowWidth={windowWidth} 
+                                                />
+                        </div>
+                            ))}
                         </div>
                     </div>
                             </>
