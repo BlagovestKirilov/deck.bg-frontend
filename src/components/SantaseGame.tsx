@@ -161,45 +161,53 @@ const CardComponent: React.FC<{
     const cardHeight = isSmall
         ? (isSmallMobile ? '80px' : isMobile ? '95px' : '150px')
         : (isSmallMobile ? '120px' : isMobile ? '145px' : '145px');
-
-    const cardStyle = {
-        ...styles.card,
-        width: cardWidth,
-        height: cardHeight,
-        minWidth: cardWidth,
-        minHeight: cardHeight,
-        maxWidth: cardWidth,
-        maxHeight: cardHeight,
-        flexShrink: 0,  // Include border in width/height to prevent size changes
-        borderRadius: isMobile ? '14px' : '14px',
-        color: suit.color,
-        opacity: isPlayable ? 1 : 0.4,
-        border: isSelected 
-            ? '3px solid #ffd700' 
-            : isPlayable 
-                ? '2px solid rgba(255,255,255,0.4)' 
-                : '2px solid rgba(0,0,0,0.15)',  // Keep border width consistent at 2px
-        backgroundColor: isPlayable 
-            ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)' 
-            : 'linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%)',
-        background: isPlayable 
-            ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)' 
-            : 'linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%)',
-        transform: 'none',  // No movement for selected cards, only highlight
-        display: 'flex',
-        flexDirection: 'column' as const,
-        justifyContent: 'space-between',
-        padding: isSmallMobile ? '5px' : isMobile ? '7px' : '10px',
-        position: 'relative' as const,
-        touchAction: 'manipulation' as const,
-        outline: 'none',
-        overflow: isLastDrawn ? 'hidden' as const : 'visible' as const,  // Only clip when shimmer is active
-        boxShadow: isSelected 
-            ? '0 12px 28px rgba(255, 215, 0, 0.4), 0 6px 12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.8)' 
-            : isPlayable 
-                ? '0 6px 18px rgba(0,0,0,0.2), 0 3px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.9)' 
-                : '0 3px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.5)',
-    };
+        const cardStyle = {
+            ...styles.card,
+            width: cardWidth,
+            height: cardHeight,
+            minWidth: cardWidth,
+            minHeight: cardHeight,
+            maxWidth: cardWidth,
+            maxHeight: cardHeight,
+            flexShrink: 0,
+            borderRadius: '14px',
+        
+            // 1. OPAQUE: Strictly 1 to prevent seeing cards behind
+            opacity: 1,
+        
+            // 2. SUIT COLOR: Kept as-is so you still see red/black clearly
+            color: suit.color, 
+            
+            // 3. BLUR & DIM: Increased blur slightly for a "pushed back" feel
+            filter: isPlayable ? 'none' : 'blur(0.8px) brightness(0.85)',
+        
+            // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
+            background: isPlayable 
+                ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)' 
+                : '#cccccc', // Mid-tone grey (Darker than before)
+        
+            // 5. SEPARATION BORDER: Darker border to define the card edge
+            border: isSelected 
+                ? '3px solid #ffd700' 
+                : isPlayable 
+                    ? '2px solid rgba(255,255,255,0.9)' 
+                    : '2px solid #a1a1a1', // Stronger grey border for overlap clarity
+        
+            // 6. STACKING DEPTH
+            zIndex: isSelected ? 10 : isPlayable ? 5 : 1,
+            boxShadow: isSelected 
+                ? '0 12px 28px rgba(0,0,0,0.3)' 
+                : isPlayable 
+                    ? '0 8px 16px rgba(0,0,0,0.2)' 
+                    : '0 4px 10px rgba(0,0,0,0.25)', // Slightly heavier shadow for depth
+        
+            display: 'flex',
+            flexDirection: 'column' as const,
+            justifyContent: 'space-between',
+            padding: isSmallMobile ? '5px' : isMobile ? '7px' : '10px',
+            position: 'relative' as const,
+            transition: 'all 0.2s ease-in-out',
+        };
 
     const cornerStyle = {
         display: 'flex',
