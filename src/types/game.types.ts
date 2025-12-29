@@ -7,6 +7,7 @@ export interface Card {
     rank: Rank;
     points: number;
     isPlayable: boolean;
+    isLastDrawn?: boolean;
 }
 
 export interface GameState {
