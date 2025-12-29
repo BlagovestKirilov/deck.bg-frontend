@@ -1339,7 +1339,20 @@ const SantaseGame: React.FC = () => {
                                                     fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : '0.8rem',
                                                     display: 'block',
                                                 }}>КОЗ</span>
-                                    {gameState.trumpCard && SUIT_MAP[gameState.trumpCard.suit].symbol}
+                                    {gameState.trumpCard && (() => {
+                                        const suit = SUIT_MAP[gameState.trumpCard.suit] || { symbol: '?', color: '#1a1a1a' };
+                                        return (
+                                            <span style={{
+                                                color: suit.color,
+                                                // Add white text shadow for black suits on dark background to maintain visibility
+                                                textShadow: suit.color === '#1a1a1a' 
+                                                    ? '0 0 3px rgba(255,255,255,0.8), 0 0 6px rgba(255,255,255,0.5)' 
+                                                    : 'none',
+                                            }}>
+                                                {suit.symbol}
+                                            </span>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -1832,6 +1845,9 @@ const styles: Record<string, React.CSSProperties> = {
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         fontWeight: 700,
         textShadow: '0 2px 6px rgba(0,0,0,0.4)',
+        lineHeight: 1,
+        padding: 0,
+        textAlign: 'center' as const,
     },
     menuButton: {
         borderRadius: '50%',
