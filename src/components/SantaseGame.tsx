@@ -181,25 +181,25 @@ const CardComponent: React.FC<{
             // 3. BLUR & DIM: Increased blur slightly for a "pushed back" feel
             filter: isPlayable ? 'none' : 'brightness(0.75)',
         
-            // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
-            background: isPlayable 
-                ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)' 
-                : '#cccccc', // Mid-tone grey (Darker than before)
+            // // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
+            // background: isPlayable 
+            //     ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)' 
+            //     : '#cccccc', // Mid-tone grey (Darker than before)
         
-            // 5. SEPARATION BORDER: Darker border to define the card edge
-            border: isSelected 
-                ? '3px solid #ffd700' 
-                : isPlayable 
-                    ? '2px solid rgba(255,255,255,0.9)' 
-                    : '2px solid #a1a1a1', // Stronger grey border for overlap clarity
+            // // 5. SEPARATION BORDER: Darker border to define the card edge
+            // border: isSelected 
+            //     ? '3px solid #ffd700' 
+            //     : isPlayable 
+            //         ? '2px solid rgba(255,255,255,0.9)' 
+            //         : '2px solid #a1a1a1', // Stronger grey border for overlap clarity
         
-            // 6. STACKING DEPTH
-            zIndex: isSelected ? 10 : isPlayable ? 5 : 1,
-            boxShadow: isSelected 
-                ? '0 12px 28px rgba(0,0,0,0.3)' 
-                : isPlayable 
-                    ? '0 8px 16px rgba(0,0,0,0.2)' 
-                    : '0 4px 10px rgba(0,0,0,0.25)', // Slightly heavier shadow for depth
+            // // 6. STACKING DEPTH
+            // zIndex: isSelected ? 10 : isPlayable ? 5 : 1,
+            // boxShadow: isSelected 
+            //     ? '0 12px 28px rgba(0,0,0,0.3)' 
+            //     : isPlayable 
+            //         ? '0 8px 16px rgba(0,0,0,0.2)' 
+            //         : '0 4px 10px rgba(0,0,0,0.25)', // Slightly heavier shadow for depth
         
             display: 'flex',
             flexDirection: 'column' as const,
