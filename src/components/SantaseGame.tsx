@@ -1315,7 +1315,7 @@ const SantaseGame: React.FC = () => {
                                                 <div style={{
                                                     ...styles.trumpUnder,
                                                     top: isSmallMobile ? '3px' : isMobile ? '5px' : '10px',
-                                                    left: isSmallMobile ? '45px' : isMobile ? '30px' : '90px',
+                                                    left: isSmallMobile ? '35px' : isMobile ? '35px' : '90px',
                                                     zIndex: 1,
                                                 }} onClick={() => {
                                         if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
