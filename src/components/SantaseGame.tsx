@@ -1473,10 +1473,10 @@ const SantaseGame: React.FC = () => {
                                         justifyContent: 'center',
                                         width: '100%',
                                         maxWidth: '100%',
-                                        overflowX: 'auto' as const,
+                                        overflowX: 'hidden' as const,
+                                        overflowY: 'hidden' as const,
                                         padding: isSmallMobile ? '0 10px' : isMobile ? '0 15px' : '0 20px',
                                         marginTop: isMobile ? (isSmallMobile ? '20px' : '25px') : '0',  // Move cards lower on mobile
-                                        WebkitOverflowScrolling: 'touch' as const,
                                         boxSizing: 'border-box',
                                     }}>
                             {getSortedCards(gameState.deck).map((card, index) => (
