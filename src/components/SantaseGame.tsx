@@ -363,6 +363,8 @@ const SantaseGame: React.FC = () => {
     const connectionLockRef = useRef<boolean>(false);
     const retryAttemptRef = useRef<number>(0);
     const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const playerHandRef = useRef<HTMLDivElement | null>(null);
+    const hasScrolledOnGameStartRef = useRef<boolean>(false);
     const username = user?.username || "Играч";
 
     // Handle window resize for responsive design
@@ -376,6 +378,31 @@ const SantaseGame: React.FC = () => {
         
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // Auto-scroll to bottom on mobile when game starts
+    useEffect(() => {
+        const isMobile = windowWidth <= 768;
+        
+        // Only scroll on mobile and when game starts (gameState changes from null to a valid state)
+        if (isMobile && gameState && !hasScrolledOnGameStartRef.current) {
+            // Use setTimeout to ensure DOM is fully rendered
+            const scrollTimeout = setTimeout(() => {
+                // Scroll to bottom of the page
+                window.scrollTo({
+                    top: document.documentElement.scrollHeight,
+                    behavior: 'smooth'
+                });
+                hasScrolledOnGameStartRef.current = true;
+            }, 300); // Small delay to ensure cards are rendered
+            
+            return () => clearTimeout(scrollTimeout);
+        }
+        
+        // Reset scroll flag when game ends
+        if (!gameState) {
+            hasScrolledOnGameStartRef.current = false;
+        }
+    }, [gameState, windowWidth]);
 
     // Auto-reconnect on mount if we have an active game
     useEffect(() => {
@@ -1466,19 +1493,21 @@ const SantaseGame: React.FC = () => {
                     </div>
 
                                     {/* Cards section */}
-                                    <div style={{
-                                        ...styles.handPlayer,
-                                        gap: isMobile ? '0' : '12px',  // No gap for mobile (using margin instead), space for desktop
-                                        flexWrap: 'nowrap' as const,
-                                        justifyContent: 'center',
-                                        width: '100%',
-                                        maxWidth: '100%',
-                                        overflowX: 'auto' as const,
-                                        padding: isSmallMobile ? '0 10px' : isMobile ? '0 15px' : '0 20px',
-                                        marginTop: isMobile ? (isSmallMobile ? '20px' : '25px') : '0',  // Move cards lower on mobile
-                                        WebkitOverflowScrolling: 'touch' as const,
-                                        boxSizing: 'border-box',
-                                    }}>
+                                    <div 
+                                        ref={playerHandRef}
+                                        style={{
+                                            ...styles.handPlayer,
+                                            gap: isMobile ? '0' : '12px',  // No gap for mobile (using margin instead), space for desktop
+                                            flexWrap: 'nowrap' as const,
+                                            justifyContent: 'center',
+                                            width: '100%',
+                                            maxWidth: '100%',
+                                            overflowX: 'auto' as const,
+                                            padding: isSmallMobile ? '0 10px' : isMobile ? '0 15px' : '0 20px',
+                                            marginTop: isMobile ? (isSmallMobile ? '20px' : '25px') : '0',  // Move cards lower on mobile
+                                            WebkitOverflowScrolling: 'touch' as const,
+                                            boxSizing: 'border-box',
+                                        }}>
                             {getSortedCards(gameState.deck).map((card, index) => (
                                             <div 
                                                 key={card.id}
