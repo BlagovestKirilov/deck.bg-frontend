@@ -593,7 +593,7 @@ const SantaseGame: React.FC = () => {
         if (isTrickFinished) {
             setGameState(nextState);
             setIsUiLocked(true);
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            await new Promise(resolve => setTimeout(resolve, 1800));
             setIsUiLocked(false);
             setAnnouncedSuit(null); // Fix for reset highlight
         } else {
