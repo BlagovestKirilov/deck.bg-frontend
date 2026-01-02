@@ -496,6 +496,7 @@ const SantaseGame: React.FC = () => {
                 try {
                     await gameService.finishGame();
                     setGameState(null);
+                    setFinalWinner(null);
                     setIsSearching(false);
                     gameIdRef.current = null;
                     if (gameSubscriptionRef.current) {
@@ -1504,7 +1505,7 @@ const SantaseGame: React.FC = () => {
                         );
                     })()}
 
-                    {finalWinner && !trickResult && (() => {
+                    {finalWinner && !trickResult && gameState && (() => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
                         return (
@@ -1524,13 +1525,24 @@ const SantaseGame: React.FC = () => {
                                         margin: '0 0 10px 0',
                                         fontSize: isSmallMobile ? '1.5rem' : isMobile ? '1.8rem' : '2rem',
                                     }}>ИГРАТА ПРИКЛЮЧИ</h2>
-                                    <p style={{
+                                    <div style={{
                                         fontSize: isSmallMobile ? '1rem' : isMobile ? '1.2rem' : '1.4rem',
                                         marginBottom: isSmallMobile ? '20px' : '30px',
                                         fontWeight: 300,
                                     }}>
-                                    {finalWinner === username ? 'Брилянтна победа!' : `${finalWinner} спечели тази игра.`}
-                                </p>
+                                        <p style={{ margin: '0 0 10px 0' }}>
+                                            {finalWinner === username 
+                                                ? 'Брилянтна победа!'
+                                                : `${finalWinner} спечели тази игра.`
+                                            }
+                                        </p>
+                                        <p style={{ margin: 0 }}>
+                                            {finalWinner === username 
+                                                ? `${username} ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} - ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} ${isFirstPlayerMe ? gameState?.secondPlayerUsername : gameState?.firstPlayerUsername}`
+                                                : `${finalWinner} ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} - ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} ${username}`
+                                            }
+                                        </p>
+                                    </div>
                                     <button onClick={() => window.location.reload()} style={{
                                         ...styles.btnMain,
                                         padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '15px 40px',
