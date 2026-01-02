@@ -150,12 +150,12 @@ const CardComponent: React.FC<{
 }> = ({ card, onClick, isPlayable = true, isSelected, isSmall, windowWidth = 1024, isLastDrawn = false }) => {
     const suit = SUIT_MAP[card.suit] || { symbol: '?', color: 'black' };
     const displayRank = card.rank === 'NINE' ? '9' : (card.rank === 'TEN' ? '10' : card.rank[0]);
-    
+
     // Responsive card sizing
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
-    
-    const cardWidth = isSmall 
+
+    const cardWidth = isSmall
         ? (isSmallMobile ? '55px' : isMobile ? '65px' : '110px')
         : (isSmallMobile ? '85px' : isMobile ? '100px' : '100px');
     const cardHeight = isSmall
@@ -171,36 +171,36 @@ const CardComponent: React.FC<{
             maxHeight: cardHeight,
             flexShrink: 0,
             borderRadius: '14px',
-        
+
             // 1. OPAQUE: Strictly 1 to prevent seeing cards behind
             opacity: 1,
-        
+
             // 2. SUIT COLOR: Kept as-is so you still see red/black clearly
-            color: suit.color, 
-            
+            color: suit.color,
+
             // 3. BLUR & DIM: Increased blur slightly for a "pushed back" feel
             filter: isPlayable ? 'none' : 'brightness(0.75)',
-        
+
             // // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
-            // background: isPlayable 
-            //     ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)' 
+            // background: isPlayable
+            //     ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
             //     : '#cccccc', // Mid-tone grey (Darker than before)
-        
+
             // // 5. SEPARATION BORDER: Darker border to define the card edge
-            // border: isSelected 
-            //     ? '3px solid #ffd700' 
-            //     : isPlayable 
-            //         ? '2px solid rgba(255,255,255,0.9)' 
+            // border: isSelected
+            //     ? '3px solid #ffd700'
+            //     : isPlayable
+            //         ? '2px solid rgba(255,255,255,0.9)'
             //         : '2px solid #a1a1a1', // Stronger grey border for overlap clarity
-        
+
             // // 6. STACKING DEPTH
             // zIndex: isSelected ? 10 : isPlayable ? 5 : 1,
-            // boxShadow: isSelected 
-            //     ? '0 12px 28px rgba(0,0,0,0.3)' 
-            //     : isPlayable 
-            //         ? '0 8px 16px rgba(0,0,0,0.2)' 
+            // boxShadow: isSelected
+            //     ? '0 12px 28px rgba(0,0,0,0.3)'
+            //     : isPlayable
+            //         ? '0 8px 16px rgba(0,0,0,0.2)'
             //         : '0 4px 10px rgba(0,0,0,0.25)', // Slightly heavier shadow for depth
-        
+
             display: 'flex',
             flexDirection: 'column' as const,
             justifyContent: 'space-between',
@@ -215,7 +215,7 @@ const CardComponent: React.FC<{
         alignItems: 'center',
         lineHeight: '1',
         fontWeight: 'bold' as const,
-        fontSize: isSmall 
+        fontSize: isSmall
             ? (isSmallMobile ? '1.1rem' : isMobile ? '1.2rem' : '1.7rem')
             : (isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.5rem'),
     };
@@ -225,8 +225,8 @@ const CardComponent: React.FC<{
         : (isSmallMobile ? '2.2rem' : isMobile ? '2.4rem' : '2.9rem');
 
     return (
-        <div 
-            onClick={isPlayable ? onClick : undefined} 
+        <div
+            onClick={isPlayable ? onClick : undefined}
             style={cardStyle}
             className={isLastDrawn ? 'last-drawn-shimmer' : ''}
         >
@@ -248,7 +248,7 @@ const CardComponent: React.FC<{
 const Navbar: React.FC<{ username: string; onLogout: () => void; windowWidth?: number }> = ({ username, onLogout, windowWidth = 1024 }) => {
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
-    
+
     return (
         <nav style={{
             ...styles.navbar,
@@ -296,7 +296,7 @@ const AppModal: React.FC<{
 }> = ({ title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ", windowWidth = 1024 }) => {
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
-    
+
     return (
     <div style={styles.modalOverlay}>
             <div style={{
@@ -370,10 +370,10 @@ const SantaseGame: React.FC = () => {
         const handleResize = () => {
             setWindowWidth(window.innerWidth);
         };
-        
+
         window.addEventListener('resize', handleResize);
         handleResize(); // Initial call
-        
+
         return () => window.removeEventListener('resize', handleResize);
     }, []);
 
@@ -425,7 +425,7 @@ const SantaseGame: React.FC = () => {
         // Calculate delay with exponential backoff (2s, 4s, 8s, max 10s)
         const delay = 2000;
         console.log(`Attempting reconnection (attempt ${retryAttemptRef.current + 1}) after ${delay}ms...`);
-        
+
         reconnectTimeoutRef.current = setTimeout(() => {
             if (!gameIdRef.current || isConnected) {
                 // Game ended or connection restored
@@ -433,13 +433,13 @@ const SantaseGame: React.FC = () => {
                 retryAttemptRef.current = 0;
                 return;
             }
-            
+
             // Increment retry counter before attempting connection
             retryAttemptRef.current++;
             isReconnectingRef.current = true;
             reconnectStartTimeRef.current = Date.now();
             connectWebSocket(true);
-            
+
             // After connectWebSocket completes (success or failure), 
             // onError/onClose handlers will call attemptReconnect() again if needed
         }, delay);
@@ -563,11 +563,11 @@ const SantaseGame: React.FC = () => {
         isProcessingQueue.current = true;
         const nextState = messageQueue.current.shift()!;
         const prevState = prevGameStateRef.current;
-        const isTrickFinished = (nextState.playedCard && nextState.opponentPlayedCard) 
+        const isTrickFinished = (nextState.playedCard && nextState.opponentPlayedCard)
         || (nextState.remainingCardsCount === 24 && !nextState.playedCard && !nextState.opponentPlayedCard);
 
         // Detect card replacement - when trump card changes but remainingCardsCount stays same
-        if (prevState && prevState.trumpCard && nextState.trumpCard && 
+        if (prevState && prevState.trumpCard && nextState.trumpCard &&
             prevState.trumpCard.id !== nextState.trumpCard.id &&
             prevState.remainingCardsCount === nextState.remainingCardsCount &&
             prevState.remainingCardsCount < 12 && prevState.remainingCardsCount > 2) {
@@ -613,7 +613,7 @@ const SantaseGame: React.FC = () => {
     const handleGameUpdate = (newState: GameState) => {
         // Update last message time
         lastMessageTimeRef.current = Date.now();
-        
+
         // Store gameId when we receive game state
         if (newState.gameId && !gameIdRef.current) {
             gameIdRef.current = newState.gameId;
@@ -626,28 +626,78 @@ const SantaseGame: React.FC = () => {
         processNextMessage();
     };
 
-    const getSortedCards = (cards: Card[]) => {
-        if (!gameState?.trumpCard) return cards;
-        const trumpSuit = gameState.trumpCard.suit;
-        return [...cards].sort((a, b) => {
-            if (a.suit !== b.suit) {
-                if (a.suit === trumpSuit) return -1; // Trump at the end
-                if (b.suit === trumpSuit) return 1;
-                return a.suit.localeCompare(b.suit);
-            }
-            return (RANK_ORDER[a.rank] ?? 99) - (RANK_ORDER[b.rank] ?? 99);
-        });
-    };
+    const SUIT_COLOR: Record<Suit, 'BLACK' | 'RED'> = {
+        SPADES: 'BLACK',
+        CLUBS: 'BLACK',
+        HEARTS: 'RED',
+        DIAMONDS: 'RED'
+      };
+
+     const buildSuitOrderForHand = (
+  cards: Card[],
+  trump: Suit
+): Suit[] => {
+  const presentSuits = Array.from(new Set(cards.map(c => c.suit)));
+
+  const hasTrump = presentSuits.includes(trump);
+
+  const result: Suit[] = [];
+  const used = new Set<Suit>();
+
+  // 1️⃣ Start with trump ONLY if it exists in hand
+  if (hasTrump) {
+    result.push(trump);
+    used.add(trump);
+  }
+
+  // 2️⃣ Alternate colors with remaining suits
+  while (result.length < presentSuits.length) {
+    const lastColor =
+      result.length > 0
+        ? SUIT_COLOR[result[result.length - 1]]
+        : null;
+
+    // Prefer opposite color
+    const next = presentSuits.find(
+      s =>
+        !used.has(s) &&
+        (lastColor === null || SUIT_COLOR[s] !== lastColor)
+    );
+
+    // Fallback if alternation is impossible
+    const fallback = presentSuits.find(s => !used.has(s));
+
+    const chosen = next ?? fallback!;
+    result.push(chosen);
+    used.add(chosen);
+  }
+
+  return result;
+};
+
+const getSortedCards = (cards: Card[]) => {
+    if (!gameState?.trumpCard) return cards;
+
+    const trumpSuit = gameState.trumpCard.suit;
+    const suitOrder = buildSuitOrderForHand(cards, trumpSuit);
+
+    return [...cards].sort((a, b) => {
+      if (a.suit !== b.suit) {
+        return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
+      }
+      return RANK_ORDER[a.rank] - RANK_ORDER[b.rank];
+    });
+  };
 
     const connectWebSocket = (isReconnect: boolean = false) => {
         console.log('connectWebSocket called', isReconnect ? '(reconnect)' : '(initial)');
-        
+
         // Prevent multiple simultaneous connection attempts
         if (connectionLockRef.current) {
             console.log('Connection attempt already in progress, skipping...');
             return;
         }
-        
+
         const sockToken = localStorage.getItem('refreshToken');
         if (!sockToken) {
             console.error('No refresh token found');
@@ -670,7 +720,7 @@ const SantaseGame: React.FC = () => {
                 }
                 gameSubscriptionRef.current = null;
             }
-            
+
             // Disconnect old STOMP client
             if (stompClient.current) {
                 try {
@@ -682,7 +732,7 @@ const SantaseGame: React.FC = () => {
                 }
                 stompClient.current = null;
             }
-            
+
             // Close old socket
             if (socketRef.current) {
                 try {
@@ -692,7 +742,7 @@ const SantaseGame: React.FC = () => {
                 }
                 socketRef.current = null;
             }
-            
+
             // Clear intervals and timeouts
             if (connectionCheckIntervalRef.current) {
                 clearInterval(connectionCheckIntervalRef.current);
@@ -720,10 +770,10 @@ const SantaseGame: React.FC = () => {
         const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
         socketRef.current = socket;
         const client = Stomp.over(socket);
-        
+
         // Disable STOMP auto-reconnect to avoid conflicts with manual reconnection
         client.reconnect_delay = 0;
-        
+
         // Set a timeout to detect failed connection attempts
         // If connection doesn't succeed within 15 seconds, treat it as failure and retry
         connectionTimeoutRef.current = setTimeout(() => {
@@ -736,25 +786,25 @@ const SantaseGame: React.FC = () => {
                 }
             }
         }, 3000);
-        
+
         // Handle socket close events for reconnection
         socket.onclose = (event: CloseEvent) => {
             console.log('WebSocket closed:', event, 'wasClean:', event.wasClean, 'code:', event.code);
             setIsConnected(false);
             connectionLockRef.current = false;
-            
+
             // Clear connection timeout
             if (connectionTimeoutRef.current) {
                 clearTimeout(connectionTimeoutRef.current);
                 connectionTimeoutRef.current = null;
             }
-            
+
             // Stop connection monitoring
             if (connectionCheckIntervalRef.current) {
                 clearInterval(connectionCheckIntervalRef.current);
                 connectionCheckIntervalRef.current = null;
             }
-            
+
             // Only attempt reconnect if we have an active game
             // Reconnect even if wasClean is true (backend might have restarted)
             if (gameIdRef.current) {
@@ -773,14 +823,14 @@ const SantaseGame: React.FC = () => {
                 attemptReconnect();
             }
         };
-        
+
         // Handle socket error events
         socket.onerror = (error: Event) => {
             console.error('WebSocket error:', error);
         };
-        
+
         stompClient.current = client;
-        
+
         const onConnect = () => {
             console.log('WebSocket connected', isReconnect ? '(reconnected)' : '');
             setIsConnected(true);
@@ -789,12 +839,12 @@ const SantaseGame: React.FC = () => {
             reconnectStartTimeRef.current = null;
             retryAttemptRef.current = 0; // Reset retry counter on successful connection
             lastMessageTimeRef.current = Date.now();
-            
+
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
                 reconnectTimeoutRef.current = null;
             }
-            
+
             if (connectionTimeoutRef.current) {
                 clearTimeout(connectionTimeoutRef.current);
                 connectionTimeoutRef.current = null;
@@ -809,10 +859,10 @@ const SantaseGame: React.FC = () => {
                 if (!gameIdRef.current) {
                     return;
                 }
-                
+
                 // Check STOMP connection status
                 const stompConnected = stompClient.current && stompClient.current.connected;
-                
+
                 // Only trigger reconnection if STOMP is actually disconnected AND we're not already reconnecting
                 // Don't rely on timeSinceLastMessage - games can have quiet periods without messages
                 if (!isReconnectingRef.current && !stompConnected) {
@@ -850,7 +900,7 @@ const SantaseGame: React.FC = () => {
                 }
                 // Resubscribe to game updates
                 gameSubscriptionRef.current = client.subscribe(
-                    `/topic/game/${gameIdRef.current}/${username}`, 
+                    `/topic/game/${gameIdRef.current}/${username}`,
                     (m: any) => {
                         lastMessageTimeRef.current = Date.now();
                         handleGameUpdate(JSON.parse(m.body));
@@ -858,10 +908,10 @@ const SantaseGame: React.FC = () => {
                 );
                 console.log('Resubscribed to game topic');
                 // Get current state
-                gameService.getInitialState().then(res => { 
+                gameService.getInitialState().then(res => {
                     if (res.data) {
                         lastMessageTimeRef.current = Date.now();
-                        handleGameUpdate(res.data); 
+                        handleGameUpdate(res.data);
                         console.log('Game state restored on reconnect');
                     }
                 }).catch(err => {
@@ -876,16 +926,16 @@ const SantaseGame: React.FC = () => {
                         setIsSearching(false);
                         gameIdRef.current = data.gameId;
                         gameSubscriptionRef.current = client.subscribe(
-                            `/topic/game/${data.gameId}/${username}`, 
+                            `/topic/game/${data.gameId}/${username}`,
                             (m: any) => {
                                 lastMessageTimeRef.current = Date.now();
                                 handleGameUpdate(JSON.parse(m.body));
                             }
                         );
-                        gameService.getInitialState().then(res => { 
+                        gameService.getInitialState().then(res => {
                             if (res.data) {
                                 lastMessageTimeRef.current = Date.now();
-                                handleGameUpdate(res.data); 
+                                handleGameUpdate(res.data);
                             }
                         });
                     }
@@ -898,17 +948,17 @@ const SantaseGame: React.FC = () => {
             console.error('WebSocket connection error:', error);
             setIsConnected(false);
             connectionLockRef.current = false;
-            
+
             // Clear connection timeout
             if (connectionTimeoutRef.current) {
                 clearTimeout(connectionTimeoutRef.current);
                 connectionTimeoutRef.current = null;
             }
-            
+
             if (!isReconnect && !isSearching) {
                 setIsSearching(false);
             }
-            
+
             // Attempt to reconnect if we have an active game (use gameIdRef to avoid closure issues)
             if (gameIdRef.current) {
                 if (!isReconnectingRef.current) {
@@ -1075,19 +1125,19 @@ const SantaseGame: React.FC = () => {
                             </button>
                         );
                     })()}
-                    
+
                     {activeBonuses.map(b => (
                         <div key={b.id} className="bonus-bubble" style={{ top: b.isOpponent ? '25%' : '65%' }}>
                             +{b.val} ТОЧКИ
                         </div>
                     ))}
-                    
+
                     {/* Notifications in the middle of screen */}
                     {notifications.map(notification => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
                         return (
-                            <div 
+                            <div
                                 key={notification.id}
                                 style={{
                                     position: 'fixed',
@@ -1114,12 +1164,12 @@ const SantaseGame: React.FC = () => {
                             </div>
                         );
                     })}
-                    
+
                     {/* SCOREBOARD - Different layout for mobile vs desktop */}
                     {(() => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
-                        
+
                         // Mobile: vertical scoreboard above opponent cards (same structure as desktop)
                         if (isMobile) {
                             return (
@@ -1201,7 +1251,7 @@ const SantaseGame: React.FC = () => {
                                 </>
                             );
                         }
-                        
+
                         // Desktop: vertical scoreboard on left
                         return (
                             <div style={{
@@ -1263,7 +1313,7 @@ const SantaseGame: React.FC = () => {
                     {(() => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
-                        
+
                         return (
                             <>
                                 <div style={{
@@ -1279,8 +1329,8 @@ const SantaseGame: React.FC = () => {
                                         gap: isSmallMobile ? '-8px' : isMobile ? '-12px' : '-15px',
                                     }}>
                             {Array.from({ length: gameState.opponentPlayerCardsCount || 0 }).map((_, i) => (
-                                            <div 
-                                                key={i} 
+                                            <div
+                                                key={i}
                                                 style={{
                                                     ...styles.cardBack,
                                                     width: isSmallMobile ? '50px' : isMobile ? '65px' : '130px',
@@ -1363,8 +1413,8 @@ const SantaseGame: React.FC = () => {
                                             <span style={{
                                                 color: suit.color,
                                                 // Add white text shadow for black suits on dark background to maintain visibility
-                                                textShadow: suit.color === '#1a1a1a' 
-                                                    ? '0 0 3px rgba(255,255,255,0.8), 0 0 6px rgba(255,255,255,0.5)' 
+                                                textShadow: suit.color === '#1a1a1a'
+                                                    ? '0 0 3px rgba(255,255,255,0.8), 0 0 6px rgba(255,255,255,0.5)'
                                                     : 'none',
                                             }}>
                                                 {suit.symbol}
@@ -1432,12 +1482,12 @@ const SantaseGame: React.FC = () => {
                                                 : (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТЪТ ИГРАЕ...')
                                             }
                         </div>
-                                        
+
                                         {/* 66 button next to turn indicator (to the right) */}
                                         {(() => {
                                             const canFinishDeal = gameState.isOnTurn && !gameState.playedCard && !gameState.opponentPlayedCard && isConnected;
                                             return (
-                                                <div 
+                                                <div
                                                     style={{
                                                         ...styles.icon66,
                                                         width: isSmallMobile ? '45px' : isMobile ? '45px' : '55px',
@@ -1451,7 +1501,7 @@ const SantaseGame: React.FC = () => {
                                                         opacity: canFinishDeal ? 1 : 0.4,  // Dimmed when not player's turn or cards are played or disconnected
                                                         cursor: canFinishDeal ? 'pointer' : 'not-allowed',
                                                         pointerEvents: canFinishDeal ? 'auto' : 'none',  // Disable clicks when not player's turn or cards are played or disconnected
-                                                    }} 
+                                                    }}
                                                     onClick={canFinishDeal ? () => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } }) : undefined}
                                                     onMouseEnter={canFinishDeal ? (e) => {
                                                         e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
@@ -1481,21 +1531,21 @@ const SantaseGame: React.FC = () => {
                                         boxSizing: 'border-box',
                                     }}>
                             {getSortedCards(gameState.deck).map((card, index) => (
-                                            <div 
+                                            <div
                                                 key={card.id}
                                                 style={{
-                                                    marginLeft: isMobile && index > 0 
+                                                    marginLeft: isMobile && index > 0
                                                         ? (isSmallMobile ? '-50.5px' : '-58px')  // Half overlap: each card shows half, next card starts
                                                         : '0',
                                                 }}
                                             >
-                                                <CardComponent 
-                                                    card={card} 
-                                                    isPlayable={card.isPlayable && gameState.isOnTurn} 
-                                                    isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')} 
+                                                <CardComponent
+                                                    card={card}
+                                                    isPlayable={card.isPlayable && gameState.isOnTurn}
+                                                    isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')}
                                                     isLastDrawn={card.isLastDrawn}
-                                                    onClick={() => handlePlayCard(card)} 
-                                                    windowWidth={windowWidth} 
+                                                    onClick={() => handlePlayCard(card)}
+                                                    windowWidth={windowWidth}
                                                 />
                         </div>
                             ))}
@@ -1531,13 +1581,13 @@ const SantaseGame: React.FC = () => {
                                         fontWeight: 300,
                                     }}>
                                         <p style={{ margin: '0 0 10px 0' }}>
-                                            {finalWinner === username 
+                                            {finalWinner === username
                                                 ? 'Брилянтна победа!'
                                                 : `${finalWinner} спечели тази игра.`
                                             }
                                         </p>
                                         <p style={{ margin: 0 }}>
-                                            {finalWinner === username 
+                                            {finalWinner === username
                                                 ? `${username} ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} - ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} ${isFirstPlayerMe ? gameState?.secondPlayerUsername : gameState?.firstPlayerUsername}`
                                                 : `${finalWinner} ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} - ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} ${username}`
                                             }
