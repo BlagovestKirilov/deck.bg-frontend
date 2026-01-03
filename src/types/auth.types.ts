@@ -1,6 +1,7 @@
 export interface AuthRequest {
     username: string;
     password: string;
+    email?: string;
 }
 
 // Your Java AuthResponse with @JsonInclude(NON_NULL)
