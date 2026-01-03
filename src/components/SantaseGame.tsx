@@ -1,9 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import SockJS from 'sockjs-client';
-import { Stomp } from '@stomp/stompjs';
-import { useAuthContext } from '../context/AuthContext';
-import { gameService } from '../api/gameService';
-import { GameState, Card, Suit } from '../types/game.types';
+import {Stomp} from '@stomp/stompjs';
+import {useAuthContext} from '../context/AuthContext';
+import {gameService} from '../api/gameService';
+import {Card, GameState, Suit} from '../types/game.types';
+import ProfilePage from './ProfilePage';
+
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 // Global styles and animations
@@ -129,10 +131,10 @@ if (typeof document !== 'undefined') {
 }
 
 const SUIT_MAP: Record<Suit, { symbol: string; color: string }> = {
-    SPADES: { symbol: '♠', color: '#1a1a1a' },
-    HEARTS: { symbol: '♥', color: '#d32f2f' },
-    DIAMONDS: { symbol: '♦', color: '#d32f2f' },
-    CLUBS: { symbol: '♣', color: '#1a1a1a' }
+    SPADES: {symbol: '♠', color: '#1a1a1a'},
+    HEARTS: {symbol: '♥', color: '#d32f2f'},
+    DIAMONDS: {symbol: '♦', color: '#d32f2f'},
+    CLUBS: {symbol: '♣', color: '#1a1a1a'}
 };
 
 const RANK_ORDER: Record<string, number> = {
@@ -147,8 +149,8 @@ const CardComponent: React.FC<{
     isSmall?: boolean;
     windowWidth?: number;
     isLastDrawn?: boolean;
-}> = ({ card, onClick, isPlayable = true, isSelected, isSmall, windowWidth = 1024, isLastDrawn = false }) => {
-    const suit = SUIT_MAP[card.suit] || { symbol: '?', color: 'black' };
+}> = ({card, onClick, isPlayable = true, isSelected, isSmall, windowWidth = 1024, isLastDrawn = false}) => {
+    const suit = SUIT_MAP[card.suit] || {symbol: '?', color: 'black'};
     const displayRank = card.rank === 'NINE' ? '9' : (card.rank === 'TEN' ? '10' : card.rank[0]);
 
     // Responsive card sizing
@@ -161,53 +163,53 @@ const CardComponent: React.FC<{
     const cardHeight = isSmall
         ? (isSmallMobile ? '80px' : isMobile ? '95px' : '150px')
         : (isSmallMobile ? '120px' : isMobile ? '145px' : '145px');
-        const cardStyle = {
-            ...styles.card,
-            width: cardWidth,
-            height: cardHeight,
-            minWidth: cardWidth,
-            minHeight: cardHeight,
-            maxWidth: cardWidth,
-            maxHeight: cardHeight,
-            flexShrink: 0,
-            borderRadius: '14px',
+    const cardStyle = {
+        ...styles.card,
+        width: cardWidth,
+        height: cardHeight,
+        minWidth: cardWidth,
+        minHeight: cardHeight,
+        maxWidth: cardWidth,
+        maxHeight: cardHeight,
+        flexShrink: 0,
+        borderRadius: '14px',
 
-            // 1. OPAQUE: Strictly 1 to prevent seeing cards behind
-            opacity: 1,
+        // 1. OPAQUE: Strictly 1 to prevent seeing cards behind
+        opacity: 1,
 
-            // 2. SUIT COLOR: Kept as-is so you still see red/black clearly
-            color: suit.color,
+        // 2. SUIT COLOR: Kept as-is so you still see red/black clearly
+        color: suit.color,
 
-            // 3. BLUR & DIM: Increased blur slightly for a "pushed back" feel
-            filter: isPlayable ? 'none' : 'brightness(0.75)',
+        // 3. BLUR & DIM: Increased blur slightly for a "pushed back" feel
+        filter: isPlayable ? 'none' : 'brightness(0.75)',
 
-            // // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
-            // background: isPlayable
-            //     ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
-            //     : '#cccccc', // Mid-tone grey (Darker than before)
+        // // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
+        // background: isPlayable
+        //     ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
+        //     : '#cccccc', // Mid-tone grey (Darker than before)
 
-            // // 5. SEPARATION BORDER: Darker border to define the card edge
-            // border: isSelected
-            //     ? '3px solid #ffd700'
-            //     : isPlayable
-            //         ? '2px solid rgba(255,255,255,0.9)'
-            //         : '2px solid #a1a1a1', // Stronger grey border for overlap clarity
+        // // 5. SEPARATION BORDER: Darker border to define the card edge
+        // border: isSelected
+        //     ? '3px solid #ffd700'
+        //     : isPlayable
+        //         ? '2px solid rgba(255,255,255,0.9)'
+        //         : '2px solid #a1a1a1', // Stronger grey border for overlap clarity
 
-            // // 6. STACKING DEPTH
-            // zIndex: isSelected ? 10 : isPlayable ? 5 : 1,
-            // boxShadow: isSelected
-            //     ? '0 12px 28px rgba(0,0,0,0.3)'
-            //     : isPlayable
-            //         ? '0 8px 16px rgba(0,0,0,0.2)'
-            //         : '0 4px 10px rgba(0,0,0,0.25)', // Slightly heavier shadow for depth
+        // // 6. STACKING DEPTH
+        // zIndex: isSelected ? 10 : isPlayable ? 5 : 1,
+        // boxShadow: isSelected
+        //     ? '0 12px 28px rgba(0,0,0,0.3)'
+        //     : isPlayable
+        //         ? '0 8px 16px rgba(0,0,0,0.2)'
+        //         : '0 4px 10px rgba(0,0,0,0.25)', // Slightly heavier shadow for depth
 
-            display: 'flex',
-            flexDirection: 'column' as const,
-            justifyContent: 'space-between',
-            padding: isSmallMobile ? '5px' : isMobile ? '7px' : '10px',
-            position: 'relative' as const,
-            transition: 'all 0.2s ease-in-out',
-        };
+        display: 'flex',
+        flexDirection: 'column' as const,
+        justifyContent: 'space-between',
+        padding: isSmallMobile ? '5px' : isMobile ? '7px' : '10px',
+        position: 'relative' as const,
+        transition: 'all 0.2s ease-in-out',
+    };
 
     const cornerStyle = {
         display: 'flex',
@@ -230,22 +232,34 @@ const CardComponent: React.FC<{
             style={cardStyle}
             className={isLastDrawn ? 'last-drawn-shimmer' : ''}
         >
-            <div style={{ ...cornerStyle, alignSelf: 'flex-start' }}>
+            <div style={{...cornerStyle, alignSelf: 'flex-start'}}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem') }}>{suit.symbol}</span>
+                <span
+                    style={{fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem')}}>{suit.symbol}</span>
             </div>
-            <div style={{ fontSize: centerSymbolSize, alignSelf: 'center', opacity: 0.9 }}>
+            <div style={{fontSize: centerSymbolSize, alignSelf: 'center', opacity: 0.9}}>
                 {suit.symbol}
             </div>
-            <div style={{ ...cornerStyle, alignSelf: 'flex-end', transform: 'rotate(180deg)' }}>
+            <div style={{...cornerStyle, alignSelf: 'flex-end', transform: 'rotate(180deg)'}}>
                 <span>{displayRank}</span>
-                <span style={{ fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem') }}>{suit.symbol}</span>
+                <span
+                    style={{fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem')}}>{suit.symbol}</span>
             </div>
         </div>
     );
 };
 
-const Navbar: React.FC<{ username: string; onLogout: () => void; windowWidth?: number }> = ({ username, onLogout, windowWidth = 1024 }) => {
+const Navbar: React.FC<{
+    username: string;
+    onLogout: () => void;
+    onProfileClick: () => void;
+    windowWidth?: number
+}> = ({
+          username,
+          onLogout,
+          onProfileClick,
+          windowWidth = 1024
+      }) => {
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
 
@@ -261,18 +275,33 @@ const Navbar: React.FC<{ username: string; onLogout: () => void; windowWidth?: n
             }}>
                 SANTASE <span style={{color: '#fff'}}>66</span>
             </div>
-        <div style={styles.navLinks}>
-                {!isSmallMobile && (
-            <div style={styles.userInfo}>
-                <span style={styles.userIcon}>👤</span>
+            <div style={styles.navLinks}>
+                <div
+                    onClick={onProfileClick}
+                    style={{
+                        ...styles.userInfo,
+                        cursor: 'pointer',
+                        padding: '5px 10px',
+                        borderRadius: '8px',
+                        transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                >
+                    <span style={styles.userIcon}>👤</span>
+                    {!isSmallMobile && (
                         <span style={{
                             fontWeight: 600,
                             fontSize: isMobile ? '0.9rem' : '1rem',
                         }}>
                             {isMobile && username.length > 10 ? username.substring(0, 10) + '...' : username}
                         </span>
-            </div>
-                )}
+                    )}
+                </div>
                 <button onClick={onLogout} style={{
                     ...styles.btnLogout,
                     padding: isSmallMobile ? '4px 10px' : isMobile ? '5px 12px' : '5px 15px',
@@ -280,9 +309,9 @@ const Navbar: React.FC<{ username: string; onLogout: () => void; windowWidth?: n
                 }}>
                     {isSmallMobile ? '✕' : 'ИЗХОД'}
                 </button>
-        </div>
-    </nav>
-);
+            </div>
+        </nav>
+    );
 };
 
 const AppModal: React.FC<{
@@ -293,12 +322,12 @@ const AppModal: React.FC<{
     confirmText?: string;
     cancelText?: string;
     windowWidth?: number;
-}> = ({ title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ", windowWidth = 1024 }) => {
+}> = ({title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ", windowWidth = 1024}) => {
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
 
     return (
-    <div style={styles.modalOverlay}>
+        <div style={styles.modalOverlay}>
             <div style={{
                 ...styles.modalBox,
                 padding: isSmallMobile ? '20px' : isMobile ? '25px' : '30px',
@@ -331,24 +360,36 @@ const AppModal: React.FC<{
                         padding: isSmallMobile ? '12px' : '10px',
                         fontSize: isSmallMobile ? '0.9rem' : '1rem',
                     }}>{confirmText}</button>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
 };
 
 const SantaseGame: React.FC = () => {
-    const {user, logout } = useAuthContext();
+    const {user, logout} = useAuthContext();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isSearching, setIsSearching] = useState(false);
     const [announcedSuit, setAnnouncedSuit] = useState<Suit | null>(null);
-    const [confirmAction, setConfirmAction] = useState<null | { title: string; message: string; action: () => void; onCancel?: () => void }>(null);
-    const [trickResult, setTrickResult] = useState<null | { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number }>(null);
+    const [confirmAction, setConfirmAction] = useState<null | {
+        title: string;
+        message: string;
+        action: () => void;
+        onCancel?: () => void
+    }>(null);
+    const [trickResult, setTrickResult] = useState<null | {
+        winner: string;
+        p1Name: string;
+        p1Score: number;
+        p2Name: string;
+        p2Score: number
+    }>(null);
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
-    const [activeBonuses, setActiveBonuses] = useState<{id: number, val: number, isOpponent: boolean}[]>([]);
-    const [notifications, setNotifications] = useState<{id: number, message: string}[]>([]);
+    const [activeBonuses, setActiveBonuses] = useState<{ id: number, val: number, isOpponent: boolean }[]>([]);
+    const [notifications, setNotifications] = useState<{ id: number, message: string }[]>([]);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
     const [isConnected, setIsConnected] = useState<boolean>(false);
+    const [showProfile, setShowProfile] = useState<boolean>(false);
     const prevGameStateRef = useRef<GameState | null>(null);
 
     const stompClient = useRef<any>(null);
@@ -537,13 +578,13 @@ const SantaseGame: React.FC = () => {
 
     useEffect(() => {
         if (!gameState) return;
-        const newBubbles: {id: number, val: number, isOpponent: boolean}[] = [];
+        const newBubbles: { id: number, val: number, isOpponent: boolean }[] = [];
 
         if (gameState.bonus && gameState.bonus > 0) {
-            newBubbles.push({ id: Date.now(), val: gameState.bonus, isOpponent: false });
+            newBubbles.push({id: Date.now(), val: gameState.bonus, isOpponent: false});
         }
         if (gameState.opponentPlayerBonus && gameState.opponentPlayerBonus > 0) {
-            newBubbles.push({ id: Date.now() + 1, val: gameState.opponentPlayerBonus, isOpponent: true });
+            newBubbles.push({id: Date.now() + 1, val: gameState.opponentPlayerBonus, isOpponent: true});
         }
 
         if (newBubbles.length > 0) {
@@ -564,7 +605,7 @@ const SantaseGame: React.FC = () => {
         const nextState = messageQueue.current.shift()!;
         const prevState = prevGameStateRef.current;
         const isTrickFinished = (nextState.playedCard && nextState.opponentPlayedCard)
-        || (nextState.remainingCardsCount === 24 && !nextState.playedCard && !nextState.opponentPlayedCard);
+            || (nextState.remainingCardsCount === 24 && !nextState.playedCard && !nextState.opponentPlayedCard);
 
         // Detect card replacement - when trump card changes but remainingCardsCount stays same
         if (prevState && prevState.trumpCard && nextState.trumpCard &&
@@ -574,7 +615,7 @@ const SantaseGame: React.FC = () => {
             // Card was replaced - determine who replaced it
             const replacedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
             const notificationId = Date.now();
-            setNotifications(prev => [...prev, { id: notificationId, message: `${replacedBy} замени карта` }]);
+            setNotifications(prev => [...prev, {id: notificationId, message: `${replacedBy} замени карта`}]);
             setTimeout(() => {
                 setNotifications(prev => prev.filter(n => n.id !== notificationId));
             }, 3000);
@@ -585,7 +626,7 @@ const SantaseGame: React.FC = () => {
             // Deck was closed - determine who closed it
             const closedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
             const notificationId = Date.now();
-            setNotifications(prev => [...prev, { id: notificationId, message: `${closedBy} затвори тестето` }]);
+            setNotifications(prev => [...prev, {id: notificationId, message: `${closedBy} затвори тестето`}]);
             setTimeout(() => {
                 setNotifications(prev => prev.filter(n => n.id !== notificationId));
             }, 3000);
@@ -603,7 +644,13 @@ const SantaseGame: React.FC = () => {
 
         prevGameStateRef.current = nextState;
 
-        if (nextState.trickWinnerUsername) setTrickResult({ winner: nextState.trickWinnerUsername, p1Name: nextState.firstPlayerUsername, p1Score: nextState.trickFirstPlayerScore || 0, p2Name: nextState.secondPlayerUsername, p2Score: nextState.trickSecondPlayerScore || 0 });
+        if (nextState.trickWinnerUsername) setTrickResult({
+            winner: nextState.trickWinnerUsername,
+            p1Name: nextState.firstPlayerUsername,
+            p1Score: nextState.trickFirstPlayerScore || 0,
+            p2Name: nextState.secondPlayerUsername,
+            p2Score: nextState.trickSecondPlayerScore || 0
+        });
         if (nextState.winnerUsername) setFinalWinner(nextState.winnerUsername);
 
         isProcessingQueue.current = false;
@@ -631,63 +678,63 @@ const SantaseGame: React.FC = () => {
         CLUBS: 'BLACK',
         HEARTS: 'RED',
         DIAMONDS: 'RED'
-      };
+    };
 
-     const buildSuitOrderForHand = (
-  cards: Card[],
-  trump: Suit
-): Suit[] => {
-  const presentSuits = Array.from(new Set(cards.map(c => c.suit)));
+    const buildSuitOrderForHand = (
+        cards: Card[],
+        trump: Suit
+    ): Suit[] => {
+        const presentSuits = Array.from(new Set(cards.map(c => c.suit)));
 
-  const hasTrump = presentSuits.includes(trump);
+        const hasTrump = presentSuits.includes(trump);
 
-  const result: Suit[] = [];
-  const used = new Set<Suit>();
+        const result: Suit[] = [];
+        const used = new Set<Suit>();
 
-  // 1️⃣ Start with trump ONLY if it exists in hand
-  if (hasTrump) {
-    result.push(trump);
-    used.add(trump);
-  }
+        // 1️⃣ Start with trump ONLY if it exists in hand
+        if (hasTrump) {
+            result.push(trump);
+            used.add(trump);
+        }
 
-  // 2️⃣ Alternate colors with remaining suits
-  while (result.length < presentSuits.length) {
-    const lastColor =
-      result.length > 0
-        ? SUIT_COLOR[result[result.length - 1]]
-        : null;
+        // 2️⃣ Alternate colors with remaining suits
+        while (result.length < presentSuits.length) {
+            const lastColor =
+                result.length > 0
+                    ? SUIT_COLOR[result[result.length - 1]]
+                    : null;
 
-    // Prefer opposite color
-    const next = presentSuits.find(
-      s =>
-        !used.has(s) &&
-        (lastColor === null || SUIT_COLOR[s] !== lastColor)
-    );
+            // Prefer opposite color
+            const next = presentSuits.find(
+                s =>
+                    !used.has(s) &&
+                    (lastColor === null || SUIT_COLOR[s] !== lastColor)
+            );
 
-    // Fallback if alternation is impossible
-    const fallback = presentSuits.find(s => !used.has(s));
+            // Fallback if alternation is impossible
+            const fallback = presentSuits.find(s => !used.has(s));
 
-    const chosen = next ?? fallback!;
-    result.push(chosen);
-    used.add(chosen);
-  }
+            const chosen = next ?? fallback!;
+            result.push(chosen);
+            used.add(chosen);
+        }
 
-  return result;
-};
+        return result;
+    };
 
-const getSortedCards = (cards: Card[]) => {
-    if (!gameState?.trumpCard) return cards;
+    const getSortedCards = (cards: Card[]) => {
+        if (!gameState?.trumpCard) return cards;
 
-    const trumpSuit = gameState.trumpCard.suit;
-    const suitOrder = buildSuitOrderForHand(cards, trumpSuit);
+        const trumpSuit = gameState.trumpCard.suit;
+        const suitOrder = buildSuitOrderForHand(cards, trumpSuit);
 
-    return [...cards].sort((a, b) => {
-      if (a.suit !== b.suit) {
-        return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
-      }
-      return RANK_ORDER[a.rank] - RANK_ORDER[b.rank];
-    });
-  };
+        return [...cards].sort((a, b) => {
+            if (a.suit !== b.suit) {
+                return suitOrder.indexOf(a.suit) - suitOrder.indexOf(b.suit);
+            }
+            return RANK_ORDER[a.rank] - RANK_ORDER[b.rank];
+        });
+    };
 
     const connectWebSocket = (isReconnect: boolean = false) => {
         console.log('connectWebSocket called', isReconnect ? '(reconnect)' : '(initial)');
@@ -767,7 +814,7 @@ const getSortedCards = (cards: Card[]) => {
         }
 
         console.log('Creating new SockJS connection...');
-        const socket = new SockJS(API_BASE_URL+`/ws-game?token=${sockToken}`);
+        const socket = new SockJS(API_BASE_URL + `/ws-game?token=${sockToken}`);
         socketRef.current = socket;
         const client = Stomp.over(socket);
 
@@ -976,7 +1023,7 @@ const getSortedCards = (cards: Card[]) => {
             }
         };
 
-        client.connect({ 'Authorization': `Bearer ${sockToken}` }, onConnect, onError);
+        client.connect({'Authorization': `Bearer ${sockToken}`}, onConnect, onError);
     };
 
     const startSearch = () => {
@@ -998,7 +1045,12 @@ const getSortedCards = (cards: Card[]) => {
                 title: 'Обявяване',
                 message: `Желаете ли да обявите ${pts} точки?`,
                 action: async () => {
-                    try { await gameService.announce(card.id); setAnnouncedSuit(card.suit); } catch (e) { console.error(e); }
+                    try {
+                        await gameService.announce(card.id);
+                        setAnnouncedSuit(card.suit);
+                    } catch (e) {
+                        console.error(e);
+                    }
                     setConfirmAction(null);
                 },
                 onCancel: () => {
@@ -1015,7 +1067,8 @@ const getSortedCards = (cards: Card[]) => {
 
     return (
         <div style={styles.table}>
-            {!gameState && <Navbar username={username} onLogout={logout} windowWidth={windowWidth} />}
+            {!gameState && <Navbar username={username} onLogout={logout} onProfileClick={() => setShowProfile(true)}
+                                   windowWidth={windowWidth}/>}
 
             {/* Loading overlay when disconnected */}
             {gameState && !isConnected && (
@@ -1041,19 +1094,21 @@ const getSortedCards = (cards: Card[]) => {
                         borderTop: '4px solid #4CAF50',
                         borderRadius: '50%',
                         animation: 'spin 1s linear infinite',
-                    }} />
+                    }}/>
                     <div style={{
                         marginTop: '20px',
                         fontSize: windowWidth <= 768 ? '1.1rem' : '1.3rem',
                         fontWeight: 600,
                         textAlign: 'center',
-                    }}>Възстановяване на връзката...</div>
+                    }}>Възстановяване на връзката...
+                    </div>
                     <div style={{
                         marginTop: '10px',
                         fontSize: windowWidth <= 768 ? '0.9rem' : '1rem',
                         opacity: 0.8,
                         textAlign: 'center',
-                    }}>Моля, изчакайте</div>
+                    }}>Моля, изчакайте
+                    </div>
                 </div>
             )}
 
@@ -1073,7 +1128,8 @@ const getSortedCards = (cards: Card[]) => {
                                     width: isSmallMobile ? '60px' : isMobile ? '70px' : '80px',
                                     height: isSmallMobile ? '60px' : isMobile ? '70px' : '80px',
                                     fontSize: isSmallMobile ? '2rem' : isMobile ? '2.2rem' : '2.5rem',
-                                }}>66</div>
+                                }}>66
+                                </div>
                                 <h1 style={{
                                     ...styles.welcomeTitle,
                                     fontSize: isSmallMobile ? '1.5rem' : isMobile ? '1.8rem' : '2rem',
@@ -1084,18 +1140,18 @@ const getSortedCards = (cards: Card[]) => {
                                     fontSize: isSmallMobile ? '0.9rem' : isMobile ? '1rem' : '1.1rem',
                                     marginBottom: isSmallMobile ? '25px' : '30px',
                                 }}>Класическо Сантасе срещу реални опоненти</p>
-                        <button
-                            onClick={startSearch}
-                            style={{
-                                ...styles.btnMain,
+                                <button
+                                    onClick={startSearch}
+                                    style={{
+                                        ...styles.btnMain,
                                         background: isSearching ? '#555' : '#ff9800',
                                         padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '15px 40px',
                                         fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
-                            }}
-                        >
-                            {isSearching ? 'ТЪРСЕНЕ...' : 'НОВА ИГРА'}
-                        </button>
-                    </div>
+                                    }}
+                                >
+                                    {isSearching ? 'ТЪРСЕНЕ...' : 'НОВА ИГРА'}
+                                </button>
+                            </div>
                         );
                     })()}
                 </div>
@@ -1127,7 +1183,7 @@ const getSortedCards = (cards: Card[]) => {
                     })()}
 
                     {activeBonuses.map(b => (
-                        <div key={b.id} className="bonus-bubble" style={{ top: b.isOpponent ? '25%' : '65%' }}>
+                        <div key={b.id} className="bonus-bubble" style={{top: b.isOpponent ? '25%' : '65%'}}>
                             +{b.val} ТОЧКИ
                         </div>
                     ))}
@@ -1211,8 +1267,8 @@ const getSortedCards = (cards: Card[]) => {
                                             }}>
                                 {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
                             </span>
-                        </div>
-                        <div style={styles.scoreRow}>
+                                        </div>
+                                        <div style={styles.scoreRow}>
                                             <span style={{
                                                 fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
                                                 maxWidth: isSmallMobile ? '70px' : '85px',
@@ -1230,8 +1286,8 @@ const getSortedCards = (cards: Card[]) => {
                                             }}>
                                 {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
                             </span>
-                        </div>
-                    </div>
+                                        </div>
+                                    </div>
                                     {/* Leave Game Button - Mobile - positioned on right */}
                                     <button
                                         onClick={handleLeaveGame}
@@ -1286,8 +1342,8 @@ const getSortedCards = (cards: Card[]) => {
                                     }}>
                                 {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
                             </span>
-                        </div>
-                        <div style={styles.scoreRow}>
+                                </div>
+                                <div style={styles.scoreRow}>
                                     <span style={{
                                         fontSize: '1rem',
                                         maxWidth: '140px',
@@ -1305,8 +1361,8 @@ const getSortedCards = (cards: Card[]) => {
                                     }}>
                                 {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
                             </span>
-                        </div>
-                    </div>
+                                </div>
+                            </div>
                         );
                     })()}
 
@@ -1328,7 +1384,7 @@ const getSortedCards = (cards: Card[]) => {
                                         ...styles.handOpponent,
                                         gap: isSmallMobile ? '-8px' : isMobile ? '-12px' : '-15px',
                                     }}>
-                            {Array.from({ length: gameState.opponentPlayerCardsCount || 0 }).map((_, i) => (
+                                        {Array.from({length: gameState.opponentPlayerCardsCount || 0}).map((_, i) => (
                                             <div
                                                 key={i}
                                                 style={{
@@ -1338,9 +1394,9 @@ const getSortedCards = (cards: Card[]) => {
                                                     borderRadius: isMobile ? '5px' : '14px',
                                                 }}
                                             />
-                            ))}
-                        </div>
-                    </div>
+                                        ))}
+                                    </div>
+                                </div>
 
                                 <div style={{
                                     ...styles.midSection,
@@ -1357,7 +1413,7 @@ const getSortedCards = (cards: Card[]) => {
                                         justifyContent: 'flex-start',
                                         alignItems: 'center',
                                     }}>
-                            {gameState.remainingCardsCount > 0 && !gameState.isClosed ? (
+                                        {gameState.remainingCardsCount > 0 && !gameState.isClosed ? (
                                             <div style={{
                                                 position: 'relative',
                                                 width: isSmallMobile ? '80px' : isMobile ? '100px' : '120px',
@@ -1369,12 +1425,13 @@ const getSortedCards = (cards: Card[]) => {
                                                     left: isSmallMobile ? '35px' : isMobile ? '35px' : '90px',
                                                     zIndex: 1,
                                                 }} onClick={() => {
-                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
-                                            gameService.replaceCard();
-                                        }
-                                    }}>
-                                                    <CardComponent card={gameState.trumpCard!} isSmall windowWidth={windowWidth} />
-                                    </div>
+                                                    if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
+                                                        gameService.replaceCard();
+                                                    }
+                                                }}>
+                                                    <CardComponent card={gameState.trumpCard!} isSmall
+                                                                   windowWidth={windowWidth}/>
+                                                </div>
                                                 <div style={{
                                                     ...styles.deckPile,
                                                     width: isSmallMobile ? '70px' : isMobile ? '75px' : '140px',
@@ -1384,19 +1441,26 @@ const getSortedCards = (cards: Card[]) => {
                                                     left: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
                                                     zIndex: 2,
                                                 }} onClick={() => {
-                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
-                                            setConfirmAction({ title: 'Затваряне', message: 'Затваряте ли тестето?', action: async () => { await gameService.closeDeck(); setConfirmAction(null); } });
-                                        }
-                                    }}>
+                                                    if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
+                                                        setConfirmAction({
+                                                            title: 'Затваряне',
+                                                            message: 'Затваряте ли тестето?',
+                                                            action: async () => {
+                                                                await gameService.closeDeck();
+                                                                setConfirmAction(null);
+                                                            }
+                                                        });
+                                                    }
+                                                }}>
                                                     <div style={{
                                                         ...styles.deckCount,
                                                         fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
                                                         position: 'relative',
                                                         zIndex: 10,
                                                     }}>{gameState.remainingCardsCount}</div>
-                                    </div>
-                                </div>
-                            ) : (
+                                                </div>
+                                            </div>
+                                        ) : (
                                             <div style={{
                                                 ...styles.closedTrump,
                                                 width: isSmallMobile ? '60px' : isMobile ? '70px' : '80px',
@@ -1407,23 +1471,26 @@ const getSortedCards = (cards: Card[]) => {
                                                     fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : '0.8rem',
                                                     display: 'block',
                                                 }}>КОЗ</span>
-                                    {gameState.trumpCard && (() => {
-                                        const suit = SUIT_MAP[gameState.trumpCard.suit] || { symbol: '?', color: '#1a1a1a' };
-                                        return (
-                                            <span style={{
-                                                color: suit.color,
-                                                // Add white text shadow for black suits on dark background to maintain visibility
-                                                textShadow: suit.color === '#1a1a1a'
-                                                    ? '0 0 3px rgba(255,255,255,0.8), 0 0 6px rgba(255,255,255,0.5)'
-                                                    : 'none',
-                                            }}>
+                                                {gameState.trumpCard && (() => {
+                                                    const suit = SUIT_MAP[gameState.trumpCard.suit] || {
+                                                        symbol: '?',
+                                                        color: '#1a1a1a'
+                                                    };
+                                                    return (
+                                                        <span style={{
+                                                            color: suit.color,
+                                                            // Add white text shadow for black suits on dark background to maintain visibility
+                                                            textShadow: suit.color === '#1a1a1a'
+                                                                ? '0 0 3px rgba(255,255,255,0.8), 0 0 6px rgba(255,255,255,0.5)'
+                                                                : 'none',
+                                                        }}>
                                                 {suit.symbol}
                                             </span>
-                                        );
-                                    })()}
-                                </div>
-                            )}
-                        </div>
+                                                    );
+                                                })()}
+                                            </div>
+                                        )}
+                                    </div>
 
                                     <div style={{
                                         ...styles.tableCenter,
@@ -1437,14 +1504,18 @@ const getSortedCards = (cards: Card[]) => {
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                        }}>{gameState.opponentPlayedCard && <CardComponent card={gameState.opponentPlayedCard} isPlayable={true} windowWidth={windowWidth} />}</div>
+                                        }}>{gameState.opponentPlayedCard &&
+                                            <CardComponent card={gameState.opponentPlayedCard} isPlayable={true}
+                                                           windowWidth={windowWidth}/>}</div>
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
-                                        }}>{gameState.playedCard && <CardComponent card={gameState.playedCard} isPlayable={true} windowWidth={windowWidth} />}</div>
-                            </div>
-                        </div>
+                                        }}>{gameState.playedCard &&
+                                            <CardComponent card={gameState.playedCard} isPlayable={true}
+                                                           windowWidth={windowWidth}/>}</div>
+                                    </div>
+                                </div>
 
                                 <div style={{
                                     ...styles.bottomSection,
@@ -1476,12 +1547,12 @@ const getSortedCards = (cards: Card[]) => {
                                                 width: isSmallMobile ? '7px' : isMobile ? '8px' : '9px',
                                                 height: isSmallMobile ? '7px' : isMobile ? '8px' : '9px',
                                                 backgroundColor: gameState.isOnTurn ? '#4CAF50' : '#ff5252',
-                                            }} />
+                                            }}/>
                                             {isSmallMobile
                                                 ? (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТ...')
                                                 : (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТЪТ ИГРАЕ...')
                                             }
-                        </div>
+                                        </div>
 
                                         {/* 66 button next to turn indicator (to the right) */}
                                         {(() => {
@@ -1502,7 +1573,14 @@ const getSortedCards = (cards: Card[]) => {
                                                         cursor: canFinishDeal ? 'pointer' : 'not-allowed',
                                                         pointerEvents: canFinishDeal ? 'auto' : 'none',  // Disable clicks when not player's turn or cards are played or disconnected
                                                     }}
-                                                    onClick={canFinishDeal ? () => setConfirmAction({ title: 'Край', message: 'Имате ли 66 точки?', action: async () => { await gameService.finishDeal(); setConfirmAction(null); } }) : undefined}
+                                                    onClick={canFinishDeal ? () => setConfirmAction({
+                                                        title: 'Край',
+                                                        message: 'Имате ли 66 точки?',
+                                                        action: async () => {
+                                                            await gameService.finishDeal();
+                                                            setConfirmAction(null);
+                                                        }
+                                                    }) : undefined}
                                                     onMouseEnter={canFinishDeal ? (e) => {
                                                         e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
                                                         e.currentTarget.style.boxShadow = '0 10px 28px rgba(255, 152, 0, 0.6), 0 5px 14px rgba(0,0,0,0.3)';
@@ -1514,7 +1592,7 @@ const getSortedCards = (cards: Card[]) => {
                                                 >66</div>
                                             );
                                         })()}
-                    </div>
+                                    </div>
 
                                     {/* Cards section */}
                                     <div style={{
@@ -1530,7 +1608,7 @@ const getSortedCards = (cards: Card[]) => {
                                         marginTop: isMobile ? (isSmallMobile ? '20px' : '25px') : '0',  // Move cards lower on mobile
                                         boxSizing: 'border-box',
                                     }}>
-                            {getSortedCards(gameState.deck).map((card, index) => (
+                                        {getSortedCards(gameState.deck).map((card, index) => (
                                             <div
                                                 key={card.id}
                                                 style={{
@@ -1547,10 +1625,10 @@ const getSortedCards = (cards: Card[]) => {
                                                     onClick={() => handlePlayCard(card)}
                                                     windowWidth={windowWidth}
                                                 />
-                        </div>
-                            ))}
-                        </div>
-                    </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </>
                         );
                     })()}
@@ -1559,7 +1637,7 @@ const getSortedCards = (cards: Card[]) => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
                         return (
-                        <div style={styles.resultOverlay}>
+                            <div style={styles.resultOverlay}>
                                 <div style={{
                                     ...styles.resultBox,
                                     padding: isSmallMobile ? '30px 20px' : isMobile ? '40px 30px' : '50px',
@@ -1569,8 +1647,8 @@ const getSortedCards = (cards: Card[]) => {
                                         fontSize: isSmallMobile ? '3rem' : isMobile ? '3.5rem' : '4rem',
                                         marginBottom: '10px',
                                     }}>
-                                    {finalWinner === username ? '🏆' : '🏳️'}
-                                </div>
+                                        {finalWinner === username ? '🏆' : '🏳️'}
+                                    </div>
                                     <h2 style={{
                                         margin: '0 0 10px 0',
                                         fontSize: isSmallMobile ? '1.5rem' : isMobile ? '1.8rem' : '2rem',
@@ -1580,13 +1658,13 @@ const getSortedCards = (cards: Card[]) => {
                                         marginBottom: isSmallMobile ? '20px' : '30px',
                                         fontWeight: 300,
                                     }}>
-                                        <p style={{ margin: '0 0 10px 0' }}>
+                                        <p style={{margin: '0 0 10px 0'}}>
                                             {finalWinner === username
                                                 ? 'Брилянтна победа!'
                                                 : `${finalWinner} спечели тази игра.`
                                             }
                                         </p>
-                                        <p style={{ margin: 0 }}>
+                                        <p style={{margin: 0}}>
                                             {finalWinner === username
                                                 ? `${username} ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} - ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} ${isFirstPlayerMe ? gameState?.secondPlayerUsername : gameState?.firstPlayerUsername}`
                                                 : `${finalWinner} ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} - ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} ${username}`
@@ -1597,9 +1675,10 @@ const getSortedCards = (cards: Card[]) => {
                                         ...styles.btnMain,
                                         padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '15px 40px',
                                         fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
-                                    }}>КЪМ НАЧАЛО</button>
+                                    }}>КЪМ НАЧАЛО
+                                    </button>
+                                </div>
                             </div>
-                        </div>
                         );
                     })()}
                 </div>
@@ -1619,11 +1698,11 @@ const getSortedCards = (cards: Card[]) => {
                 const isMobile = windowWidth <= 768;
                 const isSmallMobile = windowWidth <= 480;
                 return (
-                <AppModal
-                    confirmText="ПРОДЪЛЖИ"
-                    title="Край на раздаването"
+                    <AppModal
+                        confirmText="ПРОДЪЛЖИ"
+                        title="Край на раздаването"
                         windowWidth={windowWidth}
-                    message={
+                        message={
                             <div style={{
                                 textAlign: 'left',
                                 minWidth: isSmallMobile ? '240px' : isMobile ? '260px' : '280px',
@@ -1638,8 +1717,8 @@ const getSortedCards = (cards: Card[]) => {
                                     background: '#f1f8e9',
                                     borderRadius: '8px',
                                 }}>
-                                Победител: {trickResult.winner}
-                            </div>
+                                    Победител: {trickResult.winner}
+                                </div>
                                 <div style={{
                                     ...styles.trickScoreRow,
                                     fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
@@ -1651,8 +1730,8 @@ const getSortedCards = (cards: Card[]) => {
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
                                     }}>{trickResult.p1Name}</span>
-                                <span style={{fontWeight: 800}}>{trickResult.p1Score} т.</span>
-                            </div>
+                                    <span style={{fontWeight: 800}}>{trickResult.p1Score} т.</span>
+                                </div>
                                 <div style={{
                                     ...styles.trickScoreRow,
                                     fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
@@ -1664,14 +1743,22 @@ const getSortedCards = (cards: Card[]) => {
                                         textOverflow: 'ellipsis',
                                         whiteSpace: 'nowrap',
                                     }}>{trickResult.p2Name}</span>
-                                <span style={{fontWeight: 800}}>{trickResult.p2Score} т.</span>
+                                    <span style={{fontWeight: 800}}>{trickResult.p2Score} т.</span>
+                                </div>
                             </div>
-                        </div>
-                    }
-                    onConfirm={() => setTrickResult(null)}
-                />
+                        }
+                        onConfirm={() => setTrickResult(null)}
+                    />
                 );
             })()}
+
+            {showProfile && (
+                <ProfilePage
+                    username={username}
+                    onClose={() => setShowProfile(false)}
+                    windowWidth={windowWidth}
+                />
+            )}
         </div>
     );
 };
