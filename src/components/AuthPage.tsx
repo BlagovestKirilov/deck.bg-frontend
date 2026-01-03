@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 
 const AuthPage: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
-    const [form, setForm] = useState({ username: '', password: '', confirmPassword: '' });
+    const [form, setForm] = useState({ username: '', password: '', confirmPassword: '', email: '' });
     const [localError, setLocalError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [showServerError, setShowServerError] = useState(true);
@@ -53,9 +53,10 @@ const AuthPage: React.FC = () => {
     }, []);
 
     const validateForm = (): boolean => {
-        const { username, password, confirmPassword } = form;
+        const { username, password, confirmPassword, email } = form;
         const usernameRegex = /^[A-Za-z0-9]+$/;
         const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         if (!username) {
             setLocalError("Потребителското име не може да бъде празно.");
@@ -83,6 +84,18 @@ const AuthPage: React.FC = () => {
             return false;
         }
 
+        // Валидация за Email (само при Регистрация)
+        if (!isLogin) {
+            if (!email) {
+                setLocalError("Имейлът не може да бъде празен.");
+                return false;
+            }
+            if (!emailRegex.test(email)) {
+                setLocalError("Невалиден имейл адрес.");
+                return false;
+            }
+        }
+
         // Валидация за Потвърждение (само при Регистрация)
         if (!isLogin && password !== confirmPassword) {
             setLocalError("Паролите не съвпадат!");
@@ -108,9 +121,16 @@ const AuthPage: React.FC = () => {
         const status = parsedError.status;
         const details = parsedError.details || parsedError.data?.details || "";
 
-        // Check for conflict status (409) - username already taken
+        // Check for conflict status (409) - username or email already taken
         if (status === 409 || msg?.toLowerCase().includes('conflict') || msg?.toLowerCase().includes('already in use')) {
-            return "Потребителското име е заето";
+            const detailsLower = details?.toLowerCase() || "";
+            if (detailsLower.includes("email") || (detailsLower.includes("'") && details?.includes("@"))) {
+                return "Имейлът вече е зает.";
+            }
+            if (detailsLower.includes("username") || (detailsLower.includes("'") && !details?.includes("@"))) {
+                return "Потребителското име е заето.";
+            }
+            return "Потребителското име или имейлът е зает.";
         }
         
         if (msg === "Username or password is incorrect.") return "Невалидно потребителско име или парола.";
@@ -130,7 +150,7 @@ const AuthPage: React.FC = () => {
     };
 
     useEffect(() => {
-        setForm({ username: '', password: '', confirmPassword: '' });
+        setForm({ username: '', password: '', confirmPassword: '', email: '' });
         setLocalError(null);
         setSuccessMessage(null);
         setShowServerError(false);
@@ -150,7 +170,8 @@ const AuthPage: React.FC = () => {
         try {
             await performAction(isLogin ? 'login' : 'register', {
                 username: form.username,
-                password: form.password
+                password: form.password,
+                ...(isLogin ? {} : { email: form.email })
             });
             setSuccessMessage(isLogin ? "Влязохте успешно!" : "Регистрацията е успешна!");
         } catch (err) {}
@@ -236,6 +257,29 @@ const AuthPage: React.FC = () => {
                             required
                         />
                     </div>
+
+                    {!isLogin && (
+                        <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
+                            <label style={{
+                                ...styles.label,
+                                fontSize: isSmallMobile ? '10px' : '12px',
+                                marginBottom: isSmallMobile ? '4px' : '5px',
+                            }}>Имейл</label>
+                            <input
+                                type="email"
+                                name="email"
+                                value={form.email}
+                                onChange={handleInputChange}
+                                placeholder="example@mail.com"
+                                style={{
+                                    ...styles.input,
+                                    padding: isSmallMobile ? '10px' : '12px',
+                                    fontSize: isSmallMobile ? '14px' : '16px',
+                                }}
+                                required
+                            />
+                        </div>
+                    )}
 
                     <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
                         <label style={{
