@@ -62,8 +62,8 @@ const AuthPage: React.FC = () => {
             setLocalError("Потребителското име не може да бъде празно.");
             return false;
         }
-        if (username.length < 5 || username.length > 20) {
-            setLocalError("Потребителското име трябва да е между 5 и 20 символа.");
+        if (username.length < 4 || username.length > 20) {
+            setLocalError("Потребителското име трябва да е между 4 и 20 символа.");
             return false;
         }
         if (!usernameRegex.test(username)) {
