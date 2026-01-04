@@ -12,6 +12,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
     const [profile, setProfile] = useState<ProfileResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isResendingEmail, setIsResendingEmail] = useState(false);
+    const [resendEmailMessage, setResendEmailMessage] = useState<string | null>(null);
+    const [emailSentSuccessfully, setEmailSentSuccessfully] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const isMobile = windowWidth <= 768;
@@ -58,6 +61,16 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
         };
     }, []);
 
+    // Clear resend message and reset email sent flag when email becomes confirmed
+    useEffect(() => {
+        if (profile?.isEmailConfirmed) {
+            if (resendEmailMessage) {
+                setResendEmailMessage(null);
+            }
+            setEmailSentSuccessfully(false);
+        }
+    }, [profile?.isEmailConfirmed, resendEmailMessage]);
+
     const wins = profile?.santaseWins || 0;
     const losses = profile?.santaseLosses || 0;
     const total = wins + losses;
@@ -65,6 +78,36 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
     // Calculate percentage for status bar
     const winsPercentage = total > 0 ? (wins / total) * 100 : 50;
     const lossesPercentage = total > 0 ? (losses / total) * 100 : 50;
+
+    const handleResendEmail = async () => {
+        setIsResendingEmail(true);
+        setResendEmailMessage(null);
+        setError(null);
+        setEmailSentSuccessfully(false);
+        
+        try {
+            const result = await userService.resendEmail();
+            setResendEmailMessage(result.message);
+            
+            // If email was sent successfully, hide the button and refresh profile
+            if (result.success) {
+                setEmailSentSuccessfully(true);
+                setTimeout(async () => {
+                    try {
+                        const updatedProfile = await userService.getProfile();
+                        setProfile(updatedProfile);
+                    } catch (err) {
+                        console.error('Error refreshing profile:', err);
+                    }
+                }, 1000);
+            }
+        } catch (err: any) {
+            setResendEmailMessage('Грешка при изпращане на имейл. Моля опитайте отново.');
+            console.error('Error resending email:', err);
+        } finally {
+            setIsResendingEmail(false);
+        }
+    };
 
     return (
         <div style={styles.overlay} onClick={onClose}>
@@ -149,6 +192,48 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
                                     {profile.isEmailConfirmed ? 'Имейлът е потвърден' : 'Имейлът не е потвърден'}
                                 </span>
                             </div>
+                            {!profile.isEmailConfirmed && !emailSentSuccessfully && (
+                                <button
+                                    onClick={handleResendEmail}
+                                    disabled={isResendingEmail}
+                                    style={{
+                                        ...styles.resendButton,
+                                        padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
+                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                        marginTop: isSmallMobile ? '15px' : '20px',
+                                        opacity: isResendingEmail ? 0.7 : 1,
+                                        cursor: isResendingEmail ? 'not-allowed' : 'pointer',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isResendingEmail) {
+                                            e.currentTarget.style.backgroundColor = '#2d5a27';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isResendingEmail) {
+                                            e.currentTarget.style.backgroundColor = '#1a3a16';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }
+                                    }}
+                                >
+                                    {isResendingEmail ? 'Изпращане...' : 'Изпрати имейл за потвърждение'}
+                                </button>
+                            )}
+                            {resendEmailMessage && (
+                                <div style={{
+                                    ...styles.resendMessage,
+                                    color: resendEmailMessage.includes('успешно') ? '#66bb6a' : '#e57373',
+                                    backgroundColor: resendEmailMessage.includes('успешно') 
+                                        ? 'rgba(76, 175, 80, 0.1)' 
+                                        : 'rgba(229, 115, 115, 0.1)',
+                                    fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
+                                    marginTop: isSmallMobile ? '10px' : '15px',
+                                    padding: isSmallMobile ? '8px 12px' : '10px 15px',
+                                }}>
+                                    {resendEmailMessage}
+                                </div>
+                            )}
                         </div>
 
                         <div style={styles.statsContainer}>
@@ -367,6 +452,28 @@ const styles: { [key: string]: React.CSSProperties } = {
         justifyContent: 'center',
         borderRadius: '50%',
         fontWeight: 'bold',
+    },
+    resendButton: {
+        padding: '14px 28px',
+        backgroundColor: '#1a3a16',
+        color: '#d4af37',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '1rem',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        boxShadow: '0 4px 0 #0d1f0b',
+        transition: 'all 0.3s ease',
+        marginTop: '20px',
+    },
+    resendMessage: {
+        textAlign: 'center',
+        borderRadius: '8px',
+        padding: '10px 15px',
+        marginTop: '15px',
+        fontSize: '0.9rem',
+        fontWeight: '600',
+        border: '1px solid',
     },
 };
 
