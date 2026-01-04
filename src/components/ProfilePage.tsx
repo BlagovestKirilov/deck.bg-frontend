@@ -126,6 +126,29 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
                             }}>
                                 {username}
                             </h3>
+                            <div style={{
+                                ...styles.emailStatus,
+                                fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                marginTop: isSmallMobile ? '10px' : '15px',
+                            }}>
+                                <span style={{
+                                    ...styles.emailStatusIcon,
+                                    width: isSmallMobile ? '20px' : isMobile ? '22px' : '24px',
+                                    height: isSmallMobile ? '20px' : isMobile ? '22px' : '24px',
+                                    fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : '1.2rem',
+                                    backgroundColor: profile.isEmailConfirmed ? 'rgba(76, 175, 80, 0.2)' : 'rgba(229, 115, 115, 0.2)',
+                                    color: profile.isEmailConfirmed ? '#66bb6a' : '#e57373',
+                                }}>
+                                    {profile.isEmailConfirmed ? '✓' : '✗'}
+                                </span>
+                                <span style={{
+                                    color: profile.isEmailConfirmed ? '#66bb6a' : '#e57373',
+                                    marginLeft: '8px',
+                                    fontWeight: '600',
+                                }}>
+                                    {profile.isEmailConfirmed ? 'Имейлът е потвърден' : 'Имейлът не е потвърден'}
+                                </span>
+                            </div>
                         </div>
 
                         <div style={styles.statsContainer}>
@@ -330,6 +353,20 @@ const styles: { [key: string]: React.CSSProperties } = {
         padding: '40px',
         color: '#e57373',
         fontSize: '1.1rem',
+    },
+    emailStatus: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: '15px',
+        fontSize: '1rem',
+    },
+    emailStatusIcon: {
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: '50%',
+        fontWeight: 'bold',
     },
 };
 

@@ -1,23 +1,36 @@
 import React from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { useAuthContext } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
 import SantaseGame from './components/SantaseGame';
+import ConfirmationSuccess from './components/ConfirmationSuccess';
 
 const App: React.FC = () => {
     const { isAuthenticated} = useAuthContext();
 
     return (
         <div style={styles.appContainer}>
-            {!isAuthenticated ? (
-                <AuthPage />
-            ) : (
-                <div style={styles.gameWrapper}>
-                    {/* Main Content strictly fills the rest of the screen height */}
-                    <main style={styles.mainContent}>
-                        <SantaseGame />
-                    </main>
-                </div>
-            )}
+            <Routes>
+                <Route 
+                    path="/confirmation-success" 
+                    element={<ConfirmationSuccess />} 
+                />
+                <Route 
+                    path="*" 
+                    element={
+                        !isAuthenticated ? (
+                            <AuthPage />
+                        ) : (
+                            <div style={styles.gameWrapper}>
+                                {/* Main Content strictly fills the rest of the screen height */}
+                                <main style={styles.mainContent}>
+                                    <SantaseGame />
+                                </main>
+                            </div>
+                        )
+                    } 
+                />
+            </Routes>
         </div>
     );
 };
