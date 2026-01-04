@@ -4,6 +4,7 @@ import { useAuthContext } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
 import SantaseGame from './components/SantaseGame';
 import ConfirmationSuccess from './components/ConfirmationSuccess';
+import ConfirmationInvalid from './components/ConfirmationInvalid';
 
 const App: React.FC = () => {
     const { isAuthenticated} = useAuthContext();
@@ -14,6 +15,10 @@ const App: React.FC = () => {
                 <Route 
                     path="/confirmation-success" 
                     element={<ConfirmationSuccess />} 
+                />
+                <Route 
+                    path="/confirmation-invalid" 
+                    element={<ConfirmationInvalid />} 
                 />
                 <Route 
                     path="*" 
