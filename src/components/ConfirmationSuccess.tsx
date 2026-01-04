@@ -96,7 +96,7 @@ const ConfirmationSuccess: React.FC = () => {
                         e.currentTarget.style.transform = 'translateY(0)';
                     }}
                 >
-                    Към вход
+                    Към сайта
                 </button>
             </div>
         </div>
