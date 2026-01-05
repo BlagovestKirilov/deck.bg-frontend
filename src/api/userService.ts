@@ -17,4 +17,22 @@ export const userService = {
             throw error;
         }
     },
+    changePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean; message: string }> => {
+        try {
+            await apiClient.post('/user/change-password', {
+                currentPassword,
+                newPassword
+            });
+            return { success: true, message: 'Паролата е променена успешно!' };
+        } catch (error: any) {
+            if (error.response?.status === 400) {
+                const errorMessage = error.response?.data?.message || '';
+                if (errorMessage === 'Username or password is incorrect.') {
+                    return { success: false, message: 'Текущата парола е неправилна.' };
+                }
+                return { success: false, message: 'Неуспешна промяна на паролата.' };
+            }
+            throw error;
+        }
+    },
 }
