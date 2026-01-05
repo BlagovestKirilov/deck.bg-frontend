@@ -15,6 +15,15 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
     const [isResendingEmail, setIsResendingEmail] = useState(false);
     const [resendEmailMessage, setResendEmailMessage] = useState<string | null>(null);
     const [emailSentSuccessfully, setEmailSentSuccessfully] = useState(false);
+    const [showPasswordChange, setShowPasswordChange] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [passwordError, setPasswordError] = useState<string | null>(null);
+    const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const isMobile = windowWidth <= 768;
@@ -107,6 +116,94 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
         } finally {
             setIsResendingEmail(false);
         }
+    };
+
+    const validatePasswordForm = (): boolean => {
+        const { currentPassword, newPassword, confirmPassword } = passwordForm;
+        const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
+
+        if (!currentPassword) {
+            setPasswordError("Текущата парола не може да бъде празна.");
+            return false;
+        }
+
+        if (!newPassword) {
+            setPasswordError("Новата парола не може да бъде празна.");
+            return false;
+        }
+        if (newPassword.length < 5 || newPassword.length > 50) {
+            setPasswordError("Паролата трябва да бъде между 5 и 50 символа.");
+            return false;
+        }
+        if (!passwordRegex.test(newPassword)) {
+            setPasswordError("Паролата съдържа неразрешени символи.");
+            return false;
+        }
+
+        if (newPassword !== confirmPassword) {
+            setPasswordError("Паролите не съвпадат!");
+            return false;
+        }
+
+        // Check if new password is different from current password (only if new and confirm match)
+        if (newPassword === currentPassword) {
+            setPasswordError("Новата парола трябва да е\nразлична от текущата парола.");
+            return false;
+        }
+
+        return true;
+    };
+
+    const handlePasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
+        if (passwordError) setPasswordError(null);
+        if (passwordSuccess) setPasswordSuccess(null);
+    };
+
+    const handleChangePassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validatePasswordForm()) return;
+
+        setIsChangingPassword(true);
+        setPasswordError(null);
+        setPasswordSuccess(null);
+
+        try {
+            const result = await userService.changePassword(
+                passwordForm.currentPassword,
+                passwordForm.newPassword
+            );
+            
+            if (result.success) {
+                setPasswordSuccess(result.message);
+                setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+                setTimeout(() => {
+                    setShowPasswordChange(false);
+                    setPasswordSuccess(null);
+                }, 2000);
+            } else {
+                setPasswordError(result.message);
+            }
+        } catch (err: any) {
+            setPasswordError('Грешка при промяна на паролата. Моля опитайте отново.');
+            console.error('Error changing password:', err);
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
+
+    const handleOpenPasswordChange = () => {
+        setShowPasswordChange(true);
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPasswordError(null);
+        setPasswordSuccess(null);
+    };
+
+    const handleClosePasswordChange = () => {
+        setShowPasswordChange(false);
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPasswordError(null);
+        setPasswordSuccess(null);
     };
 
     return (
@@ -234,6 +331,27 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
                                     {resendEmailMessage}
                                 </div>
                             )}
+                            {profile.isEmailConfirmed && (
+                                <button
+                                    onClick={handleOpenPasswordChange}
+                                    style={{
+                                        ...styles.changePasswordButton,
+                                        padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
+                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                        marginTop: isSmallMobile ? '15px' : '20px',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#2d5a27';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = '#1a3a16';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    Промени парола
+                                </button>
+                            )}
                         </div>
 
                         <div style={styles.statsContainer}>
@@ -281,6 +399,201 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
                     </>
                 ) : null}
             </div>
+
+            {showPasswordChange && (
+                <div style={styles.passwordChangeOverlay} onClick={handleClosePasswordChange}>
+                    <div
+                        style={{
+                            ...styles.passwordChangeContainer,
+                            padding: isSmallMobile ? '20px' : isMobile ? '30px' : '40px',
+                            maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '400px',
+                            minWidth: isSmallMobile ? '280px' : '320px',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={styles.passwordChangeHeader}>
+                            <h3 style={{
+                                ...styles.passwordChangeTitle,
+                                fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
+                            }}>
+                                Промяна на парола
+                            </h3>
+                            <button
+                                onClick={handleClosePasswordChange}
+                                style={{
+                                    ...styles.closeButton,
+                                    fontSize: isSmallMobile ? '1.2rem' : '1.5rem',
+                                    width: isSmallMobile ? '32px' : '40px',
+                                    height: isSmallMobile ? '32px' : '40px',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                    e.currentTarget.style.color = '#fff';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '#b0b0b0';
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleChangePassword} style={styles.passwordChangeForm}>
+                            <div style={{...styles.passwordInputGroup, marginBottom: isSmallMobile ? '15px' : '20px'}}>
+                                <label style={{
+                                    ...styles.passwordLabel,
+                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                    marginBottom: isSmallMobile ? '5px' : '8px',
+                                }}>
+                                    Текуща парола
+                                </label>
+                                <input
+                                    type="password"
+                                    name="currentPassword"
+                                    value={passwordForm.currentPassword}
+                                    onChange={handlePasswordInputChange}
+                                    placeholder="••••••••"
+                                    style={{
+                                        ...styles.passwordInput,
+                                        padding: isSmallMobile ? '10px' : '12px',
+                                        fontSize: isSmallMobile ? '14px' : '16px',
+                                    }}
+                                    onFocus={(e) => {
+                                        e.currentTarget.style.borderColor = '#d4af37';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                                    }}
+                                    required
+                                />
+                            </div>
+
+                            <div style={{...styles.passwordInputGroup, marginBottom: isSmallMobile ? '15px' : '20px'}}>
+                                <label style={{
+                                    ...styles.passwordLabel,
+                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                    marginBottom: isSmallMobile ? '5px' : '8px',
+                                }}>
+                                    Нова парола
+                                </label>
+                                <input
+                                    type="password"
+                                    name="newPassword"
+                                    value={passwordForm.newPassword}
+                                    onChange={handlePasswordInputChange}
+                                    placeholder="••••••••"
+                                    style={{
+                                        ...styles.passwordInput,
+                                        padding: isSmallMobile ? '10px' : '12px',
+                                        fontSize: isSmallMobile ? '14px' : '16px',
+                                    }}
+                                    onFocus={(e) => {
+                                        e.currentTarget.style.borderColor = '#d4af37';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                                    }}
+                                    required
+                                />
+                            </div>
+
+                            <div style={{...styles.passwordInputGroup, marginBottom: isSmallMobile ? '15px' : '20px'}}>
+                                <label style={{
+                                    ...styles.passwordLabel,
+                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                    marginBottom: isSmallMobile ? '5px' : '8px',
+                                }}>
+                                    Потвърди новата парола
+                                </label>
+                                <input
+                                    type="password"
+                                    name="confirmPassword"
+                                    value={passwordForm.confirmPassword}
+                                    onChange={handlePasswordInputChange}
+                                    placeholder="••••••••"
+                                    style={{
+                                        ...styles.passwordInput,
+                                        padding: isSmallMobile ? '10px' : '12px',
+                                        fontSize: isSmallMobile ? '14px' : '16px',
+                                    }}
+                                    onFocus={(e) => {
+                                        e.currentTarget.style.borderColor = '#d4af37';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                                    }}
+                                    required
+                                />
+                            </div>
+
+                            <div style={{
+                                ...styles.passwordMessageContainer,
+                                height: (passwordError || passwordSuccess) ? 'auto' : '0px',
+                                minHeight: (passwordError || passwordSuccess) ? (isSmallMobile ? '40px' : isMobile ? '45px' : '50px') : '0px',
+                                marginBottom: (passwordError || passwordSuccess) ? (isSmallMobile ? '10px' : '15px') : '0px',
+                                overflow: 'hidden',
+                            }}>
+                                {passwordError && (
+                                    <div style={{
+                                        ...styles.passwordMessage,
+                                        color: '#e57373',
+                                        backgroundColor: 'rgba(229, 115, 115, 0.1)',
+                                        fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
+                                        padding: isSmallMobile ? '8px 12px' : '10px 15px',
+                                    }}>
+                                        {passwordError}
+                                    </div>
+                                )}
+
+                                {passwordSuccess && (
+                                    <div style={{
+                                        ...styles.passwordMessage,
+                                        color: '#66bb6a',
+                                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                        fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
+                                        padding: isSmallMobile ? '8px 12px' : '10px 15px',
+                                    }}>
+                                        {passwordSuccess}
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isChangingPassword}
+                                style={{
+                                    ...styles.passwordChangeSubmitButton,
+                                    padding: isSmallMobile ? '12px' : isMobile ? '13px' : '15px',
+                                    fontSize: isSmallMobile ? '14px' : isMobile ? '16px' : '18px',
+                                    opacity: isChangingPassword ? 0.7 : 1,
+                                    cursor: isChangingPassword ? 'not-allowed' : 'pointer',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (!isChangingPassword) {
+                                        e.currentTarget.style.backgroundColor = '#2d5a27';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (!isChangingPassword) {
+                                        e.currentTarget.style.backgroundColor = '#1a3a16';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }
+                                }}
+                            >
+                                {isChangingPassword ? 'Промяна...' : 'Промени парола'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -474,6 +787,117 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontSize: '0.9rem',
         fontWeight: '600',
         border: '1px solid',
+    },
+    changePasswordButton: {
+        padding: '14px 28px',
+        backgroundColor: '#1a3a16',
+        color: '#d4af37',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '1rem',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        boxShadow: '0 4px 0 #0d1f0b',
+        transition: 'all 0.3s ease',
+        marginTop: '20px',
+    },
+    passwordChangeOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2000,
+        backdropFilter: 'blur(5px)',
+    },
+    passwordChangeContainer: {
+        backgroundColor: 'rgba(26, 26, 26, 0.98)',
+        borderRadius: '20px',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
+        position: 'relative',
+        maxHeight: '90vh',
+        overflow: 'auto',
+    },
+    passwordChangeHeader: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '25px',
+        borderBottom: '2px solid rgba(255,255,255,0.1)',
+        paddingBottom: '15px',
+    },
+    passwordChangeTitle: {
+        margin: 0,
+        color: '#d4af37',
+        fontWeight: 'bold',
+    },
+    passwordChangeForm: {
+        display: 'flex',
+        flexDirection: 'column',
+    },
+    passwordInputGroup: {
+        marginBottom: '20px',
+    },
+    passwordLabel: {
+        display: 'block',
+        marginBottom: '8px',
+        fontSize: '1rem',
+        fontWeight: 'bold',
+        color: '#d4af37',
+        textTransform: 'uppercase',
+    },
+    passwordInput: {
+        width: '100%',
+        padding: '12px',
+        borderRadius: '8px',
+        border: '1px solid rgba(255,255,255,0.2)',
+        fontSize: '16px',
+        boxSizing: 'border-box',
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        color: '#fff',
+        outline: 'none',
+        transition: 'all 0.3s ease',
+    },
+    passwordMessageContainer: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        boxSizing: 'border-box',
+        transition: 'all 0.3s ease',
+    },
+    passwordMessage: {
+        textAlign: 'center',
+        borderRadius: '8px',
+        padding: '10px 15px',
+        fontSize: '0.9rem',
+        fontWeight: '600',
+        border: '1px solid',
+        wordWrap: 'break-word',
+        overflowWrap: 'break-word',
+        maxWidth: '100%',
+        boxSizing: 'border-box',
+        width: '100%',
+        whiteSpace: 'pre-line',
+        lineHeight: '1.4',
+    },
+    passwordChangeSubmitButton: {
+        width: '100%',
+        padding: '15px',
+        backgroundColor: '#1a3a16',
+        color: '#d4af37',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '18px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        boxShadow: '0 4px 0 #0d1f0b',
+        transition: 'all 0.3s ease',
+        marginTop: '10px',
     },
 };
 
