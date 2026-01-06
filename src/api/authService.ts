@@ -47,5 +47,9 @@ export const authService = {
 
     resetPassword: async (token: string, newPassword: string): Promise<void> => {
         await apiClient.post('/auth/change-password', { token, newPassword });
+    },
+
+    validateLink: async (token: string): Promise<void> => {
+        await apiClient.get(`/auth/validate-link?token=${encodeURIComponent(token)}`);
     }
 };
