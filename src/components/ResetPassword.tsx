@@ -15,6 +15,7 @@ const ResetPassword: React.FC = () => {
     const [passwordError, setPasswordError] = useState<string | null>(null);
     const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
     const [isResettingPassword, setIsResettingPassword] = useState(false);
+    const [isValidatingLink, setIsValidatingLink] = useState(true);
     const styleAddedRef = useRef(false);
 
     useEffect(() => {
@@ -23,6 +24,26 @@ const ResetPassword: React.FC = () => {
             navigate('/confirmation-invalid');
             return;
         }
+
+        // Validate the link when component loads with token
+        const validateLink = async () => {
+            setIsValidatingLink(true);
+            try {
+                await authService.validateLink(token);
+                // If 200, continue normally (do nothing)
+                setIsValidatingLink(false);
+            } catch (err: any) {
+                // If 400 or any error, redirect to invalid page
+                if (err.response?.status === 400 || err.response?.status) {
+                    navigate('/confirmation-invalid');
+                } else {
+                    // For network errors, also redirect
+                    navigate('/confirmation-invalid');
+                }
+            }
+        };
+
+        validateLink();
     }, [token, navigate]);
 
     useEffect(() => {
@@ -135,9 +156,19 @@ const ResetPassword: React.FC = () => {
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
 
-    // Don't render if no token (will redirect)
-    if (!token) {
-        return null;
+    // Don't render if no token or still validating (will redirect)
+    if (!token || isValidatingLink) {
+        return (
+            <div style={styles.container}>
+                <div style={{
+                    ...styles.card,
+                    padding: isSmallMobile ? '30px 20px' : isMobile ? '40px 30px' : '50px 40px',
+                    maxWidth: isSmallMobile ? '90%' : isMobile ? '400px' : '500px',
+                }}>
+                    <div style={styles.loadingText}>Проверка на линка...</div>
+                </div>
+            </div>
+        );
     }
 
     return (
@@ -389,6 +420,12 @@ const styles: { [key: string]: React.CSSProperties } = {
         transition: 'all 0.3s ease',
         marginTop: '20px',
         width: '100%',
+    },
+    loadingText: {
+        textAlign: 'center',
+        color: '#1a3a16',
+        fontSize: '18px',
+        padding: '20px',
     },
 };
 
