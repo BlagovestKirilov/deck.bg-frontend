@@ -5,6 +5,7 @@ import AuthPage from './components/AuthPage';
 import SantaseGame from './components/SantaseGame';
 import ConfirmationSuccess from './components/ConfirmationSuccess';
 import ConfirmationInvalid from './components/ConfirmationInvalid';
+import ResetPassword from './components/ResetPassword';
 
 const App: React.FC = () => {
     const { isAuthenticated} = useAuthContext();
@@ -19,6 +20,10 @@ const App: React.FC = () => {
                 <Route 
                     path="/confirmation-invalid" 
                     element={<ConfirmationInvalid />} 
+                />
+                <Route 
+                    path="/reset-password" 
+                    element={<ResetPassword />} 
                 />
                 <Route 
                     path="*" 

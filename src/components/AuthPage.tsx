@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { authService } from '../api/authService';
 
 const AuthPage: React.FC = () => {
     const [isLogin, setIsLogin] = useState(true);
@@ -8,6 +9,13 @@ const AuthPage: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [showServerError, setShowServerError] = useState(true);
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    
+    // Forgot password state
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+    const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(null);
+    const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState<string | null>(null);
+    const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
 
     const { performAction, isLoading, error: serverError } = useAuth();
 
@@ -154,6 +162,12 @@ const AuthPage: React.FC = () => {
         setLocalError(null);
         setSuccessMessage(null);
         setShowServerError(false);
+        if (!isLogin) {
+            setShowForgotPassword(false);
+            setForgotPasswordEmail('');
+            setForgotPasswordError(null);
+            setForgotPasswordSuccess(null);
+        }
     }, [isLogin]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -175,6 +189,47 @@ const AuthPage: React.FC = () => {
             });
             setSuccessMessage(isLogin ? "Влязохте успешно!" : "Регистрацията е успешна!");
         } catch (err) {}
+    };
+
+    const validateForgotPasswordEmail = (): boolean => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!forgotPasswordEmail) {
+            setForgotPasswordError("Имейлът не може да бъде празен.");
+            return false;
+        }
+        if (!emailRegex.test(forgotPasswordEmail)) {
+            setForgotPasswordError("Невалиден имейл адрес.");
+            return false;
+        }
+        return true;
+    };
+
+    const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!validateForgotPasswordEmail()) return;
+        
+        setIsForgotPasswordLoading(true);
+        setForgotPasswordError(null);
+        setForgotPasswordSuccess(null);
+        
+        try {
+            await authService.forgotPassword(forgotPasswordEmail);
+            setForgotPasswordSuccess("Имейлът за възстановяване на парола е изпратен успешно!");
+            setForgotPasswordEmail('');
+        } catch (err: any) {
+            if (err.response?.status === 400) {
+                const errorMessage = err.response?.data?.message || '';
+                if (errorMessage.toLowerCase().includes('is not confirmed')) {
+                    setForgotPasswordError("Имейлът не е потвърден.");
+                } else {
+                    setForgotPasswordError(errorMessage || "Грешка при изпращане на имейл.");
+                }
+            } else {
+                setForgotPasswordError("Грешка при изпращане на имейл.");
+            }
+        } finally {
+            setIsForgotPasswordLoading(false);
+        }
     };
 
     // Генериране на символи чрез useMemo, за да не се рестартират при промяна на state
@@ -229,13 +284,14 @@ const AuthPage: React.FC = () => {
                 <h2 style={{
                     ...styles.title,
                     fontSize: isSmallMobile ? '20px' : isMobile ? '24px' : '28px',
-                }}>{isLogin ? 'SANTASE' : 'РЕГИСТРАЦИЯ'}</h2>
+                }}>{showForgotPassword ? 'ЗАБРАВЕНА ПАРОЛА' : (isLogin ? 'SANTASE' : 'РЕГИСТРАЦИЯ')}</h2>
                 <p style={{
                     ...styles.subtitle,
                     fontSize: isSmallMobile ? '11px' : isMobile ? '12px' : '13px',
                     marginBottom: isSmallMobile ? '15px' : '25px',
-                }}>{isLogin ? 'Влез в кралството на картите' : 'Стани част от елита'}</p>
+                }}>{showForgotPassword ? 'Въведете вашия имейл адрес за възстановяване на парола' : (isLogin ? 'Влез в кралството на картите' : 'Стани част от елита')}</p>
 
+                {!showForgotPassword ? (
                 <form onSubmit={handleSubmit} style={styles.form}>
                     <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
                         <label style={{
@@ -340,17 +396,97 @@ const AuthPage: React.FC = () => {
                         {isLoading ? '...' : (isLogin ? 'Влез' : 'Регистрирай се')}
                     </button>
                 </form>
+                ) : (
+                <form onSubmit={handleForgotPasswordSubmit} style={styles.form}>
+                    <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
+                        <label style={{
+                            ...styles.label,
+                            fontSize: isSmallMobile ? '10px' : '12px',
+                            marginBottom: isSmallMobile ? '4px' : '5px',
+                        }}>Имейл</label>
+                        <input
+                            type="email"
+                            name="forgotPasswordEmail"
+                            value={forgotPasswordEmail}
+                            onChange={(e) => {
+                                setForgotPasswordEmail(e.target.value);
+                                if (forgotPasswordError) setForgotPasswordError(null);
+                                if (forgotPasswordSuccess) setForgotPasswordSuccess(null);
+                            }}
+                            placeholder="example@mail.com"
+                            style={{
+                                ...styles.input,
+                                padding: isSmallMobile ? '10px' : '12px',
+                                fontSize: isSmallMobile ? '14px' : '16px',
+                            }}
+                            required
+                        />
+                    </div>
 
-                <p style={{
-                    ...styles.toggleText,
-                    marginTop: isSmallMobile ? '15px' : '20px',
-                    fontSize: isSmallMobile ? '12px' : '14px',
-                }}>
-                    {isLogin ? "Нямаш профил?" : "Вече имаш профил?"}
-                    <span onClick={() => setIsLogin(!isLogin)} style={styles.toggleLink}>
-                        {isLogin ? 'Създай сега' : 'Влез тук'}
-                    </span>
-                </p>
+                    {forgotPasswordError && (
+                        <div style={styles.errorBox}>{forgotPasswordError}</div>
+                    )}
+
+                    {forgotPasswordSuccess && (
+                        <div style={styles.successBox}>{forgotPasswordSuccess}</div>
+                    )}
+
+                    <button 
+                        type="submit" 
+                        disabled={isForgotPasswordLoading}
+                        style={{
+                            ...styles.button,
+                            opacity: isForgotPasswordLoading ? 0.7 : 1,
+                            padding: isSmallMobile ? '12px' : isMobile ? '13px' : '15px',
+                            fontSize: isSmallMobile ? '14px' : isMobile ? '16px' : '18px',
+                        }}
+                    >
+                        {isForgotPasswordLoading ? '...' : 'Изпрати'}
+                    </button>
+                </form>
+                )}
+
+                {!showForgotPassword && isLogin && (
+                    <p style={{
+                        ...styles.forgotPasswordLink,
+                        marginTop: isSmallMobile ? '10px' : '15px',
+                        fontSize: isSmallMobile ? '11px' : '12px',
+                    }}>
+                        <span onClick={() => setShowForgotPassword(true)} style={styles.toggleLink}>
+                            Забравена парола?
+                        </span>
+                    </p>
+                )}
+
+                {showForgotPassword && (
+                    <p style={{
+                        ...styles.toggleText,
+                        marginTop: isSmallMobile ? '15px' : '20px',
+                        fontSize: isSmallMobile ? '12px' : '14px',
+                    }}>
+                        <span onClick={() => {
+                            setShowForgotPassword(false);
+                            setForgotPasswordEmail('');
+                            setForgotPasswordError(null);
+                            setForgotPasswordSuccess(null);
+                        }} style={styles.toggleLink}>
+                            Назад към вход
+                        </span>
+                    </p>
+                )}
+
+                {!showForgotPassword && (
+                    <p style={{
+                        ...styles.toggleText,
+                        marginTop: isSmallMobile ? '15px' : '20px',
+                        fontSize: isSmallMobile ? '12px' : '14px',
+                    }}>
+                        {isLogin ? "Нямаш профил?" : "Вече имаш профил?"}
+                        <span onClick={() => setIsLogin(!isLogin)} style={styles.toggleLink}>
+                            {isLogin ? 'Създай сега' : 'Влез тук'}
+                        </span>
+                    </p>
+                )}
             </div>
         </div>
     );
@@ -385,7 +521,8 @@ const styles: { [key: string]: React.CSSProperties } = {
     errorBox: { padding: '10px', backgroundColor: '#fff0f0', color: '#a00', borderRadius: '5px', marginBottom: '15px', fontSize: '13px', borderLeft: '4px solid #a00' },
     successBox: { padding: '10px', backgroundColor: '#f0fff0', color: '#0a0', borderRadius: '5px', marginBottom: '15px', fontSize: '13px', borderLeft: '4px solid #0a0' },
     toggleText: { marginTop: '20px', textAlign: 'center', fontSize: '14px', color: '#444' },
-    toggleLink: { color: '#1a3a16', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px', textDecoration: 'underline' }
+    toggleLink: { color: '#1a3a16', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px', textDecoration: 'underline' },
+    forgotPasswordLink: { textAlign: 'center', fontSize: '12px', color: '#444' }
 };
 
 export default AuthPage;

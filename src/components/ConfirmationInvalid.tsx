@@ -76,7 +76,7 @@ const ConfirmationInvalid: React.FC = () => {
                     fontSize: isSmallMobile ? '14px' : isMobile ? '16px' : '18px',
                     marginTop: isSmallMobile ? '15px' : '20px',
                 }}>
-                    Линкът за потвърждение на имейл е невалиден или е изтекъл.
+                    Линкът е невалиден или е изтекъл.
                 </p>
                 
                 <button
