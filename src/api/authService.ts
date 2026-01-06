@@ -39,5 +39,13 @@ export const authService = {
         localStorage.removeItem('token');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('username');
+    },
+
+    forgotPassword: async (email: string): Promise<void> => {
+        await apiClient.post('/auth/forgot-password', { email });
+    },
+
+    resetPassword: async (token: string, newPassword: string): Promise<void> => {
+        await apiClient.post('/auth/change-password', { token, newPassword });
     }
 };
