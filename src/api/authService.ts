@@ -50,6 +50,6 @@ export const authService = {
     },
 
     validateLink: async (token: string): Promise<void> => {
-        await apiClient.get(`/auth/validate-link?token=${encodeURIComponent(token)}`);
+        await apiClient.get(`/auth/forgot-password/verify?token=${encodeURIComponent(token)}`);
     }
 };
