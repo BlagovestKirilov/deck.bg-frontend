@@ -449,8 +449,8 @@ const AuthPage: React.FC = () => {
                 {!showForgotPassword && isLogin && (
                     <p style={{
                         ...styles.forgotPasswordLink,
-                        marginTop: isSmallMobile ? '10px' : '15px',
-                        fontSize: isSmallMobile ? '11px' : '12px',
+                        marginTop: isSmallMobile ? '15px' : '20px',
+                        fontSize: isSmallMobile ? '12px' : '14px',
                     }}>
                         <span onClick={() => setShowForgotPassword(true)} style={styles.toggleLink}>
                             Забравена парола?
@@ -522,7 +522,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     successBox: { padding: '10px', backgroundColor: '#f0fff0', color: '#0a0', borderRadius: '5px', marginBottom: '15px', fontSize: '13px', borderLeft: '4px solid #0a0' },
     toggleText: { marginTop: '20px', textAlign: 'center', fontSize: '14px', color: '#444' },
     toggleLink: { color: '#1a3a16', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px', textDecoration: 'underline' },
-    forgotPasswordLink: { textAlign: 'center', fontSize: '12px', color: '#444' }
+    forgotPasswordLink: { textAlign: 'center', fontSize: '14px', color: '#444' }
 };
 
 export default AuthPage;
