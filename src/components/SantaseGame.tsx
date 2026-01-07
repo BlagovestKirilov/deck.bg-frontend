@@ -438,7 +438,6 @@ const SantaseGame: React.FC = () => {
         }
 
         if (!gameIdRef.current) {
-            console.log('No active game, stopping reconnection attempts');
             isReconnectingRef.current = false;
             retryAttemptRef.current = 0;
             return;
@@ -447,14 +446,12 @@ const SantaseGame: React.FC = () => {
         // Check both React state and actual STOMP connection state
         const stompConnected = stompClient.current && stompClient.current.connected;
         if (isConnected && stompConnected) {
-            console.log('Connection restored, stopping reconnection attempts');
             isReconnectingRef.current = false;
             retryAttemptRef.current = 0;
             return;
         }
 
         if (connectionLockRef.current) {
-            console.log('Connection attempt in progress, will retry after current attempt...');
             // Schedule retry after current attempt completes
             const delay = 2000; // Max 10 seconds
             reconnectTimeoutRef.current = setTimeout(() => {
@@ -465,7 +462,6 @@ const SantaseGame: React.FC = () => {
 
         // Calculate delay with exponential backoff (2s, 4s, 8s, max 10s)
         const delay = 2000;
-        console.log(`Attempting reconnection (attempt ${retryAttemptRef.current + 1}) after ${delay}ms...`);
 
         reconnectTimeoutRef.current = setTimeout(() => {
             if (!gameIdRef.current || isConnected) {
@@ -491,7 +487,6 @@ const SantaseGame: React.FC = () => {
         if (!isConnected && gameState && gameIdRef.current) {
             // Only start reconnection if not already reconnecting
             if (!isReconnectingRef.current) {
-                console.log('Connection lost during active game, starting reconnection attempts...');
                 isReconnectingRef.current = true;
                 reconnectStartTimeRef.current = Date.now();
                 retryAttemptRef.current = 0;
@@ -737,11 +732,8 @@ const SantaseGame: React.FC = () => {
     };
 
     const connectWebSocket = (isReconnect: boolean = false) => {
-        console.log('connectWebSocket called', isReconnect ? '(reconnect)' : '(initial)');
-
         // Prevent multiple simultaneous connection attempts
         if (connectionLockRef.current) {
-            console.log('Connection attempt already in progress, skipping...');
             return;
         }
 
@@ -763,7 +755,7 @@ const SantaseGame: React.FC = () => {
                 try {
                     gameSubscriptionRef.current.unsubscribe();
                 } catch (e) {
-                    console.log('Error unsubscribing old subscription:', e);
+                    // Error unsubscribing old subscription
                 }
                 gameSubscriptionRef.current = null;
             }
@@ -775,7 +767,7 @@ const SantaseGame: React.FC = () => {
                         stompClient.current.disconnect();
                     }
                 } catch (e) {
-                    console.log('Error disconnecting old STOMP client:', e);
+                    // Error disconnecting old STOMP client
                 }
                 stompClient.current = null;
             }
@@ -785,7 +777,7 @@ const SantaseGame: React.FC = () => {
                 try {
                     socketRef.current.close();
                 } catch (e) {
-                    console.log('Error closing old socket:', e);
+                    // Error closing old socket
                 }
                 socketRef.current = null;
             }
@@ -813,7 +805,6 @@ const SantaseGame: React.FC = () => {
             connectionTimeoutRef.current = null;
         }
 
-        console.log('Creating new SockJS connection...');
         const socket = new SockJS(API_BASE_URL + `/ws-game?token=${sockToken}`);
         socketRef.current = socket;
         const client = Stomp.over(socket);
@@ -825,7 +816,6 @@ const SantaseGame: React.FC = () => {
         // If connection doesn't succeed within 15 seconds, treat it as failure and retry
         connectionTimeoutRef.current = setTimeout(() => {
             if (!isConnected && gameIdRef.current && connectionLockRef.current) {
-                console.log('Connection attempt timed out after 3 seconds, will retry...');
                 connectionLockRef.current = false;
                 // Trigger retry
                 if (isReconnectingRef.current) {
@@ -836,7 +826,6 @@ const SantaseGame: React.FC = () => {
 
         // Handle socket close events for reconnection
         socket.onclose = (event: CloseEvent) => {
-            console.log('WebSocket closed:', event, 'wasClean:', event.wasClean, 'code:', event.code);
             setIsConnected(false);
             connectionLockRef.current = false;
 
@@ -857,13 +846,11 @@ const SantaseGame: React.FC = () => {
             if (gameIdRef.current) {
                 // Ensure we're in reconnecting state
                 if (!isReconnectingRef.current) {
-                    console.log('Socket closed, starting reconnection attempts...');
                     isReconnectingRef.current = true;
                     reconnectStartTimeRef.current = Date.now();
                     retryAttemptRef.current = 0;
                 } else {
                     // Already reconnecting, but connection failed, so retry with current attempt count
-                    console.log('Socket closed during reconnection attempt, will retry (attempt:', retryAttemptRef.current, ')...');
                     // Don't reset retryAttemptRef - keep it so exponential backoff continues
                 }
                 // Always call attemptReconnect to schedule the next retry
@@ -879,7 +866,6 @@ const SantaseGame: React.FC = () => {
         stompClient.current = client;
 
         const onConnect = () => {
-            console.log('WebSocket connected', isReconnect ? '(reconnected)' : '');
             setIsConnected(true);
             connectionLockRef.current = false;
             isReconnectingRef.current = false;
@@ -914,9 +900,7 @@ const SantaseGame: React.FC = () => {
                 // Don't rely on timeSinceLastMessage - games can have quiet periods without messages
                 if (!isReconnectingRef.current && !stompConnected) {
                     // STOMP reports disconnected - definitely need to reconnect
-                    console.log('Connection appears dead or disconnected. STOMP connected:', stompConnected);
                     setIsConnected(false);
-                    console.log('Connection dead, starting reconnection attempts...');
                     isReconnectingRef.current = true;
                     reconnectStartTimeRef.current = Date.now();
                     retryAttemptRef.current = 0;
@@ -925,7 +909,6 @@ const SantaseGame: React.FC = () => {
                     // If we've been trying to reconnect for more than 60 seconds, reset the flag and try again
                     const reconnectDuration = Date.now() - reconnectStartTimeRef.current;
                     if (reconnectDuration > 60000) {
-                        console.log('Reconnection attempt timed out after 60s, resetting and retrying...');
                         isReconnectingRef.current = false;
                         reconnectStartTimeRef.current = null;
                         retryAttemptRef.current = 0;
@@ -936,13 +919,12 @@ const SantaseGame: React.FC = () => {
 
             // If we have an active game, reconnect to it (use gameIdRef instead of gameState in case state was lost)
             if (gameIdRef.current) {
-                console.log('Reconnecting to game topic:', `/topic/game/${gameIdRef.current}/${username}`);
                 // Unsubscribe from old subscription if exists
                 if (gameSubscriptionRef.current) {
                     try {
                         gameSubscriptionRef.current.unsubscribe();
                     } catch (e) {
-                        console.log('Error unsubscribing (expected if already unsubscribed):', e);
+                        // Error unsubscribing (expected if already unsubscribed)
                     }
                 }
                 // Resubscribe to game updates
@@ -953,13 +935,11 @@ const SantaseGame: React.FC = () => {
                         handleGameUpdate(JSON.parse(m.body));
                     }
                 );
-                console.log('Resubscribed to game topic');
                 // Get current state
                 gameService.getInitialState().then(res => {
                     if (res.data) {
                         lastMessageTimeRef.current = Date.now();
                         handleGameUpdate(res.data);
-                        console.log('Game state restored on reconnect');
                     }
                 }).catch(err => {
                     console.error('Failed to get initial state on reconnect:', err);
@@ -1009,14 +989,12 @@ const SantaseGame: React.FC = () => {
             // Attempt to reconnect if we have an active game (use gameIdRef to avoid closure issues)
             if (gameIdRef.current) {
                 if (!isReconnectingRef.current) {
-                    console.log('Connection error detected, starting reconnection attempts...');
                     isReconnectingRef.current = true;
                     reconnectStartTimeRef.current = Date.now();
                     retryAttemptRef.current = 0;
                     attemptReconnect();
                 } else {
                     // Already reconnecting, but connection failed, so retry with current attempt count
-                    console.log('Connection error during reconnection attempt, will retry (attempt:', retryAttemptRef.current, ')...');
                     // Don't reset retryAttemptRef - keep it so exponential backoff continues
                     attemptReconnect();
                 }
