@@ -187,7 +187,7 @@ const AuthPage: React.FC = () => {
                 password: form.password,
                 ...(isLogin ? {} : { email: form.email })
             });
-            setSuccessMessage(isLogin ? "Влязохте успешно!" : "Регистрацията е успешна!");
+            setSuccessMessage(isLogin ? "Влязохте успешно!" : "Успешна регистрация! Изпратихме линк за потвърждение на вашия имейл.");
         } catch (err) {}
     };
 
