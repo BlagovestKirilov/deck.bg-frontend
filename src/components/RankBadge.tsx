@@ -397,9 +397,31 @@ const RankShield: React.FC<{
 const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', windowWidth = 1024 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const config = RANK_CONFIG[rank];
+  const badgeRef = React.useRef<HTMLDivElement>(null);
 
   const isMobile = windowWidth <= 768;
   const isSmallMobile = windowWidth <= 480;
+
+  // Close tooltip when clicking outside (for mobile)
+  React.useEffect(() => {
+    if (isMobile && showTooltip) {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (badgeRef.current && !badgeRef.current.contains(event.target as Node)) {
+          setShowTooltip(false);
+        }
+      };
+      
+      // Add listener with a small delay to avoid immediate close
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 10);
+      
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('click', handleClickOutside);
+      };
+    }
+  }, [isMobile, showTooltip]);
 
   const sizeConfig = {
     small: { badge: isSmallMobile ? 36 : isMobile ? 40 : 44, tooltip: '0.75rem' },
@@ -411,7 +433,7 @@ const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', windowWidt
   const isLegend = rank === 'LEGEND';
 
   return (
-    <div style={{ position: 'relative', display: 'inline-flex' }}>
+    <div ref={badgeRef} style={{ position: 'relative', display: 'inline-flex' }}>
       <div
         style={{
           cursor: 'pointer',
