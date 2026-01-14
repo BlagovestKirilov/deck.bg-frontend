@@ -3,8 +3,11 @@ import SockJS from 'sockjs-client';
 import {Stomp} from '@stomp/stompjs';
 import {useAuthContext} from '../context/AuthContext';
 import {gameService} from '../api/gameService';
+import {userService} from '../api/userService';
 import {Card, GameState, Suit} from '../types/game.types';
+import {Rank} from '../types/user.types';
 import ProfilePage from './ProfilePage';
+import RankBadge from './RankBadge';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -253,12 +256,14 @@ const Navbar: React.FC<{
     username: string;
     onLogout: () => void;
     onProfileClick: () => void;
-    windowWidth?: number
+    windowWidth?: number;
+    rank?: Rank;
 }> = ({
           username,
           onLogout,
           onProfileClick,
-          windowWidth = 1024
+          windowWidth = 1024,
+          rank = 'UNRANKED'
       }) => {
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
@@ -276,6 +281,12 @@ const Navbar: React.FC<{
                 SANTASE <span style={{color: '#fff'}}>66</span>
             </div>
             <div style={styles.navLinks}>
+                {/* Rank Badge */}
+                <RankBadge 
+                    rank={rank} 
+                    size="small" 
+                    windowWidth={windowWidth}
+                />
                 <div
                     onClick={onProfileClick}
                     style={{
@@ -390,6 +401,7 @@ const SantaseGame: React.FC = () => {
     const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [showProfile, setShowProfile] = useState<boolean>(false);
+    const [userRank, setUserRank] = useState<Rank>('UNRANKED');
     const prevGameStateRef = useRef<GameState | null>(null);
 
     const stompClient = useRef<any>(null);
@@ -416,6 +428,19 @@ const SantaseGame: React.FC = () => {
         handleResize(); // Initial call
 
         return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    // Fetch user profile (including rank) on mount
+    useEffect(() => {
+        const fetchProfile = async () => {
+            try {
+                const profile = await userService.getProfile();
+                setUserRank(profile.rank);
+            } catch (err) {
+                console.error('Error fetching profile:', err);
+            }
+        };
+        fetchProfile();
     }, []);
 
     // Auto-reconnect on mount if we have an active game
@@ -1046,7 +1071,7 @@ const SantaseGame: React.FC = () => {
     return (
         <div style={styles.table}>
             {!gameState && <Navbar username={username} onLogout={logout} onProfileClick={() => setShowProfile(true)}
-                                   windowWidth={windowWidth}/>}
+                                   windowWidth={windowWidth} rank={userRank}/>}
 
             {/* Loading overlay when disconnected */}
             {gameState && !isConnected && (
