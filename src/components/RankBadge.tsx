@@ -5,6 +5,8 @@ interface RankBadgeProps {
   rank: Rank;
   size?: 'small' | 'medium' | 'large';
   windowWidth?: number;
+  wins?: number;
+  losses?: number;
 }
 
 /* =========================
@@ -394,7 +396,7 @@ const RankShield: React.FC<{
 /* =========================
    Rank Badge Component
 ========================= */
-const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', windowWidth = 1024 }) => {
+const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', windowWidth = 1024, wins = 0, losses = 0 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const config = RANK_CONFIG[rank];
   const badgeRef = React.useRef<HTMLDivElement>(null);
@@ -494,7 +496,9 @@ const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', windowWidt
               borderTop: `1.5px solid ${config.borderColor}`,
             }}
           />
-          {config.name}
+          {rank === 'UNRANKED' 
+            ? `Рангът ще бъде отключен след ${10 - wins - losses} ${(10 - wins - losses) === 1 ? 'игра' : 'игри'}`
+            : config.name}
         </div>
       )}
 
