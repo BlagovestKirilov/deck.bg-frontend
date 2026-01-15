@@ -258,12 +258,16 @@ const Navbar: React.FC<{
     onProfileClick: () => void;
     windowWidth?: number;
     rank?: Rank;
+    wins?: number;
+    losses?: number;
 }> = ({
           username,
           onLogout,
           onProfileClick,
           windowWidth = 1024,
-          rank = 'UNRANKED'
+          rank = 'UNRANKED',
+          wins = 0,
+          losses = 0
       }) => {
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
@@ -286,6 +290,8 @@ const Navbar: React.FC<{
                     rank={rank} 
                     size="small" 
                     windowWidth={windowWidth}
+                    wins={wins}
+                    losses={losses}
                 />
                 <div
                     onClick={onProfileClick}
@@ -402,7 +408,10 @@ const SantaseGame: React.FC = () => {
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [showProfile, setShowProfile] = useState<boolean>(false);
     const [userRank, setUserRank] = useState<Rank>('UNRANKED');
+    const [userWins, setUserWins] = useState<number>(0);
+    const [userLosses, setUserLosses] = useState<number>(0);
     const prevGameStateRef = useRef<GameState | null>(null);
+    const profileFetchedRef = useRef<boolean>(false);
 
     const stompClient = useRef<any>(null);
     const socketRef = useRef<any>(null);
@@ -432,10 +441,16 @@ const SantaseGame: React.FC = () => {
 
     // Fetch user profile (including rank) on mount
     useEffect(() => {
+        // Prevent duplicate fetch in StrictMode
+        if (profileFetchedRef.current) return;
+        profileFetchedRef.current = true;
+
         const fetchProfile = async () => {
             try {
                 const profile = await userService.getProfile();
                 setUserRank(profile.rank);
+                setUserWins(profile.santaseWins || 0);
+                setUserLosses(profile.santaseLosses || 0);
             } catch (err) {
                 console.error('Error fetching profile:', err);
             }
@@ -1071,7 +1086,7 @@ const SantaseGame: React.FC = () => {
     return (
         <div style={styles.table}>
             {!gameState && <Navbar username={username} onLogout={logout} onProfileClick={() => setShowProfile(true)}
-                                   windowWidth={windowWidth} rank={userRank}/>}
+                                   windowWidth={windowWidth} rank={userRank} wins={userWins} losses={userLosses}/>}
 
             {/* Loading overlay when disconnected */}
             {gameState && !isConnected && (
