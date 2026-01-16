@@ -8,6 +8,7 @@ import {Card, GameState, Suit} from '../types/game.types';
 import {Rank} from '../types/user.types';
 import ProfilePage from './ProfilePage';
 import RankBadge from './RankBadge';
+import RankIcon, { getRankLabel } from './RankIcon';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -142,6 +143,17 @@ const SUIT_MAP: Record<Suit, { symbol: string; color: string }> = {
 
 const RANK_ORDER: Record<string, number> = {
     'ACE': 0, 'TEN': 1, 'KING': 2, 'QUEEN': 3, 'JACK': 4, 'NINE': 5
+};
+
+// Add rank priority map for comparing user ranks
+const RANK_PRIORITY: Record<string, number> = {
+    'UNRANKED': 0,
+    'BRONZE': 1,
+    'SILVER': 2,
+    'GOLD': 3,
+    'PLATINUM': 4,
+    'DIAMOND': 5,
+    'LEGEND': 6,
 };
 
 const CardComponent: React.FC<{
@@ -413,6 +425,37 @@ const SantaseGame: React.FC = () => {
     const prevGameStateRef = useRef<GameState | null>(null);
     const profileFetchedRef = useRef<boolean>(false);
 
+    // One-time rank-up popup handling
+    const rankPopupShownRef = useRef<boolean>(false); // prevents duplicate popups in a session
+    const [showRankUpModal, setShowRankUpModal] = useState<boolean>(false);
+    const [rankUpNewRank, setRankUpNewRank] = useState<Rank | null>(null);
+
+    // Helper to refresh profile, update local state and localStorage, and show rank-up modal if rank improved
+    const refreshProfileAndCheckRank = async () => {
+        try {
+            const profile = await userService.getProfile();
+            setUserRank(profile.rank);
+            setUserWins(profile.santaseWins || 0);
+            setUserLosses(profile.santaseLosses || 0);
+
+            try {
+                const saved = (localStorage.getItem('lastSantaseRank') as Rank | null) || 'UNRANKED';
+                const savedVal = RANK_PRIORITY[saved] ?? 0;
+                const newVal = RANK_PRIORITY[profile.rank] ?? 0;
+                if (newVal > savedVal && !rankPopupShownRef.current) {
+                    rankPopupShownRef.current = true;
+                    setRankUpNewRank(profile.rank);
+                    setShowRankUpModal(true);
+                }
+                localStorage.setItem('lastSantaseRank', profile.rank);
+            } catch (e) {
+                console.warn('Could not access localStorage for rank persistence', e);
+            }
+        } catch (err) {
+            console.error('Error fetching profile:', err);
+        }
+    };
+
     const stompClient = useRef<any>(null);
     const socketRef = useRef<any>(null);
     const gameIdRef = useRef<string | null>(null);
@@ -446,14 +489,7 @@ const SantaseGame: React.FC = () => {
         profileFetchedRef.current = true;
 
         const fetchProfile = async () => {
-            try {
-                const profile = await userService.getProfile();
-                setUserRank(profile.rank);
-                setUserWins(profile.santaseWins || 0);
-                setUserLosses(profile.santaseLosses || 0);
-            } catch (err) {
-                console.error('Error fetching profile:', err);
-            }
+            await refreshProfileAndCheckRank();
         };
         fetchProfile();
     }, []);
@@ -571,35 +607,29 @@ const SantaseGame: React.FC = () => {
             action: async () => {
                 try {
                     await gameService.finishGame();
+                    // cleanup similar to finishGameAndReturn
+                    try {
+                        if (gameSubscriptionRef.current) {
+                            gameSubscriptionRef.current.unsubscribe();
+                            gameSubscriptionRef.current = null;
+                        }
+                    } catch (e) {
+                        // ignore
+                    }
+                    try { if (stompClient.current) stompClient.current.disconnect(); } catch (e) {}
+                    try { if (socketRef.current) socketRef.current.close(); } catch (e) {}
+                    gameIdRef.current = null;
+                    if (reconnectTimeoutRef.current) { clearTimeout(reconnectTimeoutRef.current); reconnectTimeoutRef.current = null; }
+                    if (connectionTimeoutRef.current) { clearTimeout(connectionTimeoutRef.current); connectionTimeoutRef.current = null; }
+                    if (connectionCheckIntervalRef.current) { clearInterval(connectionCheckIntervalRef.current); connectionCheckIntervalRef.current = null; }
+                    connectionLockRef.current = false;
+                    isReconnectingRef.current = false;
+                    setIsConnected(false);
                     setGameState(null);
                     setFinalWinner(null);
-                    setIsSearching(false);
-                    gameIdRef.current = null;
-                    if (gameSubscriptionRef.current) {
-                        gameSubscriptionRef.current.unsubscribe();
-                        gameSubscriptionRef.current = null;
-                    }
-                    if (reconnectTimeoutRef.current) {
-                        clearTimeout(reconnectTimeoutRef.current);
-                        reconnectTimeoutRef.current = null;
-                    }
-                    if (connectionTimeoutRef.current) {
-                        clearTimeout(connectionTimeoutRef.current);
-                        connectionTimeoutRef.current = null;
-                    }
-                    isReconnectingRef.current = false;
-                    retryAttemptRef.current = 0;
-                    connectionLockRef.current = false;
-                    setIsConnected(false);
-                    if (stompClient.current) {
-                        stompClient.current.disconnect();
-                    }
-                    if (socketRef.current) {
-                        socketRef.current.close();
-                    }
-                    if (socketRef.current) {
-                        socketRef.current.close();
-                    }
+
+                    // Refresh profile after finishing
+                    await refreshProfileAndCheckRank();
                 } catch (e) {
                     console.error(e);
                 }
@@ -1082,6 +1112,65 @@ const SantaseGame: React.FC = () => {
     };
 
     const isFirstPlayerMe = gameState?.firstPlayerUsername === username;
+
+    // Called at game end to ensure backend finish endpoint is invoked, then refresh profile and return to lobby
+    const finishGameAndReturn = async () => {
+        try {
+            // Clean up local connection/subscription/timeouts similar to leaving
+            try {
+                if (gameSubscriptionRef.current) {
+                    gameSubscriptionRef.current.unsubscribe();
+                    gameSubscriptionRef.current = null;
+                }
+            } catch (e) {
+                // ignore
+            }
+            try {
+                if (stompClient.current) {
+                    stompClient.current.disconnect();
+                }
+            } catch (e) {
+                // ignore
+            }
+            try {
+                if (socketRef.current) {
+                    socketRef.current.close();
+                }
+            } catch (e) {
+                // ignore
+            }
+
+            // Clear refs and local flags
+            gameIdRef.current = null;
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
+            }
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+                connectionCheckIntervalRef.current = null;
+            }
+            connectionLockRef.current = false;
+            isReconnectingRef.current = false;
+            setIsConnected(false);
+
+            // Go to lobby
+            setGameState(null);
+            setFinalWinner(null);
+
+            // Refresh profile and check rank-up
+            await refreshProfileAndCheckRank();
+        } catch (err) {
+            console.error('Error finishing game and returning to lobby', err);
+            // As a fallback, still try to return to lobby
+            setGameState(null);
+            setFinalWinner(null);
+        }
+    };
 
     return (
         <div style={styles.table}>
@@ -1689,7 +1778,7 @@ const SantaseGame: React.FC = () => {
                                             }
                                         </p>
                                     </div>
-                                    <button onClick={() => window.location.reload()} style={{
+                                    <button onClick={() => { finishGameAndReturn(); }} style={{
                                         ...styles.btnMain,
                                         padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '15px 40px',
                                         fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
@@ -1708,6 +1797,28 @@ const SantaseGame: React.FC = () => {
                     message={confirmAction.message}
                     onConfirm={confirmAction.action}
                     onCancel={confirmAction.onCancel ? confirmAction.onCancel : () => setConfirmAction(null)}
+                    windowWidth={windowWidth}
+                />
+            )}
+
+            {/* One-time rank-up modal shown when user's rank improved compared to last stored rank */}
+            {showRankUpModal && (
+                <AppModal
+                    title="Поздравления!"
+                    message={(
+                        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px'}}>
+                            <div style={{fontWeight: 700}}>{rankUpNewRank ? `Рангът ви е повишен на ${getRankLabel(rankUpNewRank)}` : 'Рангът ви е повишен!'}</div>
+                            <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+                                    <div style={{padding: 6, borderRadius: 12, background: 'rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                                        <RankIcon rank={rankUpNewRank ?? 'UNRANKED'} size={80} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    onConfirm={() => setShowRankUpModal(false)}
+                    confirmText="ОК"
                     windowWidth={windowWidth}
                 />
             )}
