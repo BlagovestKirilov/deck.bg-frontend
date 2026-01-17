@@ -281,65 +281,170 @@ const Navbar: React.FC<{
           wins = 0,
           losses = 0
       }) => {
+    const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
     const isMobile = windowWidth <= 768;
     const isSmallMobile = windowWidth <= 480;
 
+    const handleLogoutClick = () => {
+        setShowLogoutConfirm(true);
+    };
+
+    const handleConfirmLogout = () => {
+        setShowLogoutConfirm(false);
+        onLogout();
+    };
+
+    const handleCancelLogout = () => {
+        setShowLogoutConfirm(false);
+    };
+
     return (
-        <nav style={{
-            ...styles.navbar,
-            height: isSmallMobile ? '50px' : isMobile ? '60px' : '70px',
-            padding: isSmallMobile ? '0 15px' : isMobile ? '0 20px' : '0 40px',
-        }}>
-            <div style={{
-                ...styles.navLogo,
-                fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.6rem',
+        <>
+            <nav style={{
+                ...styles.navbar,
+                height: isSmallMobile ? '50px' : isMobile ? '60px' : '70px',
+                padding: isSmallMobile ? '0 15px' : isMobile ? '0 20px' : '0 40px',
             }}>
-                SANTASE <span style={{color: '#fff'}}>66</span>
-            </div>
-            <div style={styles.navLinks}>
-                {/* Rank Badge */}
-                <RankBadge 
-                    rank={rank} 
-                    size="small" 
-                    windowWidth={windowWidth}
-                    wins={wins}
-                    losses={losses}
-                />
-                <div
-                    onClick={onProfileClick}
-                    style={{
-                        ...styles.userInfo,
-                        cursor: 'pointer',
-                        padding: '5px 10px',
-                        borderRadius: '8px',
-                        transition: 'all 0.2s',
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                >
-                    <span style={styles.userIcon}>👤</span>
-                    {!isSmallMobile && (
-                        <span style={{
-                            fontWeight: 600,
-                            fontSize: isMobile ? '0.9rem' : '1rem',
-                        }}>
-                            {isMobile && username.length > 10 ? username.substring(0, 10) + '...' : username}
-                        </span>
-                    )}
-                </div>
-                <button onClick={onLogout} style={{
-                    ...styles.btnLogout,
-                    padding: isSmallMobile ? '4px 10px' : isMobile ? '5px 12px' : '5px 15px',
-                    fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.9rem' : '1rem',
+                <div style={{
+                    ...styles.navLogo,
+                    fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.6rem',
                 }}>
-                    {isSmallMobile ? '✕' : 'ИЗХОД'}
-                </button>
-            </div>
-        </nav>
+                    SANTASE <span style={{color: '#fff'}}>66</span>
+                </div>
+                <div style={styles.navLinks}>
+                    {/* Rank Badge */}
+                    <RankBadge 
+                        rank={rank} 
+                        size="small" 
+                        windowWidth={windowWidth}
+                        wins={wins}
+                        losses={losses}
+                    />
+                    <div
+                        onClick={onProfileClick}
+                        style={{
+                            ...styles.userInfo,
+                            cursor: 'pointer',
+                            padding: '5px 10px',
+                            borderRadius: '8px',
+                            transition: 'all 0.2s',
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                    >
+                        <span style={styles.userIcon}>👤</span>
+                        {!isSmallMobile && (
+                            <span style={{
+                                fontWeight: 600,
+                                fontSize: isMobile ? '0.9rem' : '1rem',
+                            }}>
+                                {isMobile && username.length > 10 ? username.substring(0, 10) + '...' : username}
+                            </span>
+                        )}
+                    </div>
+                    <button onClick={handleLogoutClick} style={{
+                        ...styles.btnLogout,
+                        padding: isSmallMobile ? '4px 10px' : isMobile ? '5px 12px' : '5px 15px',
+                        fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.9rem' : '1rem',
+                    }}>
+                        {isSmallMobile ? '✕' : 'ИЗХОД'}
+                    </button>
+                </div>
+            </nav>
+
+            {showLogoutConfirm && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 10000,
+                }}>
+                    <div style={{
+                        background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a)',
+                        borderRadius: '16px',
+                        padding: isSmallMobile ? '25px 20px' : isMobile ? '30px 25px' : '35px 40px',
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        textAlign: 'center',
+                        maxWidth: isSmallMobile ? '85vw' : '400px',
+                    }}>
+                        <h3 style={{
+                            margin: '0 0 15px 0',
+                            color: '#d4af37',
+                            fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.5rem',
+                        }}>
+                            Изход от профила
+                        </h3>
+                        <p style={{
+                            margin: '0 0 25px 0',
+                            color: '#ccc',
+                            fontSize: isSmallMobile ? '0.9rem' : '1rem',
+                        }}>
+                            Сигурни ли сте, че искате да излезете?
+                        </p>
+                        <div style={{
+                            display: 'flex',
+                            gap: '15px',
+                            justifyContent: 'center',
+                        }}>
+                            <button
+                                onClick={handleCancelLogout}
+                                style={{
+                                    padding: isSmallMobile ? '10px 20px' : '12px 25px',
+                                    backgroundColor: 'transparent',
+                                    color: '#ccc',
+                                    border: '1px solid rgba(255,255,255,0.3)',
+                                    borderRadius: '8px',
+                                    fontSize: isSmallMobile ? '0.9rem' : '1rem',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                            >
+                                Отказ
+                            </button>
+                            <button
+                                onClick={handleConfirmLogout}
+                                style={{
+                                    padding: isSmallMobile ? '10px 20px' : '12px 25px',
+                                    backgroundColor: '#c0392b',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: isSmallMobile ? '0.9rem' : '1rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#e74c3c';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#c0392b';
+                                }}
+                            >
+                                Изход
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </>
     );
 };
 
@@ -430,7 +535,26 @@ const SantaseGame: React.FC = () => {
     const [showRankUpModal, setShowRankUpModal] = useState<boolean>(false);
     const [rankUpNewRank, setRankUpNewRank] = useState<Rank | null>(null);
 
-    // Helper to refresh profile, update local state and localStorage, and show rank-up modal if rank improved
+    // Helper to fetch profile and update local state (used on initial load - no rank-up check)
+    const fetchProfileInitial = async () => {
+        try {
+            const profile = await userService.getProfile();
+            setUserRank(profile.rank);
+            setUserWins(profile.santaseWins || 0);
+            setUserLosses(profile.santaseLosses || 0);
+
+            // Just save current rank to localStorage without checking for rank-up
+            try {
+                localStorage.setItem('lastSantaseRank', profile.rank);
+            } catch (e) {
+                console.warn('Could not access localStorage for rank persistence', e);
+            }
+        } catch (err) {
+            console.error('Error fetching profile:', err);
+        }
+    };
+
+    // Helper to refresh profile after game ends, update local state and localStorage, and show rank-up modal if rank improved
     const refreshProfileAndCheckRank = async () => {
         try {
             const profile = await userService.getProfile();
@@ -488,10 +612,8 @@ const SantaseGame: React.FC = () => {
         if (profileFetchedRef.current) return;
         profileFetchedRef.current = true;
 
-        const fetchProfile = async () => {
-            await refreshProfileAndCheckRank();
-        };
-        fetchProfile();
+        // Use initial fetch (no rank-up check) - rank-up should only show after games
+        fetchProfileInitial();
     }, []);
 
     // Auto-reconnect on mount if we have an active game
@@ -1753,6 +1875,10 @@ const SantaseGame: React.FC = () => {
                     {finalWinner && !trickResult && gameState && (() => {
                         const isMobile = windowWidth <= 768;
                         const isSmallMobile = windowWidth <= 480;
+                        const surrenderedPlayer = gameState.surrenderPlayerUsername;
+                        const isSurrender = !!surrenderedPlayer;
+                        const opponentSurrendered = surrenderedPlayer && surrenderedPlayer !== username;
+                        
                         return (
                             <div style={styles.resultOverlay}>
                                 <div style={{
@@ -1776,9 +1902,13 @@ const SantaseGame: React.FC = () => {
                                         fontWeight: 300,
                                     }}>
                                         <p style={{margin: '0 0 10px 0'}}>
-                                            {finalWinner === username
-                                                ? 'Брилянтна победа!'
-                                                : `${finalWinner} спечели тази игра.`
+                                            {isSurrender
+                                                ? (opponentSurrendered 
+                                                    ? `${surrenderedPlayer} се предаде!`
+                                                    : 'Вие се предадохте.')
+                                                : (finalWinner === username
+                                                    ? 'Брилянтна победа!'
+                                                    : `${finalWinner} спечели тази игра.`)
                                             }
                                         </p>
                                         <p style={{margin: 0}}>
