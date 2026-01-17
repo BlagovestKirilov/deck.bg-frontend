@@ -606,8 +606,8 @@ const SantaseGame: React.FC = () => {
             message: 'Сигурни ли сте, че искате да напуснете играта?',
             action: async () => {
                 try {
-                    await gameService.finishGame();
-                    // cleanup similar to finishGameAndReturn
+                    await gameService.surrender();
+
                     try {
                         if (gameSubscriptionRef.current) {
                             gameSubscriptionRef.current.unsubscribe();
