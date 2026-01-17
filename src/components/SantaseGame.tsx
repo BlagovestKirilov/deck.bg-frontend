@@ -883,13 +883,17 @@ const SantaseGame: React.FC = () => {
         client.reconnect_delay = 0;
 
         // Set a timeout to detect failed connection attempts
-        // If connection doesn't succeed within 15 seconds, treat it as failure and retry
+        // If connection doesn't succeed within 3 seconds, treat it as failure
         connectionTimeoutRef.current = setTimeout(() => {
-            if (!isConnected && gameIdRef.current && connectionLockRef.current) {
+            if (!isConnected && connectionLockRef.current) {
                 connectionLockRef.current = false;
-                // Trigger retry
-                if (isReconnectingRef.current) {
+                
+                // If we have an active game, trigger retry
+                if (gameIdRef.current && isReconnectingRef.current) {
                     attemptReconnect();
+                } else if (!gameIdRef.current) {
+                    // If no active game (searching), reset searching state
+                    setIsSearching(false);
                 }
             }
         }, 3000);
@@ -909,6 +913,11 @@ const SantaseGame: React.FC = () => {
             if (connectionCheckIntervalRef.current) {
                 clearInterval(connectionCheckIntervalRef.current);
                 connectionCheckIntervalRef.current = null;
+            }
+
+            // If we're searching and connection closed, stop searching
+            if (!isReconnect && !gameIdRef.current) {
+                setIsSearching(false);
             }
 
             // Only attempt reconnect if we have an active game
@@ -1052,7 +1061,8 @@ const SantaseGame: React.FC = () => {
                 connectionTimeoutRef.current = null;
             }
 
-            if (!isReconnect && !isSearching) {
+            // If we're searching and connection failed, stop searching
+            if (!isReconnect && !gameIdRef.current) {
                 setIsSearching(false);
             }
 
