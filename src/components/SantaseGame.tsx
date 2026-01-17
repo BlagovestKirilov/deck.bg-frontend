@@ -530,6 +530,15 @@ const SantaseGame: React.FC = () => {
     const prevGameStateRef = useRef<GameState | null>(null);
     const profileFetchedRef = useRef<boolean>(false);
 
+    // Turn timer state
+    const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(20);
+    const [isInWarningPhase, setIsInWarningPhase] = useState<boolean>(false);
+    const [showInactivityPopup, setShowInactivityPopup] = useState<boolean>(false);
+    const [opponentLowOnTime, setOpponentLowOnTime] = useState<boolean>(false);
+    const turnTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const opponentTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const opponentTurnStartRef = useRef<number | null>(null);
+
     // One-time rank-up popup handling
     const rankPopupShownRef = useRef<boolean>(false); // prevents duplicate popups in a session
     const [showRankUpModal, setShowRankUpModal] = useState<boolean>(false);
@@ -615,6 +624,368 @@ const SantaseGame: React.FC = () => {
         // Use initial fetch (no rank-up check) - rank-up should only show after games
         fetchProfileInitial();
     }, []);
+
+    // Track turn start time for persistence across refreshes
+    const lastTurnStateRef = useRef<boolean | null>(null);
+    const [inactivityCount, setInactivityCount] = useState<number>(0);
+    const MAX_INACTIVITY = 2;
+
+    // Session storage keys for timer persistence
+    const TURN_START_KEY = 'santase_turn_start';
+    const INACTIVITY_COUNT_KEY = 'santase_inactivity_count';
+    const GAME_ID_KEY = 'santase_timer_game_id';
+
+    // Helper to get turn start time from sessionStorage
+    const getTurnStartTime = (): number | null => {
+        try {
+            const stored = sessionStorage.getItem(TURN_START_KEY);
+            const storedGameId = sessionStorage.getItem(GAME_ID_KEY);
+            // Only use stored time if it's for the same game
+            if (stored && storedGameId === gameState?.gameId) {
+                return parseInt(stored, 10);
+            }
+        } catch (e) {
+            console.warn('Could not access sessionStorage', e);
+        }
+        return null;
+    };
+
+    // Helper to save turn start time to sessionStorage
+    const saveTurnStartTime = (time: number) => {
+        try {
+            sessionStorage.setItem(TURN_START_KEY, time.toString());
+            if (gameState?.gameId) {
+                sessionStorage.setItem(GAME_ID_KEY, gameState.gameId);
+            }
+        } catch (e) {
+            console.warn('Could not access sessionStorage', e);
+        }
+    };
+
+    // Helper to clear turn timer from sessionStorage
+    const clearTurnStartTime = () => {
+        try {
+            sessionStorage.removeItem(TURN_START_KEY);
+        } catch (e) {
+            console.warn('Could not access sessionStorage', e);
+        }
+    };
+
+    // Helper to get inactivity count from sessionStorage
+    const getInactivityCount = (): number => {
+        try {
+            const stored = sessionStorage.getItem(INACTIVITY_COUNT_KEY);
+            const storedGameId = sessionStorage.getItem(GAME_ID_KEY);
+            if (stored && storedGameId === gameState?.gameId) {
+                return parseInt(stored, 10);
+            }
+        } catch (e) {
+            console.warn('Could not access sessionStorage', e);
+        }
+        return 0;
+    };
+
+    // Helper to save inactivity count to sessionStorage
+    const saveInactivityCount = (count: number) => {
+        try {
+            sessionStorage.setItem(INACTIVITY_COUNT_KEY, count.toString());
+            if (gameState?.gameId) {
+                sessionStorage.setItem(GAME_ID_KEY, gameState.gameId);
+            }
+        } catch (e) {
+            console.warn('Could not access sessionStorage', e);
+        }
+    };
+
+    // Helper function to reset turn timer to initial state
+    const resetTurnTimer = () => {
+        const now = Date.now();
+        setTurnTimeRemaining(20);
+        setIsInWarningPhase(false);
+        setShowInactivityPopup(false);
+        saveTurnStartTime(now);
+    };
+
+    // Handle inactivity - called when 20 seconds end
+    const handleInactivityTimeout = async () => {
+        try {
+            await gameService.inactivity();
+            // Success - show popup for Continue with 10 second countdown
+            // Don't increment count yet - it will be incremented when user clicks Continue
+            setIsInWarningPhase(true);
+            setShowInactivityPopup(true);
+            setTurnTimeRemaining(10);
+            saveTurnStartTime(Date.now());
+        } catch (error: any) {
+            // Check if it's a 400 error indicating too many inactivity extensions
+            if (error.response?.status === 400) {
+                // Player has used all extensions - surrender immediately and go to main screen
+                handleInactivitySurrender();
+            } else {
+                console.error('Error handling inactivity:', error);
+            }
+        }
+    };
+
+    // Handle Continue button click - reset to 20 seconds and increment inactivity count
+    const handleInactivityContinue = () => {
+        const newCount = inactivityCount + 1;
+        setInactivityCount(newCount);
+        saveInactivityCount(newCount);
+        resetTurnTimer();
+    };
+
+    // Handle surrender from inactivity - go directly to main screen without any popup
+    const handleInactivitySurrender = async () => {
+        setShowInactivityPopup(false);
+        setIsInWarningPhase(false);
+        clearTurnStartTime();
+        setInactivityCount(0);
+        try {
+            sessionStorage.removeItem(INACTIVITY_COUNT_KEY);
+        } catch (e) { /* ignore */ }
+
+        try {
+            await gameService.surrender();
+            
+            // Clean up connection and go directly to main screen
+            try {
+                if (gameSubscriptionRef.current) {
+                    gameSubscriptionRef.current.unsubscribe();
+                    gameSubscriptionRef.current = null;
+                }
+            } catch (e) { /* ignore */ }
+            try {
+                if (stompClient.current) {
+                    stompClient.current.disconnect();
+                }
+            } catch (e) { /* ignore */ }
+            try {
+                if (socketRef.current) {
+                    socketRef.current.close();
+                }
+            } catch (e) { /* ignore */ }
+
+            // Clear refs and local flags
+            gameIdRef.current = null;
+            if (reconnectTimeoutRef.current) {
+                clearTimeout(reconnectTimeoutRef.current);
+                reconnectTimeoutRef.current = null;
+            }
+            if (connectionTimeoutRef.current) {
+                clearTimeout(connectionTimeoutRef.current);
+                connectionTimeoutRef.current = null;
+            }
+            if (connectionCheckIntervalRef.current) {
+                clearInterval(connectionCheckIntervalRef.current);
+                connectionCheckIntervalRef.current = null;
+            }
+            connectionLockRef.current = false;
+            isReconnectingRef.current = false;
+            setIsConnected(false);
+
+            // Go directly to main screen without showing winner popup
+            setGameState(null);
+            setFinalWinner(null);
+            setTrickResult(null);
+
+            // Refresh profile (loss will be recorded)
+            await refreshProfileAndCheckRank();
+        } catch (error) {
+            console.error('Error surrendering:', error);
+            // Fallback - still try to go to main screen
+            setGameState(null);
+            setFinalWinner(null);
+        }
+    };
+
+    // Track when trickResult was previously shown (to detect when it clears = new trick starting)
+    const lastTrickResultRef = useRef<boolean>(false);
+    // Track when player had a played card (to detect when new trick starts after winning)
+    const lastHadPlayedCardRef = useRef<boolean>(false);
+
+    // Turn timer effect - manages countdown for player's turn
+    useEffect(() => {
+        // Clear any existing timer
+        if (turnTimerRef.current) {
+            clearInterval(turnTimerRef.current);
+            turnTimerRef.current = null;
+        }
+
+        // Only run timer when: game exists, it's player's turn, no winner yet, not showing trick result, connected
+        // AND player hasn't already played a card (waiting for trick resolution)
+        const hasPlayedCard = gameState?.playedCard != null;
+        const shouldRunTimer = gameState && 
+            gameState.isOnTurn && 
+            !gameState.winnerUsername && 
+            !trickResult && 
+            isConnected &&
+            !finalWinner &&
+            !hasPlayedCard;
+
+        // Detect turn/trick changes BEFORE checking shouldRunTimer
+        // This ensures we catch the transition when timer should restart
+        const turnJustStarted = lastTurnStateRef.current === false && gameState?.isOnTurn;
+        const isFirstLoad = lastTurnStateRef.current === null && gameState?.isOnTurn;
+        // Also reset timer when trick result was just cleared (new trick starting, same player's turn)
+        const trickJustCleared = lastTrickResultRef.current === true && !trickResult && gameState?.isOnTurn && !hasPlayedCard;
+        // Reset timer when played card was cleared (new trick starting after player won)
+        const cardJustCleared = lastHadPlayedCardRef.current === true && !hasPlayedCard && gameState?.isOnTurn;
+
+        if (!shouldRunTimer) {
+            // Track if trickResult is currently showing
+            if (trickResult) {
+                lastTrickResultRef.current = true;
+            }
+            // Track if player has a played card
+            if (hasPlayedCard) {
+                lastHadPlayedCardRef.current = true;
+            }
+            // Hide inactivity popup when player plays a card
+            if (hasPlayedCard && showInactivityPopup) {
+                setShowInactivityPopup(false);
+            }
+            // Reset timer state when not player's turn or game ended
+            if (!gameState?.isOnTurn || gameState?.winnerUsername || finalWinner) {
+                setTurnTimeRemaining(20);
+                setIsInWarningPhase(false);
+                setShowInactivityPopup(false);
+                // Clear turn start time when it's not player's turn (so next turn starts fresh)
+                if (!gameState?.isOnTurn && lastTurnStateRef.current === true) {
+                    clearTurnStartTime();
+                }
+                lastTurnStateRef.current = gameState?.isOnTurn ?? null;
+                // Reset inactivity count when game ends
+                if (gameState?.winnerUsername || finalWinner) {
+                    setInactivityCount(0);
+                    clearTurnStartTime();
+                    try {
+                        sessionStorage.removeItem(INACTIVITY_COUNT_KEY);
+                    } catch (e) { /* ignore */ }
+                }
+            }
+            return;
+        }
+
+        // Load inactivity count from storage on first load
+        if (inactivityCount === 0) {
+            const storedCount = getInactivityCount();
+            if (storedCount > 0) {
+                setInactivityCount(storedCount);
+            }
+        }
+        
+        if (turnJustStarted || trickJustCleared || cardJustCleared) {
+            // Turn just changed from opponent to player OR new trick started - start fresh 20 second timer
+            const now = Date.now();
+            setTurnTimeRemaining(20);
+            setIsInWarningPhase(false);
+            setShowInactivityPopup(false);
+            saveTurnStartTime(now);
+            lastTrickResultRef.current = false;
+            lastHadPlayedCardRef.current = false;
+        } else if (isFirstLoad) {
+            // First load (page refresh or initial load) - check for persisted time
+            const persistedStartTime = getTurnStartTime();
+            if (persistedStartTime) {
+                // Page was refreshed - calculate remaining time from persisted start time
+                const elapsed = Math.floor((Date.now() - persistedStartTime) / 1000);
+                const remaining = Math.max(0, 20 - elapsed);
+                
+                if (remaining <= 0) {
+                    // Time already expired during refresh - call inactivity immediately
+                    setTurnTimeRemaining(0);
+                    handleInactivityTimeout();
+                } else {
+                    setTurnTimeRemaining(remaining);
+                }
+                setIsInWarningPhase(false);
+                setShowInactivityPopup(false);
+            } else {
+                // No persisted time - start fresh
+                const now = Date.now();
+                setTurnTimeRemaining(20);
+                setIsInWarningPhase(false);
+                setShowInactivityPopup(false);
+                saveTurnStartTime(now);
+            }
+        }
+        
+        lastTurnStateRef.current = gameState.isOnTurn;
+        lastHadPlayedCardRef.current = hasPlayedCard;
+
+        // Start the countdown interval
+        turnTimerRef.current = setInterval(() => {
+            setTurnTimeRemaining(prev => {
+                if (prev <= 1) {
+                    if (!isInWarningPhase) {
+                        // Main phase ended - call inactivity endpoint
+                        clearInterval(turnTimerRef.current!);
+                        turnTimerRef.current = null;
+                        handleInactivityTimeout();
+                        return 0;
+                    } else {
+                        // Warning phase ended - auto surrender
+                        clearInterval(turnTimerRef.current!);
+                        turnTimerRef.current = null;
+                        handleInactivitySurrender();
+                        return 0;
+                    }
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => {
+            if (turnTimerRef.current) {
+                clearInterval(turnTimerRef.current);
+                turnTimerRef.current = null;
+            }
+        };
+    }, [gameState?.isOnTurn, gameState?.winnerUsername, gameState?.playedCard, trickResult, isConnected, finalWinner, isInWarningPhase]);
+
+    // Opponent timer effect - track when opponent is taking too long
+    useEffect(() => {
+        // Clear any existing timer
+        if (opponentTimerRef.current) {
+            clearInterval(opponentTimerRef.current);
+            opponentTimerRef.current = null;
+        }
+        setOpponentLowOnTime(false);
+
+        // Only run when: game exists, it's opponent's turn, no winner yet, connected
+        const shouldTrackOpponent = gameState && 
+            !gameState.isOnTurn && 
+            !gameState.winnerUsername && 
+            !trickResult && 
+            isConnected &&
+            !finalWinner;
+
+        if (!shouldTrackOpponent) {
+            opponentTurnStartRef.current = null;
+            return;
+        }
+
+        // Record when opponent's turn started
+        opponentTurnStartRef.current = Date.now();
+
+        // Check every second if opponent is low on time
+        opponentTimerRef.current = setInterval(() => {
+            if (opponentTurnStartRef.current) {
+                const elapsed = (Date.now() - opponentTurnStartRef.current) / 1000;
+                if (elapsed >= 15) {
+                    setOpponentLowOnTime(true);
+                }
+            }
+        }, 1000);
+
+        return () => {
+            if (opponentTimerRef.current) {
+                clearInterval(opponentTimerRef.current);
+                opponentTimerRef.current = null;
+            }
+        };
+    }, [gameState?.isOnTurn, gameState?.winnerUsername, trickResult, isConnected, finalWinner]);
 
     // Auto-reconnect on mount if we have an active game
     useEffect(() => {
@@ -1214,6 +1585,10 @@ const SantaseGame: React.FC = () => {
 
     const handlePlayCard = async (card: Card) => {
         if (!gameState || !card.isPlayable || !gameState.isOnTurn || isUiLocked || !isConnected) return;
+        
+        // Hide inactivity popup if showing (player made a move)
+        setShowInactivityPopup(false);
+        
         const isKingOrQueen = card.rank === 'KING' || card.rank === 'QUEEN';
         const partnerRank = card.rank === 'KING' ? 'QUEEN' : 'KING';
         const hasPartner = gameState.deck.some(c => c.rank === partnerRank && c.suit === card.suit);
@@ -1226,6 +1601,7 @@ const SantaseGame: React.FC = () => {
                 message: `Желаете ли да обявите ${pts} точки?`,
                 action: async () => {
                     try {
+                        setShowInactivityPopup(false);
                         await gameService.announce(card.id);
                         setAnnouncedSuit(card.suit);
                     } catch (e) {
@@ -1235,6 +1611,7 @@ const SantaseGame: React.FC = () => {
                 },
                 onCancel: () => {
                     setConfirmAction(null);
+                    setShowInactivityPopup(false);
                     gameService.playCard(card.id).catch(console.error);
                 }
             });
@@ -1665,6 +2042,7 @@ const SantaseGame: React.FC = () => {
                                                     zIndex: 1,
                                                 }} onClick={() => {
                                                     if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
+                                                        setShowInactivityPopup(false);
                                                         gameService.replaceCard();
                                                     }
                                                 }}>
@@ -1685,6 +2063,7 @@ const SantaseGame: React.FC = () => {
                                                             title: 'Затваряне',
                                                             message: 'Затваряте ли тестето?',
                                                             action: async () => {
+                                                                setShowInactivityPopup(false);
                                                                 await gameService.closeDeck();
                                                                 setConfirmAction(null);
                                                             }
@@ -1780,17 +2159,42 @@ const SantaseGame: React.FC = () => {
                                             left: '50%',
                                             top: '50%',
                                             transform: 'translate(-50%, -50%)',
+                                            backgroundColor: gameState.isOnTurn && turnTimeRemaining <= 5 
+                                                ? 'rgba(255, 82, 82, 0.15)' 
+                                                : undefined,
+                                            borderColor: gameState.isOnTurn && turnTimeRemaining <= 5 
+                                                ? '#ff5252' 
+                                                : undefined,
                                         }}>
                                             <div style={{
                                                 ...styles.pulse,
                                                 width: isSmallMobile ? '7px' : isMobile ? '8px' : '9px',
                                                 height: isSmallMobile ? '7px' : isMobile ? '8px' : '9px',
-                                                backgroundColor: gameState.isOnTurn ? '#4CAF50' : '#ff5252',
+                                                backgroundColor: gameState.isOnTurn 
+                                                    ? (turnTimeRemaining <= 5 ? '#ff5252' : '#4CAF50') 
+                                                    : '#ff5252',
                                             }}/>
-                                            {isSmallMobile
-                                                ? (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТ...')
-                                                : (gameState.isOnTurn ? 'ВАШ РЕД' : 'ОПОНЕНТЪТ ИГРАЕ...')
-                                            }
+                                            {gameState.isOnTurn ? (
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span>ВАШ РЕД</span>
+                                                    <span style={{
+                                                        fontWeight: 700,
+                                                        fontFamily: 'monospace',
+                                                        color: turnTimeRemaining <= 5 ? '#ff5252' : turnTimeRemaining <= 10 ? '#ff9800' : '#4CAF50',
+                                                        minWidth: '24px',
+                                                        textAlign: 'center',
+                                                    }}>
+                                                        {turnTimeRemaining}
+                                                    </span>
+                                                </span>
+                                            ) : (
+                                                <span>
+                                                    {opponentLowOnTime 
+                                                        ? (isSmallMobile ? 'ЧАКАНЕ...' : 'ОПОНЕНТЪТ БАВИ...')
+                                                        : (isSmallMobile ? 'ОПОНЕНТ...' : 'ОПОНЕНТЪТ ИГРАЕ...')
+                                                    }
+                                                </span>
+                                            )}
                                         </div>
 
                                         {/* 66 button next to turn indicator (to the right) */}
@@ -1816,6 +2220,7 @@ const SantaseGame: React.FC = () => {
                                                         title: 'Край',
                                                         message: 'Имате ли 66 точки?',
                                                         action: async () => {
+                                                            setShowInactivityPopup(false);
                                                             await gameService.finishDeal();
                                                             setConfirmAction(null);
                                                         }
@@ -1928,6 +2333,153 @@ const SantaseGame: React.FC = () => {
                             </div>
                         );
                     })()}
+                </div>
+            )}
+
+            {/* Inactivity warning popup */}
+            {showInactivityPopup && gameState && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    zIndex: 10001,
+                    padding: windowWidth <= 480 ? '0 16px' : '0',
+                }}>
+                    <div style={{
+                        background: 'linear-gradient(145deg, #3a1c1c, #2a1010)',
+                        borderRadius: '16px',
+                        padding: windowWidth <= 480 ? '25px 20px' : windowWidth <= 768 ? '30px 25px' : '35px 40px',
+                        boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(255, 82, 82, 0.3)',
+                        border: '2px solid #ff5252',
+                        textAlign: 'center',
+                        maxWidth: windowWidth <= 480 ? 'calc(100vw - 32px)' : '420px',
+                        width: windowWidth <= 480 ? '100%' : 'auto',
+                        animation: 'pulseWarning 1s ease-in-out infinite',
+                    }}>
+                        <div style={{
+                            fontSize: windowWidth <= 480 ? '2.5rem' : '3rem',
+                            marginBottom: '10px',
+                        }}>
+                            ⚠️
+                        </div>
+                        <h3 style={{
+                            margin: '0 0 10px 0',
+                            color: '#ff5252',
+                            fontSize: windowWidth <= 480 ? '1.3rem' : windowWidth <= 768 ? '1.5rem' : '1.7rem',
+                            fontWeight: 700,
+                        }}>
+                            Времето изтича!
+                        </h3>
+                        <div style={{
+                            fontSize: windowWidth <= 480 ? '3rem' : '4rem',
+                            fontWeight: 900,
+                            color: turnTimeRemaining <= 3 ? '#ff1744' : '#ff5252',
+                            marginBottom: '15px',
+                            fontFamily: 'monospace',
+                            textShadow: turnTimeRemaining <= 3 ? '0 0 20px rgba(255, 23, 68, 0.8)' : 'none',
+                        }}>
+                            {turnTimeRemaining}
+                        </div>
+                        <p style={{
+                            margin: '0 0 10px 0',
+                            color: '#ffcdd2',
+                            fontSize: windowWidth <= 480 ? '0.9rem' : '1rem',
+                            lineHeight: 1.4,
+                        }}>
+                            Ако не предприемете действие, играта ще приключи като загуба.
+                        </p>
+                        <div style={{
+                            margin: '0 0 20px 0',
+                            padding: '8px 16px',
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            borderRadius: '8px',
+                            display: 'inline-block',
+                        }}>
+                            <span style={{
+                                color: inactivityCount >= MAX_INACTIVITY - 1 ? '#ff8a80' : '#fff',
+                                fontSize: windowWidth <= 480 ? '0.85rem' : '0.95rem',
+                                fontWeight: 600,
+                            }}>
+                                Оставащи удължения: {Math.max(0, MAX_INACTIVITY - inactivityCount)} / {MAX_INACTIVITY}
+                            </span>
+                        </div>
+                        <div style={{
+                            display: 'flex',
+                            gap: '15px',
+                            justifyContent: 'center',
+                            flexDirection: windowWidth <= 380 ? 'column' : 'row',
+                        }}>
+                            <button
+                                onClick={handleInactivityContinue}
+                                disabled={inactivityCount >= MAX_INACTIVITY}
+                                style={{
+                                    padding: windowWidth <= 480 ? '12px 20px' : '14px 28px',
+                                    backgroundColor: inactivityCount >= MAX_INACTIVITY ? '#666' : '#4CAF50',
+                                    color: '#fff',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: windowWidth <= 480 ? '0.95rem' : '1.1rem',
+                                    fontWeight: 700,
+                                    cursor: inactivityCount >= MAX_INACTIVITY ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    boxShadow: inactivityCount >= MAX_INACTIVITY ? 'none' : '0 4px 0 #2e7d32',
+                                    opacity: inactivityCount >= MAX_INACTIVITY ? 0.6 : 1,
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (inactivityCount < MAX_INACTIVITY) {
+                                        e.currentTarget.style.backgroundColor = '#66bb6a';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (inactivityCount < MAX_INACTIVITY) {
+                                        e.currentTarget.style.backgroundColor = '#4CAF50';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }
+                                }}
+                            >
+                                {inactivityCount >= MAX_INACTIVITY ? 'Няма удължения' : 'Продължи (+20)'}
+                            </button>
+                            <button
+                                onClick={handleInactivitySurrender}
+                                style={{
+                                    padding: windowWidth <= 480 ? '12px 20px' : '14px 28px',
+                                    backgroundColor: 'transparent',
+                                    color: '#ff8a80',
+                                    border: '2px solid #ff5252',
+                                    borderRadius: '8px',
+                                    fontSize: windowWidth <= 480 ? '0.95rem' : '1.1rem',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgba(255, 82, 82, 0.2)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                            >
+                                Предавам се
+                            </button>
+                        </div>
+                    </div>
+                    <style>{`
+                        @keyframes pulseWarning {
+                            0%, 100% { 
+                                box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(255, 82, 82, 0.3);
+                            }
+                            50% { 
+                                box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 50px rgba(255, 82, 82, 0.5);
+                            }
+                        }
+                    `}</style>
                 </div>
             )}
 
