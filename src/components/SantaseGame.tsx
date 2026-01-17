@@ -2190,7 +2190,7 @@ const SantaseGame: React.FC = () => {
                                             ) : (
                                                 <span>
                                                     {opponentLowOnTime 
-                                                        ? (isSmallMobile ? 'ЧАКАНЕ...' : 'ОПОНЕНТЪТ БАВИ...')
+                                                        ? (isSmallMobile ? 'ЧАКАНЕ...' : 'ОПОНЕНТЪТ ИГРАЕ...')
                                                         : (isSmallMobile ? 'ОПОНЕНТ...' : 'ОПОНЕНТЪТ ИГРАЕ...')
                                                     }
                                                 </span>
