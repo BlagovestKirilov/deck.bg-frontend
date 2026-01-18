@@ -32,4 +32,6 @@ export interface GameState {
     opponentPlayerCardsCount?: number;
     status?: 'WAITING' | 'GAME_STARTED';
     surrenderPlayerUsername?: string;
+    inactivityCount?: number;
+    nextMoveTimeInSeconds?: number;
 }

@@ -26,5 +26,8 @@ export const gameService = {
         apiClient.post(`/game/surrender`),
 
     inactivity: () =>
-        apiClient.post('/game/inactivity')
+        apiClient.post('/game/inactivity'),
+
+    extendTime: () =>
+        apiClient.post('/game/extend-time')
 };
