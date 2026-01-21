@@ -1,5 +1,31 @@
 {
   "appId": "com.santase.game",
   "appName": "Santase Game",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "deck.bg",
+    "allowNavigation": [
+      "deck.bg",
+      "*.deck.bg"
+    ]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "StatusBar": {
+      "overlaysWebView": false,
+      "backgroundColor": "#1a3a16",
+      "style": "DARK"
+    }
+  },
+  "android": {
+    "backgroundColor": "#1a3a16",
+    "allowMixedContent": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "ios": {
+    "backgroundColor": "#1a3a16"
+  }
 }
