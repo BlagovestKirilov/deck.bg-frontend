@@ -2665,11 +2665,13 @@ const SantaseGame: React.FC = () => {
 
 const styles: Record<string, React.CSSProperties> = {
     table: {
-        width: '100vw',
-        height: '100vh',
-        position: 'fixed',
+        width: '100%',
+        height: '100%',
+        position: 'absolute',
         top: 0,
         left: 0,
+        right: 0,
+        bottom: 0,
         overflow: 'hidden',
         background: `radial-gradient(ellipse at center, #1a4d2e 0%, #0f3a1f 40%, #081a0f 100%)`,
         touchAction: 'manipulation',

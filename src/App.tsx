@@ -6,58 +6,97 @@ import SantaseGame from './components/SantaseGame';
 import ConfirmationSuccess from './components/ConfirmationSuccess';
 import ConfirmationInvalid from './components/ConfirmationInvalid';
 import ResetPassword from './components/ResetPassword';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import './index.css';
+
+// SafeAreaView component for Android gesture navigation support
+// Safe area insets are injected via CSS custom properties from Android MainActivity
+const SafeAreaView: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    return (
+        <div className="safe-area-view" style={styles.safeAreaView}>
+            <div className="safe-area-content" style={styles.safeAreaContent}>
+                {children}
+            </div>
+        </div>
+    );
+};
 
 const App: React.FC = () => {
     const { isAuthenticated} = useAuthContext();
 
     return (
-        <div style={styles.appContainer}>
-            <Routes>
-                <Route 
-                    path="/confirmation-success" 
-                    element={<ConfirmationSuccess />} 
-                />
-                <Route 
-                    path="/confirmation-invalid" 
-                    element={<ConfirmationInvalid />} 
-                />
-                <Route 
-                    path="/reset-password" 
-                    element={<ResetPassword />} 
-                />
-                <Route 
-                    path="*" 
-                    element={
-                        !isAuthenticated ? (
-                            <AuthPage />
-                        ) : (
-                            <div style={styles.gameWrapper}>
-                                {/* Main Content strictly fills the rest of the screen height */}
-                                <main style={styles.mainContent}>
-                                    <SantaseGame />
-                                </main>
-                            </div>
-                        )
-                    } 
-                />
-            </Routes>
-        </div>
+        <SafeAreaView>
+            <div style={styles.appContainer}>
+                <Routes>
+                    <Route 
+                        path="/privacy" 
+                        element={<PrivacyPolicy />} 
+                    />
+                    <Route 
+                        path="/confirmation-success" 
+                        element={<ConfirmationSuccess />} 
+                    />
+                    <Route 
+                        path="/confirmation-invalid" 
+                        element={<ConfirmationInvalid />} 
+                    />
+                    <Route 
+                        path="/reset-password" 
+                        element={<ResetPassword />} 
+                    />
+                    <Route 
+                        path="*" 
+                        element={
+                            !isAuthenticated ? (
+                                <AuthPage />
+                            ) : (
+                                <div style={styles.gameWrapper}>
+                                    {/* Main Content strictly fills the rest of the screen height */}
+                                    <main style={styles.mainContent}>
+                                        <SantaseGame />
+                                    </main>
+                                </div>
+                            )
+                        } 
+                    />
+                </Routes>
+            </div>
+        </SafeAreaView>
     );
 };
 
 const styles: Record<string, React.CSSProperties> = {
+    safeAreaView: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        width: '100%',
+        height: '100%',
+        // Safe area padding is applied via CSS class
+        backgroundColor: '#1a3a16',
+        overflow: 'hidden',
+    },
+    safeAreaContent: {
+        width: '100%',
+        height: '100%',
+        position: 'relative',
+        overflow: 'hidden',
+    },
     appContainer: {
         fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-        height: '100vh',
-        width: '100vw',
+        height: '100%',
+        width: '100%',
         overflow: 'hidden', // Blocks any scrollbars at the root level
-        backgroundColor: '#1a3a16'
+        backgroundColor: '#1a3a16',
+        position: 'relative',
     },
     gameWrapper: {
         display: 'flex',
         flexDirection: 'column',
-        height: '100vh',
-        width: '100vw'
+        height: '100%',
+        width: '100%',
     },
     nav: {
         display: 'flex',

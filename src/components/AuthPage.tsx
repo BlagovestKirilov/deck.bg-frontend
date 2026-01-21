@@ -494,9 +494,12 @@ const AuthPage: React.FC = () => {
 
 const styles: { [key: string]: React.CSSProperties } = {
     container: {
-        display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh',
+        display: 'flex', justifyContent: 'center', alignItems: 'center', 
+        height: '100%', width: '100%',
         background: 'radial-gradient(circle, #1a3a16 0%, #0a1a08 100%)',
-        fontFamily: "'Garamond', serif", position: 'relative', overflow: 'hidden'
+        fontFamily: "'Garamond', serif", position: 'absolute', 
+        top: 0, left: 0, right: 0, bottom: 0,
+        overflow: 'hidden'
     },
     card: {
         backgroundColor: 'rgba(255, 255, 255, 0.98)', padding: '40px', borderRadius: '15px',
