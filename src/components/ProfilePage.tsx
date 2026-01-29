@@ -1,14 +1,19 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {userService} from '../api/userService';
 import {ProfileResponse} from '../types/user.types';
+import {useAuthContext} from '../context/AuthContext';
 
 interface ProfilePageProps {
     username: string;
     onClose: () => void;
+    onLogout?: () => void;
     windowWidth?: number;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth = 1024}) => {
+const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, windowWidth = 1024}) => {
+    const navigate = useNavigate();
+    const {logout} = useAuthContext();
     const [profile, setProfile] = useState<ProfileResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -24,6 +29,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
     const [passwordError, setPasswordError] = useState<string | null>(null);
     const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [deleteError, setDeleteError] = useState<string | null>(null);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const isMobile = windowWidth <= 768;
@@ -206,14 +214,49 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
         setPasswordSuccess(null);
     };
 
+    const handleOpenDeleteConfirmation = () => {
+        setShowDeleteConfirmation(true);
+        setDeleteError(null);
+    };
+
+    const handleCloseDeleteConfirmation = () => {
+        setShowDeleteConfirmation(false);
+        setDeleteError(null);
+    };
+
+    const handleDeleteAccount = async () => {
+        setIsDeletingAccount(true);
+        setDeleteError(null);
+
+        try {
+            const result = await userService.deleteUser();
+            
+            if (result.success) {
+                setShowDeleteConfirmation(false);
+                // Clear all tokens and user data
+                logout();
+                // Navigate to login page
+                navigate('/');
+            } else {
+                setDeleteError(result.message);
+            }
+        } catch (err: any) {
+            setDeleteError('Грешка при изтриване на акаунта. Моля опитайте отново.');
+            console.error('Error deleting account:', err);
+        } finally {
+            setIsDeletingAccount(false);
+        }
+    };
+
     return (
         <div style={styles.overlay} onClick={onClose}>
             <div
                 style={{
                     ...styles.container,
-                    padding: isSmallMobile ? '20px' : isMobile ? '30px' : '40px',
+                    padding: isSmallMobile ? '20px' : isMobile ? '30px' : '30px',
                     maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '500px',
                     minWidth: isSmallMobile ? '280px' : '350px',
+                    maxHeight: isMobile ? '90vh' : '85vh',
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
@@ -352,6 +395,25 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
                                     Промени парола
                                 </button>
                             )}
+                            <button
+                                onClick={handleOpenDeleteConfirmation}
+                                style={{
+                                    ...styles.deleteAccountButton,
+                                    padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
+                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                    marginTop: isSmallMobile ? '15px' : '20px',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#8b2020';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#6b1515';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                            >
+                                Изтрий акаунт
+                            </button>
                         </div>
 
                         <div style={styles.statsContainer}>
@@ -594,6 +656,119 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, windowWidth
                     </div>
                 </div>
             )}
+
+            {showDeleteConfirmation && (
+                <div style={styles.deleteConfirmationOverlay} onClick={handleCloseDeleteConfirmation}>
+                    <div
+                        style={{
+                            ...styles.deleteConfirmationContainer,
+                            padding: isSmallMobile ? '20px' : isMobile ? '30px' : '40px',
+                            maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '400px',
+                            minWidth: isSmallMobile ? '280px' : '320px',
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div style={styles.deleteConfirmationHeader}>
+                            <h3 style={{
+                                ...styles.deleteConfirmationTitle,
+                                fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
+                            }}>
+                                Изтриване на акаунт
+                            </h3>
+                            <button
+                                onClick={handleCloseDeleteConfirmation}
+                                style={{
+                                    ...styles.closeButton,
+                                    fontSize: isSmallMobile ? '1.2rem' : '1.5rem',
+                                    width: isSmallMobile ? '32px' : '40px',
+                                    height: isSmallMobile ? '32px' : '40px',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                    e.currentTarget.style.color = '#fff';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '#b0b0b0';
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        <div style={styles.deleteConfirmationContent}>
+                            <div style={{
+                                ...styles.warningIcon,
+                                fontSize: isSmallMobile ? '2.5rem' : isMobile ? '3rem' : '3.5rem',
+                            }}>
+                                ⚠️
+                            </div>
+                            <p style={{
+                                ...styles.deleteWarningText,
+                                fontSize: isSmallMobile ? '0.9rem' : isMobile ? '0.95rem' : '1rem',
+                            }}>
+                                Сигурни ли сте, че искате да изтриете акаунта си? 
+                                Това действие е необратимо и всички ваши данни ще бъдат изтрити завинаги.
+                            </p>
+
+                            {deleteError && (
+                                <div style={{
+                                    ...styles.deleteErrorMessage,
+                                    fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
+                                    padding: isSmallMobile ? '8px 12px' : '10px 15px',
+                                    marginBottom: isSmallMobile ? '15px' : '20px',
+                                }}>
+                                    {deleteError}
+                                </div>
+                            )}
+
+                            <div style={styles.deleteButtonsContainer}>
+                                <button
+                                    onClick={handleCloseDeleteConfirmation}
+                                    style={{
+                                        ...styles.cancelDeleteButton,
+                                        padding: isSmallMobile ? '10px' : isMobile ? '12px' : '14px',
+                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                    }}
+                                >
+                                    Отказ
+                                </button>
+                                <button
+                                    onClick={handleDeleteAccount}
+                                    disabled={isDeletingAccount}
+                                    style={{
+                                        ...styles.confirmDeleteButton,
+                                        padding: isSmallMobile ? '10px' : isMobile ? '12px' : '14px',
+                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                        opacity: isDeletingAccount ? 0.7 : 1,
+                                        cursor: isDeletingAccount ? 'not-allowed' : 'pointer',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isDeletingAccount) {
+                                            e.currentTarget.style.backgroundColor = '#a52a2a';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isDeletingAccount) {
+                                            e.currentTarget.style.backgroundColor = '#8b0000';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }
+                                    }}
+                                >
+                                    {isDeletingAccount ? 'Изтриване...' : 'Изтрий акаунт'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -624,9 +799,9 @@ const styles: { [key: string]: React.CSSProperties } = {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '30px',
+        marginBottom: '20px',
         borderBottom: '2px solid rgba(255,255,255,0.1)',
-        paddingBottom: '15px',
+        paddingBottom: '10px',
     },
     title: {
         margin: 0,
@@ -652,7 +827,7 @@ const styles: { [key: string]: React.CSSProperties } = {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        marginBottom: '30px',
+        marginBottom: '20px',
     },
     userIcon: {
         background: 'linear-gradient(135deg, #2d5a27 0%, #1a3a16 100%)',
@@ -673,23 +848,23 @@ const styles: { [key: string]: React.CSSProperties } = {
     statsContainer: {
         display: 'flex',
         justifyContent: 'space-around',
-        marginBottom: '30px',
-        gap: '15px',
+        marginBottom: '20px',
+        gap: '10px',
     },
     statBox: {
         flex: 1,
         textAlign: 'center',
-        padding: '20px',
+        padding: '15px',
         background: 'linear-gradient(135deg, rgba(45, 45, 45, 0.8) 0%, rgba(30, 30, 30, 0.9) 100%)',
         borderRadius: '15px',
         border: '2px solid rgba(255,255,255,0.1)',
         boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)',
     },
     statValue: {
-        fontSize: '2rem',
+        fontSize: '1.8rem',
         fontWeight: 'bold',
         color: '#d4af37',
-        marginBottom: '8px',
+        marginBottom: '5px',
     },
     statLabel: {
         fontSize: '0.9rem',
@@ -698,7 +873,7 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontWeight: '600',
     },
     statusBarContainer: {
-        marginTop: '20px',
+        marginTop: '10px',
     },
     statusBarLabel: {
         fontSize: '1rem',
@@ -709,7 +884,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     },
     statusBarWrapper: {
         width: '100%',
-        height: '40px',
+        height: '35px',
         borderRadius: '20px',
         overflow: 'hidden',
         display: 'flex',
@@ -898,6 +1073,103 @@ const styles: { [key: string]: React.CSSProperties } = {
         boxShadow: '0 4px 0 #0d1f0b',
         transition: 'all 0.3s ease',
         marginTop: '10px',
+    },
+    deleteAccountButton: {
+        padding: '14px 28px',
+        backgroundColor: '#6b1515',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '8px',
+        fontSize: '1rem',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        boxShadow: '0 4px 0 #4a0e0e',
+        transition: 'all 0.3s ease',
+        marginTop: '20px',
+    },
+    deleteConfirmationOverlay: {
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.85)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2000,
+        backdropFilter: 'blur(5px)',
+    },
+    deleteConfirmationContainer: {
+        backgroundColor: 'rgba(26, 26, 26, 0.98)',
+        borderRadius: '20px',
+        boxShadow: '0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
+        position: 'relative',
+        maxHeight: '90vh',
+        overflow: 'auto',
+    },
+    deleteConfirmationHeader: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '25px',
+        borderBottom: '2px solid rgba(255,255,255,0.1)',
+        paddingBottom: '15px',
+    },
+    deleteConfirmationTitle: {
+        margin: 0,
+        color: '#e57373',
+        fontWeight: 'bold',
+    },
+    deleteConfirmationContent: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        textAlign: 'center',
+    },
+    warningIcon: {
+        marginBottom: '15px',
+    },
+    deleteWarningText: {
+        color: '#b0b0b0',
+        lineHeight: '1.6',
+        marginBottom: '25px',
+    },
+    deleteErrorMessage: {
+        color: '#e57373',
+        backgroundColor: 'rgba(229, 115, 115, 0.1)',
+        borderRadius: '8px',
+        fontWeight: '600',
+        border: '1px solid #e57373',
+        width: '100%',
+        boxSizing: 'border-box',
+    },
+    deleteButtonsContainer: {
+        display: 'flex',
+        gap: '15px',
+        width: '100%',
+        justifyContent: 'center',
+    },
+    cancelDeleteButton: {
+        width: '45%',
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        color: '#b0b0b0',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        transition: 'all 0.3s ease',
+    },
+    confirmDeleteButton: {
+        width: '45%',
+        backgroundColor: '#8b0000',
+        color: '#fff',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        boxShadow: '0 4px 0 #5c0000',
+        transition: 'all 0.3s ease',
     },
 };
 
