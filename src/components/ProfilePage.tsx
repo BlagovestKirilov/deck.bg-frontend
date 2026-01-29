@@ -1,6 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import {userService} from '../api/userService';
 import {ProfileResponse} from '../types/user.types';
+import {useAuthContext} from '../context/AuthContext';
 
 interface ProfilePageProps {
     username: string;
@@ -10,6 +12,8 @@ interface ProfilePageProps {
 }
 
 const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, windowWidth = 1024}) => {
+    const navigate = useNavigate();
+    const {logout} = useAuthContext();
     const [profile, setProfile] = useState<ProfileResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -229,9 +233,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
             
             if (result.success) {
                 setShowDeleteConfirmation(false);
-                if (onLogout) {
-                    onLogout();
-                }
+                // Clear all tokens and user data
+                logout();
+                // Navigate to login page
+                navigate('/');
             } else {
                 setDeleteError(result.message);
             }
