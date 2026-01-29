@@ -7,6 +7,7 @@ import ConfirmationSuccess from './components/ConfirmationSuccess';
 import ConfirmationInvalid from './components/ConfirmationInvalid';
 import ResetPassword from './components/ResetPassword';
 import PrivacyPolicy from './components/PrivacyPolicy';
+import AccountDeletionInfo from './components/AccountDeletionInfo';
 import './index.css';
 
 // SafeAreaView component for Android gesture navigation support
@@ -31,6 +32,10 @@ const App: React.FC = () => {
                     <Route 
                         path="/privacy" 
                         element={<PrivacyPolicy />} 
+                    />
+                    <Route 
+                        path="/delete-account" 
+                        element={<AccountDeletionInfo />} 
                     />
                     <Route 
                         path="/confirmation-success" 
