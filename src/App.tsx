@@ -9,6 +9,7 @@ import ResetPassword from './components/ResetPassword';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import AccountDeletionInfo from './components/AccountDeletionInfo';
 import DeletionSuccess from './components/DeletionSuccess';
+import NotFound from './components/NotFound';
 import './index.css';
 
 // SafeAreaView component for Android gesture navigation support
@@ -55,7 +56,7 @@ const App: React.FC = () => {
                         element={<DeletionSuccess />} 
                     />
                     <Route 
-                        path="*" 
+                        path="/" 
                         element={
                             !isAuthenticated ? (
                                 <AuthPage />
@@ -68,6 +69,10 @@ const App: React.FC = () => {
                                 </div>
                             )
                         } 
+                    />
+                    <Route 
+                        path="*" 
+                        element={<NotFound />} 
                     />
                 </Routes>
             </div>
