@@ -8,7 +8,7 @@ export const userService = {
     },
     resendEmail: async (): Promise<{ success: boolean; message: string }> => {
         try {
-            await apiClient.post('/user/resend-email');
+            await apiClient.post('/user/confirm-email');
             return { success: true, message: 'Имейлът е изпратен успешно!' };
         } catch (error: any) {
             if (error.response?.status === 400) {
