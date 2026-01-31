@@ -21,7 +21,7 @@ const ResetPassword: React.FC = () => {
     useEffect(() => {
         // Check if token exists, if not redirect to invalid page
         if (!token) {
-            navigate('/confirmation-invalid');
+            navigate('/invalid');
             return;
         }
 
@@ -35,10 +35,10 @@ const ResetPassword: React.FC = () => {
             } catch (err: any) {
                 // If 400 or any error, redirect to invalid page
                 if (err.response?.status === 400 || err.response?.status) {
-                    navigate('/confirmation-invalid');
+                    navigate('/invalid');
                 } else {
                     // For network errors, also redirect
-                    navigate('/confirmation-invalid');
+                    navigate('/invalid');
                 }
             }
         };
@@ -141,7 +141,7 @@ const ResetPassword: React.FC = () => {
             } 
             // For any other error (including "Username or password is incorrect.", 500, or any other message) - redirect
             else {
-                navigate('/confirmation-invalid');
+                navigate('/invalid');
             }
             console.error('Error resetting password:', err);
         } finally {
