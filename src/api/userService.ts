@@ -35,13 +35,13 @@ export const userService = {
             throw error;
         }
     },
-    deleteUser: async (): Promise<{ success: boolean; message: string }> => {
+    sendUserDeletionEmail: async (password: string): Promise<{ success: boolean; message: string }> => {
         try {
-            await apiClient.delete('/user/delete-user');
-            return { success: true, message: 'Акаунтът е изтрит успешно!' };
+            await apiClient.post('/user/delete-user', { password });
+            return { success: true, message: 'Имейл за изтриване на акаунта е изпратен успешно!' };
         } catch (error: any) {
             if (error.response?.status === 400) {
-                return { success: false, message: 'Неуспешно изтриване на акаунта.' };
+                return { success: false, message: 'Грешна парола.' };
             }
             throw error;
         }

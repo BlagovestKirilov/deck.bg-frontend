@@ -32,6 +32,8 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
     const [isDeletingAccount, setIsDeletingAccount] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
     const abortControllerRef = useRef<AbortController | null>(null);
 
     const isMobile = windowWidth <= 768;
@@ -217,26 +219,47 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
     const handleOpenDeleteConfirmation = () => {
         setShowDeleteConfirmation(true);
         setDeleteError(null);
+        setDeletePassword('');
     };
 
     const handleCloseDeleteConfirmation = () => {
         setShowDeleteConfirmation(false);
         setDeleteError(null);
+        setDeletePassword('');
+    };
+
+    const validateDeletePassword = (): boolean => {
+        const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
+
+        if (!deletePassword) {
+            setDeleteError('Паролата не може да бъде празна.');
+            return false;
+        }
+        if (deletePassword.length < 5 || deletePassword.length > 50) {
+            setDeleteError('Паролата трябва да бъде между 5 и 50 символа.');
+            return false;
+        }
+        if (!passwordRegex.test(deletePassword)) {
+            setDeleteError('Паролата съдържа неразрешени символи.');
+            return false;
+        }
+        return true;
     };
 
     const handleDeleteAccount = async () => {
+        if (!validateDeletePassword()) {
+            return;
+        }
+
         setIsDeletingAccount(true);
         setDeleteError(null);
 
         try {
-            const result = await userService.deleteUser();
+            const result = await userService.sendUserDeletionEmail(deletePassword);
             
             if (result.success) {
                 setShowDeleteConfirmation(false);
-                // Clear all tokens and user data
-                logout();
-                // Navigate to login page
-                navigate('/');
+                setShowDeleteSuccess(true);
             } else {
                 setDeleteError(result.message);
             }
@@ -246,6 +269,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
         } finally {
             setIsDeletingAccount(false);
         }
+    };
+
+    const handleDeleteSuccessOk = () => {
+        setShowDeleteSuccess(false);
+        logout();
+        navigate('/');
     };
 
     return (
@@ -375,45 +404,47 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
                                 </div>
                             )}
                             {profile.isEmailConfirmed && (
-                                <button
-                                    onClick={handleOpenPasswordChange}
-                                    style={{
-                                        ...styles.changePasswordButton,
-                                        padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
-                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                        marginTop: isSmallMobile ? '15px' : '20px',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#2d5a27';
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#1a3a16';
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                    }}
-                                >
-                                    Промени парола
-                                </button>
+                                <>
+                                    <button
+                                        onClick={handleOpenPasswordChange}
+                                        style={{
+                                            ...styles.changePasswordButton,
+                                            padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
+                                            fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                            marginTop: isSmallMobile ? '15px' : '20px',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#2d5a27';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#1a3a16';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }}
+                                    >
+                                        Промени парола
+                                    </button>
+                                    <button
+                                        onClick={handleOpenDeleteConfirmation}
+                                        style={{
+                                            ...styles.deleteAccountButton,
+                                            padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
+                                            fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                            marginTop: isSmallMobile ? '15px' : '20px',
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#8b2020';
+                                            e.currentTarget.style.transform = 'translateY(-2px)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.backgroundColor = '#6b1515';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                        }}
+                                    >
+                                        Изтрий акаунт
+                                    </button>
+                                </>
                             )}
-                            <button
-                                onClick={handleOpenDeleteConfirmation}
-                                style={{
-                                    ...styles.deleteAccountButton,
-                                    padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
-                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                    marginTop: isSmallMobile ? '15px' : '20px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#8b2020';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#6b1515';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                            >
-                                Изтрий акаунт
-                            </button>
                         </div>
 
                         <div style={styles.statsContainer}>
@@ -707,9 +738,45 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
                                 ...styles.deleteWarningText,
                                 fontSize: isSmallMobile ? '0.9rem' : isMobile ? '0.95rem' : '1rem',
                             }}>
-                                Сигурни ли сте, че искате да изтриете акаунта си? 
-                                Това действие е необратимо и всички ваши данни ще бъдат изтрити завинаги.
+                                За да изтриете акаунта си, моля въведете паролата си. 
+                                Ще получите имейл за потвърждение на изтриването.
                             </p>
+
+                            <div style={{
+                                ...styles.deletePasswordInputGroup,
+                                marginBottom: isSmallMobile ? '15px' : '20px',
+                                width: '100%',
+                            }}>
+                                <label style={{
+                                    ...styles.passwordLabel,
+                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
+                                    marginBottom: isSmallMobile ? '5px' : '8px',
+                                }}>
+                                    Парола
+                                </label>
+                                <input
+                                    type="password"
+                                    value={deletePassword}
+                                    onChange={(e) => {
+                                        setDeletePassword(e.target.value);
+                                        if (deleteError) setDeleteError(null);
+                                    }}
+                                    placeholder="••••••••"
+                                    style={{
+                                        ...styles.passwordInput,
+                                        padding: isSmallMobile ? '10px' : '12px',
+                                        fontSize: isSmallMobile ? '14px' : '16px',
+                                    }}
+                                    onFocus={(e) => {
+                                        e.currentTarget.style.borderColor = '#e57373';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+                                    }}
+                                    onBlur={(e) => {
+                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
+                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
+                                    }}
+                                />
+                            </div>
 
                             {deleteError && (
                                 <div style={{
@@ -762,9 +829,62 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
                                         }
                                     }}
                                 >
-                                    {isDeletingAccount ? 'Изтриване...' : 'Изтрий акаунт'}
+                                    {isDeletingAccount ? 'Изпращане...' : 'Изтрий акаунт'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {showDeleteSuccess && (
+                <div style={styles.deleteConfirmationOverlay}>
+                    <div
+                        style={{
+                            ...styles.deleteConfirmationContainer,
+                            padding: isSmallMobile ? '20px' : isMobile ? '30px' : '40px',
+                            maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '400px',
+                            minWidth: isSmallMobile ? '280px' : '320px',
+                        }}
+                    >
+                        <div style={styles.deleteConfirmationContent}>
+                            <div style={{
+                                ...styles.successIcon,
+                                fontSize: isSmallMobile ? '2.5rem' : isMobile ? '3rem' : '3.5rem',
+                            }}>
+                                ✉️
+                            </div>
+                            <h3 style={{
+                                ...styles.successTitle,
+                                fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.6rem',
+                            }}>
+                                Имейл изпратен
+                            </h3>
+                            <p style={{
+                                ...styles.deleteWarningText,
+                                fontSize: isSmallMobile ? '0.9rem' : isMobile ? '0.95rem' : '1rem',
+                            }}>
+                                Изпратихме ви имейл за потвърждение на изтриването на акаунта. 
+                                Моля, проверете пощата си и следвайте инструкциите.
+                            </p>
+                            <button
+                                onClick={handleDeleteSuccessOk}
+                                style={{
+                                    ...styles.successOkButton,
+                                    padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '16px 40px',
+                                    fontSize: isSmallMobile ? '0.9rem' : isMobile ? '1rem' : '1.1rem',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#2d5a27';
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#1a3a16';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}
+                            >
+                                OK
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1169,6 +1289,27 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontWeight: 'bold',
         cursor: 'pointer',
         boxShadow: '0 4px 0 #5c0000',
+        transition: 'all 0.3s ease',
+    },
+    deletePasswordInputGroup: {
+        marginBottom: '20px',
+    },
+    successIcon: {
+        marginBottom: '15px',
+    },
+    successTitle: {
+        margin: '0 0 15px 0',
+        color: '#66bb6a',
+        fontWeight: 'bold',
+    },
+    successOkButton: {
+        backgroundColor: '#1a3a16',
+        color: '#d4af37',
+        border: 'none',
+        borderRadius: '8px',
+        fontWeight: 'bold',
+        cursor: 'pointer',
+        boxShadow: '0 4px 0 #0d1f0b',
         transition: 'all 0.3s ease',
     },
 };
