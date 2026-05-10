@@ -48,9 +48,9 @@ jobs:
             echo "Pulling latest frontend image..."
             docker compose pull frontend
             
-            echo "Restarting frontend and refreshing nginx..."
+            echo "Restarting frontend."
             # Using --no-deps ensures we only restart the specific services needed
-            docker compose up -d --no-deps frontend nginx
+            docker compose up -d --no-deps frontend
             
             echo "Cleaning up old images..."
             docker image prune -f
