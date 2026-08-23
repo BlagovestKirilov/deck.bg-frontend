@@ -40,7 +40,7 @@ jobs:
           key: ${{ secrets.EC2_KEY }}
           script: |
             set -e
-            cd /home/ubuntu/app
+            cd /home/ubuntu/santase
             
             echo "Logging into Docker Hub..."
             echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
