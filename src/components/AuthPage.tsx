@@ -1,531 +1,455 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { authService } from '../api/authService';
+import Button from './ui/Button';
+import Field from './ui/Field';
+import Note from './ui/Note';
+import Icon from './ui/Icon';
+
+type Mode = 'login' | 'register' | 'forgot';
+
+type FieldKey = 'username' | 'email' | 'password' | 'confirmPassword' | 'forgotEmail';
+type Errors = Partial<Record<FieldKey, string>>;
+
+const USERNAME_RE = /^[A-Za-z0-9]+$/;
+const PASSWORD_RE = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const AuthPage: React.FC = () => {
-    const [isLogin, setIsLogin] = useState(true);
+    const [mode, setMode] = useState<Mode>('login');
     const [form, setForm] = useState({ username: '', password: '', confirmPassword: '', email: '' });
-    const [localError, setLocalError] = useState<string | null>(null);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [showServerError, setShowServerError] = useState(true);
-    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
-    
-    // Forgot password state
-    const [showForgotPassword, setShowForgotPassword] = useState(false);
-    const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-    const [forgotPasswordError, setForgotPasswordError] = useState<string | null>(null);
-    const [forgotPasswordSuccess, setForgotPasswordSuccess] = useState<string | null>(null);
-    const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [errors, setErrors] = useState<Errors>({});
+    const [formMessage, setFormMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+    const [isForgotLoading, setIsForgotLoading] = useState(false);
 
     const { performAction, isLoading, error: serverError } = useAuth();
 
-    // Handle window resize for responsive design
-    useEffect(() => {
-        const handleResize = () => {
-            setWindowWidth(window.innerWidth);
-        };
-        
-        window.addEventListener('resize', handleResize);
-        handleResize(); // Initial call
-        
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
+    const usernameRef = useRef<HTMLInputElement>(null);
+    const emailRef = useRef<HTMLInputElement>(null);
+    const passwordRef = useRef<HTMLInputElement>(null);
+    const confirmRef = useRef<HTMLInputElement>(null);
+    const forgotRef = useRef<HTMLInputElement>(null);
 
-    // Добавяне на CSS анимациите динамично
-    useEffect(() => {
-        if (typeof document !== 'undefined') {
-            const style = document.createElement('style');
-            style.innerHTML = `
-                @keyframes floatSymbols {
-                    0% {
-                        transform: translateY(0) rotate(0deg) translateX(0);
-                        opacity: 0;
-                    }
-                    10% {
-                        opacity: inherit;
-                    }
-                    50% {
-                        transform: translateY(-50vh) rotate(180deg) translateX(20px);
-                    }
-                    90% {
-                        opacity: inherit;
-                    }
-                    100% {
-                        transform: translateY(-110vh) rotate(360deg) translateX(-20px);
-                        opacity: 0;
-                    }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-    }, []);
+    const isLogin = mode === 'login';
+    const isRegister = mode === 'register';
+    const isForgot = mode === 'forgot';
 
-    const validateForm = (): boolean => {
-        const { username, password, confirmPassword, email } = form;
-        const usernameRegex = /^[A-Za-z0-9]+$/;
-        const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!username) {
-            setLocalError("Потребителското име не може да бъде празно.");
-            return false;
-        }
-        if (username.length < 4 || username.length > 20) {
-            setLocalError("Потребителското име трябва да е между 4 и 20 символа.");
-            return false;
-        }
-        if (!usernameRegex.test(username)) {
-            setLocalError("Потребителското име може да съдържа само латински букви и цифри.");
-            return false;
-        }
-
-        if (!password) {
-            setLocalError("Паролата не може да бъде празна.");
-            return false;
-        }
-        if (password.length < 5 || password.length > 50) {
-            setLocalError("Паролата трябва да бъде между 5 и 50 символа.");
-            return false;
-        }
-        if (!passwordRegex.test(password)) {
-            setLocalError("Паролата съдържа неразрешени символи.");
-            return false;
-        }
-
-        // Валидация за Email (само при Регистрация)
-        if (!isLogin) {
-            if (!email) {
-                setLocalError("Имейлът не може да бъде празен.");
-                return false;
-            }
-            if (!emailRegex.test(email)) {
-                setLocalError("Невалиден имейл адрес.");
-                return false;
-            }
-        }
-
-        // Валидация за Потвърждение (само при Регистрация)
-        if (!isLogin && password !== confirmPassword) {
-            setLocalError("Паролите не съвпадат!");
-            return false;
-        }
-        return true;
-    };
-
-    const mapErrorToBulgarian = (errorData: any): string => {
-        if (!errorData) return "";
-        
-        // Try to parse if it's a JSON string
-        let parsedError: any = errorData;
-        if (typeof errorData === 'string') {
-            try {
-                parsedError = JSON.parse(errorData);
-            } catch {
-                parsedError = { message: errorData };
-            }
-        }
-        
-        const msg = parsedError.message || (typeof errorData === 'string' ? errorData : "");
-        const status = parsedError.status;
-        const details = parsedError.details || parsedError.data?.details || "";
-
-        // Check for conflict status (409) - username or email already taken
-        if (status === 409 || msg?.toLowerCase().includes('conflict') || msg?.toLowerCase().includes('already in use')) {
-            const detailsLower = details?.toLowerCase() || "";
-            if (detailsLower.includes("email") || (detailsLower.includes("'") && details?.includes("@"))) {
-                return "Имейлът вече е зает.";
-            }
-            if (detailsLower.includes("username") || (detailsLower.includes("'") && !details?.includes("@"))) {
-                return "Потребителското име е заето.";
-            }
-            return "Потребителското име или имейлът е зает.";
-        }
-        
-        if (msg === "Username or password is incorrect.") return "Невалидно потребителско име или парола.";
-
-        if (msg === "Validation Error") {
-            if (details.includes("username")) {
-                if (details.includes("between 5 and 20")) return "Потребителското име трябва да е между 5 и 20 символа.";
-                if (details.includes("only letters and digits")) return "Потребителското име може да съдържа само латински букви и цифри.";
-            }
-            if (details.includes("password")) {
-                if (details.includes("between 5 and 50") || details.includes("between 5 and 20"))
-                    return "Паролата трябва да бъде между 5 и 50 символа.";
-            }
-            return "Невалидни данни.";
-        }
-        return "Невалидно потребителско име или парола.";
-    };
-
+    // Switching mode is a fresh start: no stale values, errors or banners.
     useEffect(() => {
         setForm({ username: '', password: '', confirmPassword: '', email: '' });
-        setLocalError(null);
-        setSuccessMessage(null);
-        setShowServerError(false);
-        if (!isLogin) {
-            setShowForgotPassword(false);
-            setForgotPasswordEmail('');
-            setForgotPasswordError(null);
-            setForgotPasswordSuccess(null);
-        }
-    }, [isLogin]);
+        setForgotEmail('');
+        setErrors({});
+        setFormMessage(null);
+    }, [mode]);
 
-    const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-        if (localError) setLocalError(null);
-        if (successMessage) setSuccessMessage(null);
-        setShowServerError(false);
+    /* ---------------------------------------------------------------
+       Ambient card symbols. Generated once; the count is kept low because
+       this renders behind a form on low-end phones. prefers-reduced-motion
+       stops the animation globally (see theme.css).
+       --------------------------------------------------------------- */
+    const driftingSymbols = useMemo(() => {
+        const symbols = ['♠', '♥', '♦', '♣', 'K', 'Q', 'A', 'J', '10', '9'];
+        return Array.from({ length: 18 }).map((_, i) => {
+            const size = 1.4 + Math.random() * 3.4;
+            const opacity = 0.04 + Math.random() * 0.09;
+            return (
+                <span
+                    key={i}
+                    aria-hidden="true"
+                    style={
+                        {
+                            position: 'absolute',
+                            bottom: '-140px',
+                            left: `${Math.random() * 100}%`,
+                            fontSize: `${size}rem`,
+                            color: i % 2 === 0 ? 'var(--gold)' : 'var(--text-3)',
+                            opacity,
+                            filter: size < 2 ? 'blur(2px)' : undefined,
+                            animation: `drift-up ${18 + Math.random() * 26}s linear infinite`,
+                            animationDelay: `${Math.random() * -30}s`,
+                            pointerEvents: 'none',
+                            userSelect: 'none',
+                            '--drift-opacity': opacity,
+                        } as React.CSSProperties
+                    }
+                >
+                    {symbols[Math.floor(Math.random() * symbols.length)]}
+                </span>
+            );
+        });
+    }, []);
+
+    /* ---------------------------------------------------------------
+       Validation — every failure attaches to the field that caused it,
+       so the message appears next to the input, not in one lump on top.
+       --------------------------------------------------------------- */
+    const validate = (): Errors => {
+        const next: Errors = {};
+        const { username, password, confirmPassword, email } = form;
+
+        if (!username) next.username = 'Потребителското име не може да бъде празно.';
+        else if (username.length < 4 || username.length > 20)
+            next.username = 'Потребителското име трябва да е между 4 и 20 символа.';
+        else if (!USERNAME_RE.test(username)) next.username = 'Само латински букви и цифри.';
+
+        if (!password) next.password = 'Паролата не може да бъде празна.';
+        else if (password.length < 5 || password.length > 50)
+            next.password = 'Паролата трябва да бъде между 5 и 50 символа.';
+        else if (!PASSWORD_RE.test(password)) next.password = 'Паролата съдържа неразрешени символи.';
+
+        if (isRegister) {
+            if (!email) next.email = 'Имейлът не може да бъде празен.';
+            else if (!EMAIL_RE.test(email)) next.email = 'Невалиден имейл адрес.';
+
+            if (password && password !== confirmPassword) next.confirmPassword = 'Паролите не съвпадат!';
+        }
+
+        return next;
+    };
+
+    /** Puts the cursor in the first field that failed — no hunting. */
+    const focusFirstError = (errs: Errors) => {
+        if (errs.username) usernameRef.current?.focus();
+        else if (errs.email) emailRef.current?.focus();
+        else if (errs.password) passwordRef.current?.focus();
+        else if (errs.confirmPassword) confirmRef.current?.focus();
+    };
+
+    const mapServerError = (errorData: unknown): string => {
+        if (!errorData) return '';
+
+        let parsed: any = errorData;
+        if (typeof errorData === 'string') {
+            try {
+                parsed = JSON.parse(errorData);
+            } catch {
+                parsed = { message: errorData };
+            }
+        }
+
+        const msg: string = parsed.message || (typeof errorData === 'string' ? errorData : '');
+        const status = parsed.status;
+        const details: string = parsed.details || parsed.data?.details || '';
+
+        if (
+            status === 409 ||
+            msg?.toLowerCase().includes('conflict') ||
+            msg?.toLowerCase().includes('already in use')
+        ) {
+            const d = details?.toLowerCase() || '';
+            if (d.includes('email') || (d.includes("'") && details?.includes('@'))) return 'Имейлът вече е зает.';
+            if (d.includes('username') || (d.includes("'") && !details?.includes('@')))
+                return 'Потребителското име е заето.';
+            return 'Потребителското име или имейлът е зает.';
+        }
+
+        if (msg === 'Username or password is incorrect.') return 'Невалидно потребителско име или парола.';
+
+        if (msg === 'Validation Error') {
+            if (details.includes('username')) {
+                if (details.includes('between 5 and 20'))
+                    return 'Потребителското име трябва да е между 5 и 20 символа.';
+                if (details.includes('only letters and digits')) return 'Само латински букви и цифри.';
+            }
+            if (
+                details.includes('password') &&
+                (details.includes('between 5 and 50') || details.includes('between 5 and 20'))
+            )
+                return 'Паролата трябва да бъде между 5 и 50 символа.';
+            return 'Невалидни данни.';
+        }
+        return 'Невалидно потребителско име или парола.';
+    };
+
+    const onChange = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setForm((f) => ({ ...f, [key]: value }));
+        // Clear this field's error as soon as the user starts fixing it.
+        setErrors((prev) => (prev[key as FieldKey] ? { ...prev, [key]: undefined } : prev));
+        setFormMessage(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validateForm()) return;
-        setShowServerError(true);
+        const found = validate();
+        setErrors(found);
+        if (Object.keys(found).length > 0) {
+            focusFirstError(found);
+            return;
+        }
+
+        setFormMessage(null);
         try {
             await performAction(isLogin ? 'login' : 'register', {
                 username: form.username,
                 password: form.password,
-                ...(isLogin ? {} : { email: form.email })
+                ...(isLogin ? {} : { email: form.email }),
             });
-            setSuccessMessage(isLogin ? "Влязохте успешно!" : "Успешна регистрация! Изпратихме линк за потвърждение на вашия имейл.");
-        } catch (err) {}
-    };
-
-    const validateForgotPasswordEmail = (): boolean => {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!forgotPasswordEmail) {
-            setForgotPasswordError("Имейлът не може да бъде празен.");
-            return false;
-        }
-        if (!emailRegex.test(forgotPasswordEmail)) {
-            setForgotPasswordError("Невалиден имейл адрес.");
-            return false;
-        }
-        return true;
-    };
-
-    const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!validateForgotPasswordEmail()) return;
-        
-        setIsForgotPasswordLoading(true);
-        setForgotPasswordError(null);
-        setForgotPasswordSuccess(null);
-        
-        try {
-            await authService.forgotPassword(forgotPasswordEmail);
-            setForgotPasswordSuccess("Имейлът за възстановяване на парола е изпратен успешно!");
-            setForgotPasswordEmail('');
+            setFormMessage({
+                tone: 'success',
+                text: isLogin
+                    ? 'Влязохте успешно!'
+                    : 'Успешна регистрация! Изпратихме линк за потвърждение на вашия имейл.',
+            });
         } catch (err: any) {
-            if (err.response?.status === 400) {
-                const errorMessage = err.response?.data?.message || '';
-                if (errorMessage.toLowerCase().includes('is not confirmed')) {
-                    setForgotPasswordError("Имейлът не е потвърден.");
-                } else {
-                    setForgotPasswordError(errorMessage || "Грешка при изпращане на имейл.");
-                }
-            } else {
-                setForgotPasswordError("Грешка при изпращане на имейл.");
-            }
-        } finally {
-            setIsForgotPasswordLoading(false);
+            const raw = err?.response?.data
+                ? JSON.stringify({
+                      message: err.response.data.message,
+                      status: err.response.status,
+                      details: err.response.data.details,
+                  })
+                : serverError;
+            setFormMessage({ tone: 'error', text: mapServerError(raw) || 'Възникна грешка. Опитайте отново.' });
         }
     };
 
-    // Генериране на символи чрез useMemo, за да не се рестартират при промяна на state
-    const floatingSymbols = useMemo(() => {
-        const symbols = ['♠', '♥', '♦', '♣', 'K', 'Q', 'A', 'J', '10', '9'];
-        return Array.from({ length: 45 }).map((_, i) => {
-            const size = 1 + Math.random() * 5;
-            const duration = 15 + Math.random() * 30;
-            const delay = Math.random() * -30; // Използваме широк отрицателен delay, за да са навсякъде при старт
-            const opacity = 0.03 + Math.random() * 0.12;
-            const blur = size < 2 ? '2px' : '0px';
+    const handleForgotSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
 
-            return (
-                <div
-                    key={i}
-                    style={{
-                        left: `${Math.random() * 100}%`,
-                        animation: `floatSymbols ${duration}s linear infinite`,
-                        animationDelay: `${delay}s`,
-                        fontSize: `${size}rem`,
-                        opacity: opacity,
-                        filter: `blur(${blur})`,
-                        position: 'absolute',
-                        bottom: '-150px',
-                        pointerEvents: 'none',
-                        color: i % 2 === 0 ? '#d4af37' : '#bdc3c7',
-                        zIndex: 0
-                    }}
-                >
-                    {symbols[Math.floor(Math.random() * symbols.length)]}
-                </div>
-            );
-        });
-    }, []); // Празният масив гарантира, че се генерират само веднъж
+        if (!forgotEmail) {
+            setErrors({ forgotEmail: 'Имейлът не може да бъде празен.' });
+            forgotRef.current?.focus();
+            return;
+        }
+        if (!EMAIL_RE.test(forgotEmail)) {
+            setErrors({ forgotEmail: 'Невалиден имейл адрес.' });
+            forgotRef.current?.focus();
+            return;
+        }
 
-    const isMobile = windowWidth <= 768;
-    const isSmallMobile = windowWidth <= 480;
+        setErrors({});
+        setFormMessage(null);
+        setIsForgotLoading(true);
+
+        try {
+            await authService.forgotPassword(forgotEmail);
+            setFormMessage({ tone: 'success', text: 'Имейлът за възстановяване на парола е изпратен успешно!' });
+            setForgotEmail('');
+        } catch (err: any) {
+            const message: string = err.response?.data?.message || '';
+            setFormMessage({
+                tone: 'error',
+                text: message.toLowerCase().includes('is not confirmed')
+                    ? 'Имейлът не е потвърден.'
+                    : message || 'Грешка при изпращане на имейл.',
+            });
+        } finally {
+            setIsForgotLoading(false);
+        }
+    };
+
+    const heading = isForgot ? 'Забравена парола' : isLogin ? 'Santase' : 'Регистрация';
+    const sub = isForgot
+        ? 'Въведете вашия имейл адрес за възстановяване на парола'
+        : isLogin
+          ? 'Влез в кралството на картите'
+          : 'Стани част от елита';
 
     return (
-        <div style={styles.container}>
-            {floatingSymbols}
+        <main className="screen" style={{ overflow: 'hidden' }}>
+            <div aria-hidden="true" style={driftLayerStyle}>
+                {driftingSymbols}
+            </div>
 
-            <div style={{
-                ...styles.card,
-                padding: isSmallMobile ? '20px 15px' : isMobile ? '25px 20px' : '40px',
-                maxWidth: isSmallMobile ? '280px' : isMobile ? '320px' : '360px',
-            }}>
-                <div style={{
-                    ...styles.logo,
-                    fontSize: isSmallMobile ? '40px' : isMobile ? '50px' : '60px',
-                }}>♠</div>
-                <h2 style={{
-                    ...styles.title,
-                    fontSize: isSmallMobile ? '20px' : isMobile ? '24px' : '28px',
-                }}>{showForgotPassword ? 'ЗАБРАВЕНА ПАРОЛА' : (isLogin ? 'SANTASE' : 'РЕГИСТРАЦИЯ')}</h2>
-                <p style={{
-                    ...styles.subtitle,
-                    fontSize: isSmallMobile ? '11px' : isMobile ? '12px' : '13px',
-                    marginBottom: isSmallMobile ? '15px' : '25px',
-                }}>{showForgotPassword ? 'Въведете вашия имейл адрес за възстановяване на парола' : (isLogin ? 'Влез в кралството на картите' : 'Стани част от елита')}</p>
+            <div className="panel panel--gold" style={cardStyle}>
+                <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
+                    <span style={crestStyle}>
+                        <Icon name="spade" size="58%" />
+                    </span>
+                    <h1 style={headingStyle}>{heading}</h1>
+                    <p style={subStyle}>{sub}</p>
+                </div>
 
-                {!showForgotPassword ? (
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
-                        <label style={{
-                            ...styles.label,
-                            fontSize: isSmallMobile ? '10px' : '12px',
-                            marginBottom: isSmallMobile ? '4px' : '5px',
-                        }}>Потребителско име</label>
-                        <input
-                            type="text"
+                {!isForgot ? (
+                    <form onSubmit={handleSubmit} noValidate style={formStyle}>
+                        <Field
+                            ref={usernameRef}
+                            label="Потребителско име"
                             name="username"
                             value={form.username}
-                            onChange={handleInputChange}
-                            placeholder="Потребителско име"
-                            style={{
-                                ...styles.input,
-                                padding: isSmallMobile ? '10px' : '12px',
-                                fontSize: isSmallMobile ? '14px' : '16px',
-                            }}
+                            onChange={onChange('username')}
+                            error={errors.username}
+                            autoComplete={isLogin ? 'username' : 'off'}
+                            autoCapitalize="none"
+                            autoCorrect="off"
+                            spellCheck={false}
+                            placeholder="напр. player66"
                             required
                         />
-                    </div>
 
-                    {!isLogin && (
-                        <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
-                            <label style={{
-                                ...styles.label,
-                                fontSize: isSmallMobile ? '10px' : '12px',
-                                marginBottom: isSmallMobile ? '4px' : '5px',
-                            }}>Имейл</label>
-                            <input
-                                type="email"
+                        {isRegister && (
+                            <Field
+                                ref={emailRef}
+                                label="Имейл"
                                 name="email"
+                                type="email"
+                                inputMode="email"
                                 value={form.email}
-                                onChange={handleInputChange}
+                                onChange={onChange('email')}
+                                error={errors.email}
+                                autoComplete="email"
+                                autoCapitalize="none"
                                 placeholder="example@mail.com"
-                                style={{
-                                    ...styles.input,
-                                    padding: isSmallMobile ? '10px' : '12px',
-                                    fontSize: isSmallMobile ? '14px' : '16px',
-                                }}
+                                hint="Използва се само за потвърждение и възстановяване на парола."
                                 required
                             />
-                        </div>
-                    )}
+                        )}
 
-                    <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
-                        <label style={{
-                            ...styles.label,
-                            fontSize: isSmallMobile ? '10px' : '12px',
-                            marginBottom: isSmallMobile ? '4px' : '5px',
-                        }}>Парола</label>
-                        <input
-                            type="password"
+                        <Field
+                            ref={passwordRef}
+                            label="Парола"
                             name="password"
+                            type="password"
                             value={form.password}
-                            onChange={handleInputChange}
+                            onChange={onChange('password')}
+                            error={errors.password}
+                            autoComplete={isLogin ? 'current-password' : 'new-password'}
                             placeholder="••••••••"
-                            style={{
-                                ...styles.input,
-                                padding: isSmallMobile ? '10px' : '12px',
-                                fontSize: isSmallMobile ? '14px' : '16px',
-                            }}
                             required
                         />
-                    </div>
 
-                    {!isLogin && (
-                        <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
-                            <label style={{
-                                ...styles.label,
-                                fontSize: isSmallMobile ? '10px' : '12px',
-                                marginBottom: isSmallMobile ? '4px' : '5px',
-                            }}>Потвърди паролата</label>
-                            <input
-                                type="password"
+                        {isRegister && (
+                            <Field
+                                ref={confirmRef}
+                                label="Потвърди паролата"
                                 name="confirmPassword"
+                                type="password"
                                 value={form.confirmPassword}
-                                onChange={handleInputChange}
+                                onChange={onChange('confirmPassword')}
+                                error={errors.confirmPassword}
+                                autoComplete="new-password"
                                 placeholder="••••••••"
-                                style={{
-                                    ...styles.input,
-                                    padding: isSmallMobile ? '10px' : '12px',
-                                    fontSize: isSmallMobile ? '14px' : '16px',
-                                }}
                                 required
                             />
-                        </div>
-                    )}
+                        )}
 
-                    {(localError || (showServerError && serverError)) && (
-                        <div style={styles.errorBox}> {localError || mapErrorToBulgarian(serverError)}</div>
-                    )}
+                        {formMessage && <Note tone={formMessage.tone}>{formMessage.text}</Note>}
 
-                    {successMessage && <div style={styles.successBox}> {successMessage}</div>}
-
-                    <button type="submit" disabled={isLoading} style={{
-                        ...styles.button,
-                        opacity: isLoading ? 0.7 : 1,
-                        padding: isSmallMobile ? '12px' : isMobile ? '13px' : '15px',
-                        fontSize: isSmallMobile ? '14px' : isMobile ? '16px' : '18px',
-                    }}>
-                        {isLoading ? '...' : (isLogin ? 'Влез' : 'Регистрирай се')}
-                    </button>
-                </form>
+                        <Button type="submit" variant="primary" size="lg" block loading={isLoading}>
+                            {isLogin ? 'Влез' : 'Регистрирай се'}
+                        </Button>
+                    </form>
                 ) : (
-                <form onSubmit={handleForgotPasswordSubmit} style={styles.form}>
-                    <div style={{...styles.inputGroup, marginBottom: isSmallMobile ? '12px' : '18px'}}>
-                        <label style={{
-                            ...styles.label,
-                            fontSize: isSmallMobile ? '10px' : '12px',
-                            marginBottom: isSmallMobile ? '4px' : '5px',
-                        }}>Имейл</label>
-                        <input
+                    <form onSubmit={handleForgotSubmit} noValidate style={formStyle}>
+                        <Field
+                            ref={forgotRef}
+                            label="Имейл"
+                            name="forgotEmail"
                             type="email"
-                            name="forgotPasswordEmail"
-                            value={forgotPasswordEmail}
+                            inputMode="email"
+                            value={forgotEmail}
                             onChange={(e) => {
-                                setForgotPasswordEmail(e.target.value);
-                                if (forgotPasswordError) setForgotPasswordError(null);
-                                if (forgotPasswordSuccess) setForgotPasswordSuccess(null);
+                                setForgotEmail(e.target.value);
+                                setErrors({});
+                                setFormMessage(null);
                             }}
+                            error={errors.forgotEmail}
+                            autoComplete="email"
+                            autoCapitalize="none"
                             placeholder="example@mail.com"
-                            style={{
-                                ...styles.input,
-                                padding: isSmallMobile ? '10px' : '12px',
-                                fontSize: isSmallMobile ? '14px' : '16px',
-                            }}
                             required
                         />
-                    </div>
 
-                    {forgotPasswordError && (
-                        <div style={styles.errorBox}>{forgotPasswordError}</div>
-                    )}
+                        {formMessage && <Note tone={formMessage.tone}>{formMessage.text}</Note>}
 
-                    {forgotPasswordSuccess && (
-                        <div style={styles.successBox}>{forgotPasswordSuccess}</div>
-                    )}
-
-                    <button 
-                        type="submit" 
-                        disabled={isForgotPasswordLoading}
-                        style={{
-                            ...styles.button,
-                            opacity: isForgotPasswordLoading ? 0.7 : 1,
-                            padding: isSmallMobile ? '12px' : isMobile ? '13px' : '15px',
-                            fontSize: isSmallMobile ? '14px' : isMobile ? '16px' : '18px',
-                        }}
-                    >
-                        {isForgotPasswordLoading ? '...' : 'Изпрати'}
-                    </button>
-                </form>
+                        <Button type="submit" variant="primary" size="lg" block loading={isForgotLoading}>
+                            Изпрати
+                        </Button>
+                    </form>
                 )}
 
-                {!showForgotPassword && isLogin && (
-                    <p style={{
-                        ...styles.forgotPasswordLink,
-                        marginTop: isSmallMobile ? '15px' : '20px',
-                        fontSize: isSmallMobile ? '12px' : '14px',
-                    }}>
-                        <span onClick={() => setShowForgotPassword(true)} style={styles.toggleLink}>
+                <div style={footerStyle}>
+                    {isLogin && (
+                        <button type="button" className="btn btn--link" onClick={() => setMode('forgot')}>
                             Забравена парола?
-                        </span>
-                    </p>
-                )}
+                        </button>
+                    )}
 
-                {showForgotPassword && (
-                    <p style={{
-                        ...styles.toggleText,
-                        marginTop: isSmallMobile ? '15px' : '20px',
-                        fontSize: isSmallMobile ? '12px' : '14px',
-                    }}>
-                        <span onClick={() => {
-                            setShowForgotPassword(false);
-                            setForgotPasswordEmail('');
-                            setForgotPasswordError(null);
-                            setForgotPasswordSuccess(null);
-                        }} style={styles.toggleLink}>
+                    {isForgot ? (
+                        <button type="button" className="btn btn--link" onClick={() => setMode('login')}>
+                            <Icon name="arrowLeft" size={16} />
                             Назад към вход
-                        </span>
-                    </p>
-                )}
-
-                {!showForgotPassword && (
-                    <p style={{
-                        ...styles.toggleText,
-                        marginTop: isSmallMobile ? '15px' : '20px',
-                        fontSize: isSmallMobile ? '12px' : '14px',
-                    }}>
-                        {isLogin ? "Нямаш профил?" : "Вече имаш профил?"}
-                        <span onClick={() => setIsLogin(!isLogin)} style={styles.toggleLink}>
-                            {isLogin ? 'Създай сега' : 'Влез тук'}
-                        </span>
-                    </p>
-                )}
+                        </button>
+                    ) : (
+                        <p style={switchStyle}>
+                            {isLogin ? 'Нямаш профил?' : 'Вече имаш профил?'}
+                            <button
+                                type="button"
+                                className="btn btn--link"
+                                onClick={() => setMode(isLogin ? 'register' : 'login')}
+                            >
+                                {isLogin ? 'Създай сега' : 'Влез тук'}
+                            </button>
+                        </p>
+                    )}
+                </div>
             </div>
-        </div>
+        </main>
     );
 };
 
-const styles: { [key: string]: React.CSSProperties } = {
-    container: {
-        display: 'flex', justifyContent: 'center', alignItems: 'center', 
-        height: '100%', width: '100%',
-        background: 'radial-gradient(circle, #1a3a16 0%, #0a1a08 100%)',
-        fontFamily: "'Garamond', serif", position: 'absolute', 
-        top: 0, left: 0, right: 0, bottom: 0,
-        overflow: 'hidden'
-    },
-    card: {
-        backgroundColor: 'rgba(255, 255, 255, 0.98)', padding: '40px', borderRadius: '15px',
-        boxShadow: '0 0 40px rgba(0,0,0,0.8), inset 0 0 10px rgba(0,0,0,0.1)',
-        width: '100%', maxWidth: '360px', zIndex: 10, border: '2px solid #d4af37'
-    },
-    logo: { fontSize: '60px', textAlign: 'center', color: '#1a3a16', textShadow: '2px 2px 4px rgba(0,0,0,0.2)' },
-    title: { margin: '0 0 5px 0', fontSize: '28px', textAlign: 'center', color: '#1a3a16', letterSpacing: '2px', fontWeight: 'bold' },
-    subtitle: { margin: '0 0 25px 0', fontSize: '13px', textAlign: 'center', color: '#555', fontStyle: 'italic' },
-    form: { display: 'flex', flexDirection: 'column' },
-    inputGroup: { marginBottom: '18px' },
-    label: { display: 'block', marginBottom: '5px', fontSize: '12px', fontWeight: 'bold', color: '#1a3a16', textTransform: 'uppercase' },
-    input: {
-        width: '100%', padding: '12px', borderRadius: '5px', border: '1px solid #ccc',
-        fontSize: '16px', boxSizing: 'border-box', backgroundColor: '#f9f9f9'
-    },
-    button: {
-        width: '100%', padding: '15px', backgroundColor: '#1a3a16', color: '#d4af37',
-        border: 'none', borderRadius: '5px', fontSize: '18px', fontWeight: 'bold',
-        cursor: 'pointer', marginTop: '10px', boxShadow: '0 4px 0 #0d1f0b'
-    },
-    errorBox: { padding: '10px', backgroundColor: '#fff0f0', color: '#a00', borderRadius: '5px', marginBottom: '15px', fontSize: '13px', borderLeft: '4px solid #a00' },
-    successBox: { padding: '10px', backgroundColor: '#f0fff0', color: '#0a0', borderRadius: '5px', marginBottom: '15px', fontSize: '13px', borderLeft: '4px solid #0a0' },
-    toggleText: { marginTop: '20px', textAlign: 'center', fontSize: '14px', color: '#444' },
-    toggleLink: { color: '#1a3a16', cursor: 'pointer', fontWeight: 'bold', marginLeft: '5px', textDecoration: 'underline' },
-    forgotPasswordLink: { textAlign: 'center', fontSize: '14px', color: '#444' }
+const driftLayerStyle: React.CSSProperties = {
+    position: 'absolute',
+    inset: 0,
+    overflow: 'hidden',
+    pointerEvents: 'none',
+};
+
+const cardStyle: React.CSSProperties = {
+    position: 'relative',
+    zIndex: 1,
+    width: '100%',
+    maxWidth: '400px',
+    padding: 'clamp(24px, 6vw, 40px)',
+};
+
+const crestStyle: React.CSSProperties = {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'clamp(56px, 15vw, 72px)',
+    height: 'clamp(56px, 15vw, 72px)',
+    margin: '0 auto var(--sp-4)',
+    borderRadius: '50%',
+    background: 'var(--gold-wash)',
+    border: '1px solid var(--line-gold)',
+    color: 'var(--gold)',
+};
+
+const headingStyle: React.CSSProperties = {
+    fontSize: 'var(--fs-2xl)',
+    color: 'var(--gold)',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+};
+
+const subStyle: React.CSSProperties = {
+    marginTop: 'var(--sp-2)',
+    fontSize: 'var(--fs-sm)',
+    color: 'var(--text-3)',
+};
+
+const formStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 'var(--sp-4)',
+};
+
+const footerStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginTop: 'var(--sp-4)',
+};
+
+const switchStyle: React.CSSProperties = {
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--sp-1)',
+    fontSize: 'var(--fs-sm)',
+    color: 'var(--text-3)',
 };
 
 export default AuthPage;

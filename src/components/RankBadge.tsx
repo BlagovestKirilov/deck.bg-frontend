@@ -1,215 +1,182 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Rank } from '../types/user.types';
 
 interface RankBadgeProps {
-  rank: Rank;
-  size?: 'small' | 'medium' | 'large';
-  windowWidth?: number;
-  wins?: number;
-  losses?: number;
+    rank: Rank;
+    size?: 'small' | 'medium' | 'large';
+    wins?: number;
+    losses?: number;
 }
 
-/* =========================
-   Rank configuration
-========================= */
-const RANK_CONFIG: Record<Rank, {
-  name: string;
-  borderColor: string;
-  glowColor: string;
-  textColor: string;
-  image: string;
-}> = {
-  UNRANKED: {
-    name: 'Рангът се отключва след 10-тата игра',
-    borderColor: '#4a4a4a',
-    glowColor: 'rgba(80, 80, 80, 0.4)',
-    textColor: '#888888',
-    image: '/rank-unranked.png',
-  },
-  BRONZE: {
-    name: 'БРОНЗ',
-    borderColor: '#cd7f32',
-    glowColor: 'rgba(205, 127, 50, 0.5)',
-    textColor: '#daa06d',
-    image: '/rank-bronze.png',
-  },
-  SILVER: {
-    name: 'СРЕБРО',
-    borderColor: '#b8b8b8',
-    glowColor: 'rgba(200, 200, 200, 0.5)',
-    textColor: '#e0e0e0',
-    image: '/rank-silver.png',
-  },
-  GOLD: {
-    name: 'ЗЛАТО',
-    borderColor: '#f0c420',
-    glowColor: 'rgba(255, 200, 0, 0.55)',
-    textColor: '#ffe066',
-    image: '/rank-gold.png',
-  },
-  PLATINUM: {
-    name: 'ПЛАТИНА',
-    borderColor: '#6ec5d8',
-    glowColor: 'rgba(110, 197, 216, 0.55)',
-    textColor: '#b8eaf5',
-    image: '/rank-platinum.png',
-  },
-  DIAMOND: {
-    name: 'ДИАМАНТ',
-    borderColor: '#38b6ff',
-    glowColor: 'rgba(56, 182, 255, 0.6)',
-    textColor: '#a5e4ff',
-    image: '/rank-diamond.png',
-  },
-  LEGEND: {
-    name: 'ЛЕГЕНДА',
-    borderColor: '#ff9500',
-    glowColor: 'rgba(255, 149, 0, 0.7)',
-    textColor: '#ffd60a',
-    image: '/rank-legend.png',
-  },
+const RANK_CONFIG: Record<Rank, { name: string; borderColor: string; glowColor: string; textColor: string; image: string }> = {
+    UNRANKED: {
+        name: 'Без ранг',
+        borderColor: '#5c6b60',
+        glowColor: 'rgba(120, 140, 128, 0.35)',
+        textColor: '#a9b8ae',
+        image: '/rank-unranked.png',
+    },
+    BRONZE: {
+        name: 'БРОНЗ',
+        borderColor: '#cd7f32',
+        glowColor: 'rgba(205, 127, 50, 0.5)',
+        textColor: '#e0a874',
+        image: '/rank-bronze.png',
+    },
+    SILVER: {
+        name: 'СРЕБРО',
+        borderColor: '#b8b8b8',
+        glowColor: 'rgba(200, 200, 200, 0.5)',
+        textColor: '#e6e6e6',
+        image: '/rank-silver.png',
+    },
+    GOLD: {
+        name: 'ЗЛАТО',
+        borderColor: '#f0c420',
+        glowColor: 'rgba(255, 200, 0, 0.55)',
+        textColor: '#ffe066',
+        image: '/rank-gold.png',
+    },
+    PLATINUM: {
+        name: 'ПЛАТИНА',
+        borderColor: '#6ec5d8',
+        glowColor: 'rgba(110, 197, 216, 0.55)',
+        textColor: '#bceef8',
+        image: '/rank-platinum.png',
+    },
+    DIAMOND: {
+        name: 'ДИАМАНТ',
+        borderColor: '#38b6ff',
+        glowColor: 'rgba(56, 182, 255, 0.6)',
+        textColor: '#aae6ff',
+        image: '/rank-diamond.png',
+    },
+    LEGEND: {
+        name: 'ЛЕГЕНДА',
+        borderColor: '#ff9500',
+        glowColor: 'rgba(255, 149, 0, 0.7)',
+        textColor: '#ffd60a',
+        image: '/rank-legend.png',
+    },
 };
 
-/* =========================
-   Rank Badge Component
-========================= */
-const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', windowWidth = 1024, wins = 0, losses = 0 }) => {
-  const [showTooltip, setShowTooltip] = useState(false);
-  const config = RANK_CONFIG[rank];
-  const badgeRef = React.useRef<HTMLDivElement>(null);
+/** Fluid sizes — no window-width listener, no re-render on resize. */
+const SIZE: Record<NonNullable<RankBadgeProps['size']>, string> = {
+    small: 'clamp(36px, 9vw, 44px)',
+    medium: 'clamp(50px, 13vw, 64px)',
+    large: 'clamp(70px, 18vw, 96px)',
+};
 
-  const isMobile = windowWidth <= 768;
-  const isSmallMobile = windowWidth <= 480;
+/**
+ * Rank medal with a label on hover (pointer) or tap/Enter (touch, keyboard).
+ * It is a real <button> so the label is reachable without a mouse — the old
+ * version was a div that only responded to hover.
+ */
+const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', wins = 0, losses = 0 }) => {
+    const [open, setOpen] = useState(false);
+    const wrapRef = useRef<HTMLDivElement>(null);
+    const config = RANK_CONFIG[rank];
+    const isLegend = rank === 'LEGEND';
 
-  // Close tooltip when clicking outside (for mobile)
-  React.useEffect(() => {
-    if (isMobile && showTooltip) {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (badgeRef.current && !badgeRef.current.contains(event.target as Node)) {
-          setShowTooltip(false);
-        }
-      };
+    const gamesLeft = Math.max(0, 10 - wins - losses);
+    const label =
+        rank === 'UNRANKED'
+            ? `Рангът ще бъде отключен след ${gamesLeft} ${gamesLeft === 1 ? 'игра' : 'игри'}`
+            : config.name;
 
-      // Add listener with a small delay to avoid immediate close
-      const timer = setTimeout(() => {
-        document.addEventListener('click', handleClickOutside);
-      }, 10);
+    // Tap anywhere else closes the label on touch devices.
+    useEffect(() => {
+        if (!open) return;
+        const onPointerDown = (event: PointerEvent) => {
+            if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) setOpen(false);
+        };
+        const onEscape = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') setOpen(false);
+        };
+        document.addEventListener('pointerdown', onPointerDown);
+        document.addEventListener('keydown', onEscape);
+        return () => {
+            document.removeEventListener('pointerdown', onPointerDown);
+            document.removeEventListener('keydown', onEscape);
+        };
+    }, [open]);
 
-      return () => {
-        clearTimeout(timer);
-        document.removeEventListener('click', handleClickOutside);
-      };
-    }
-  }, [isMobile, showTooltip]);
+    const dimension = SIZE[size];
 
-  const sizeConfig = {
-    small: { badge: isSmallMobile ? 36 : isMobile ? 40 : 44, tooltip: '0.75rem' },
-    medium: { badge: isSmallMobile ? 50 : isMobile ? 56 : 64, tooltip: '0.9rem' },
-    large: { badge: isSmallMobile ? 70 : isMobile ? 80 : 96, tooltip: '1rem' },
-  };
-
-  const currentSize = sizeConfig[size];
-  const isLegend = rank === 'LEGEND';
-
-  return (
-      <div ref={badgeRef} style={{ position: 'relative', display: 'inline-flex' }}>
-        <div
-            style={{
-              cursor: 'pointer',
-              transition: 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-              transform: showTooltip ? 'scale(1.15)' : 'scale(1)',
-              animation: isLegend ? 'legendPulse 2.5s ease-in-out infinite' : undefined,
-            }}
-            onMouseEnter={() => !isMobile && setShowTooltip(true)}
-            onMouseLeave={() => !isMobile && setShowTooltip(false)}
-            onClick={() => isMobile && setShowTooltip(!showTooltip)}
-        >
-          <img
-              src={config.image}
-              alt={config.name}
-              width={currentSize.badge}
-              height={currentSize.badge}
-              style={{
-                objectFit: 'contain',
-                display: 'block',
-                filter: isLegend
-                    ? `drop-shadow(0 0 8px ${config.glowColor})`
-                    : `drop-shadow(0 2px 4px rgba(0,0,0,0.3))`,
-              }}
-          />
-        </div>
-
-        {showTooltip && (
-            <div
+    return (
+        <div ref={wrapRef} style={{ position: 'relative', display: 'inline-flex' }}>
+            <button
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                onMouseEnter={() => setOpen(true)}
+                onMouseLeave={() => setOpen(false)}
+                onFocus={() => setOpen(true)}
+                onBlur={() => setOpen(false)}
+                aria-label={label}
+                aria-expanded={open}
                 style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  marginTop: '14px',
-                  padding: '10px 18px',
-                  background: `linear-gradient(145deg, rgba(20,20,25,0.95), rgba(10,10,15,0.98))`,
-                  backdropFilter: 'blur(12px)',
-                  borderRadius: '10px',
-                  border: `1.5px solid ${config.borderColor}`,
-                  boxShadow: `
-              0 8px 32px rgba(0,0,0,0.5),
-              0 0 20px ${config.glowColor},
-              inset 0 1px 0 rgba(255,255,255,0.1)
-            `,
-                  color: config.textColor,
-                  fontSize: currentSize.tooltip,
-                  fontWeight: 600,
-                  letterSpacing: '0.3px',
-                  whiteSpace: 'nowrap',
-                  zIndex: 10000,
-                  animation: 'tooltipSlideIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                    display: 'grid',
+                    placeItems: 'center',
+                    // keeps a 44px hit area even for the small medal
+                    minWidth: 'var(--tap)',
+                    minHeight: 'var(--tap)',
+                    padding: 0,
+                    borderRadius: 'var(--r-pill)',
+                    transition: 'transform var(--dur) var(--ease-spring)',
+                    transform: open ? 'scale(1.12)' : 'scale(1)',
+                    animation: isLegend ? 'legend-pulse 2.5s ease-in-out infinite' : undefined,
                 }}
             >
-              {/* Tooltip arrow */}
-              <div
-                  style={{
-                    position: 'absolute',
-                    top: '-6px',
-                    left: '50%',
-                    transform: 'translateX(-50%) rotate(45deg)',
-                    width: '12px',
-                    height: '12px',
-                    background: 'rgba(20,20,25,0.95)',
-                    borderLeft: `1.5px solid ${config.borderColor}`,
-                    borderTop: `1.5px solid ${config.borderColor}`,
-                  }}
-              />
-              {rank === 'UNRANKED'
-                  ? `Рангът ще бъде отключен след ${10 - wins - losses} ${(10 - wins - losses) === 1 ? 'игра' : 'игри'}`
-                  : config.name}
-            </div>
-        )}
+                <img
+                    src={config.image}
+                    alt=""
+                    aria-hidden="true"
+                    width={44}
+                    height={44}
+                    loading="lazy"
+                    decoding="async"
+                    style={{
+                        width: dimension,
+                        height: dimension,
+                        objectFit: 'contain',
+                        display: 'block',
+                        filter: isLegend
+                            ? `drop-shadow(0 0 8px ${config.glowColor})`
+                            : 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
+                    }}
+                />
+            </button>
 
-        <style>{`
-        @keyframes legendPulse {
-          0%, 100% { 
-            transform: scale(1);
-            filter: brightness(1);
-          }
-          50% { 
-            transform: scale(1.05);
-            filter: brightness(1.15);
-          }
-        }
-        @keyframes tooltipSlideIn {
-          0% {
-            opacity: 0;
-            transform: translateX(-50%) translateY(-8px);
-          }
-          100% {
-            opacity: 1;
-            transform: translateX(-50%) translateY(0);
-          }
-        }
-      `}</style>
-      </div>
-  );
+            {open && (
+                <div
+                    role="tooltip"
+                    style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        marginTop: 'var(--sp-2)',
+                        padding: 'var(--sp-2) var(--sp-4)',
+                        background: 'rgba(8, 18, 12, 0.96)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: 'var(--r-md)',
+                        border: `1px solid ${config.borderColor}`,
+                        boxShadow: `var(--sh-2), 0 0 18px ${config.glowColor}`,
+                        color: config.textColor,
+                        fontSize: 'var(--fs-xs)',
+                        fontWeight: 700,
+                        letterSpacing: '0.03em',
+                        whiteSpace: 'nowrap',
+                        zIndex: 'var(--z-toast)' as unknown as number,
+                        animation: 'tooltip-in var(--dur) var(--ease-spring)',
+                        pointerEvents: 'none',
+                    }}
+                >
+                    {label}
+                </div>
+            )}
+        </div>
+    );
 };
 
 export default RankBadge;

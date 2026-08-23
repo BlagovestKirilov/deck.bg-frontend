@@ -1,13 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bg">
 <head>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/spades.ico" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0" />
-  <meta name="theme-color" content="#1a3a16" />
+  <!-- viewport-fit=cover exposes the safe-area insets the layout pads with.
+       Zoom is deliberately NOT disabled: blocking it fails WCAG 1.4.4. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#08150e" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="description" content="Класическо Сантасе (66) срещу реални опоненти." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>Santase Game</title>
+
+  <!-- Display + body faces. display=swap avoids invisible text; the system
+       stack in theme.css carries the design if the fonts never arrive
+       (offline Capacitor builds). -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <title>Santase 66</title>
 </head>
 <body>
 <div id="root"></div>
