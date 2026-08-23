@@ -306,26 +306,27 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                             </div>
                         )}
 
-                        {/* account actions — destructive one sits apart, below a divider */}
+                        {/* account actions — same size; the rule above the
+                            destructive one keeps it visually separated */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
                             <Button variant="secondary" icon="lock" block onClick={openPasswordChange}>
                                 Промени парола
                             </Button>
 
-                            <div style={dangerZoneStyle}>
-                                <Button
-                                    variant="danger-outline"
-                                    icon="trash"
-                                    block
-                                    onClick={() => {
-                                        setDeletePassword('');
-                                        setDeleteError(null);
-                                        setShowDeleteConfirm(true);
-                                    }}
-                                >
-                                    Изтрий акаунт
-                                </Button>
-                            </div>
+                            <hr style={dividerStyle} />
+
+                            <Button
+                                variant="danger"
+                                icon="trash"
+                                block
+                                onClick={() => {
+                                    setDeletePassword('');
+                                    setDeleteError(null);
+                                    setShowDeleteConfirm(true);
+                                }}
+                            >
+                                Изтрий акаунт
+                            </Button>
                         </div>
                     </div>
                 ) : null}
@@ -503,9 +504,11 @@ const ratioLabelsStyle: React.CSSProperties = {
     fontSize: 'var(--fs-xs)',
 };
 
-const dangerZoneStyle: React.CSSProperties = {
-    marginTop: 'var(--sp-2)',
-    paddingTop: 'var(--sp-4)',
+const dividerStyle: React.CSSProperties = {
+    width: '100%',
+    height: 0,
+    margin: 0,
+    border: 0,
     borderTop: '1px solid var(--line)',
 };
 

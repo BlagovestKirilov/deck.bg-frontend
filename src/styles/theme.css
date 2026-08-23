@@ -242,6 +242,7 @@ code, kbd, samp { font-family: var(--font-mono); }
     gap: var(--sp-2);
     min-height: var(--tap);
     padding: var(--sp-3) var(--sp-6);
+    border: 1px solid transparent;
     border-radius: var(--r-md);
     font-family: var(--font-display);
     font-size: var(--fs-md);
@@ -281,14 +282,14 @@ code, kbd, samp { font-family: var(--font-mono); }
 .btn--secondary {
     background: var(--surface-3);
     color: var(--text-1);
-    border: 1px solid var(--line-strong);
+    border-color: var(--line-strong);
 }
 .btn--secondary:hover:not(:disabled) { background: #24492f; }
 
 .btn--ghost {
     background: transparent;
     color: var(--text-2);
-    border: 1px solid var(--line);
+    border-color: var(--line);
 }
 .btn--ghost:hover:not(:disabled) { background: rgba(255,255,255,0.06); color: var(--text-1); }
 
@@ -303,7 +304,7 @@ code, kbd, samp { font-family: var(--font-mono); }
 .btn--danger-outline {
     background: transparent;
     color: var(--danger-bright);
-    border: 2px solid var(--danger);
+    border-color: var(--danger);
 }
 .btn--danger-outline:hover:not(:disabled) { background: var(--danger-wash); }
 
