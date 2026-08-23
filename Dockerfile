@@ -1,5 +1,6 @@
 # Stage 1: Build React App
-FROM node:18-alpine AS build
+# Vite 7 requires Node ^20.19 || >=22.12 (it calls crypto.hash, added in 20.12).
+FROM node:22-alpine AS build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
