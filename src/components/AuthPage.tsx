@@ -278,7 +278,7 @@ const AuthPage: React.FC = () => {
                             autoCapitalize="none"
                             autoCorrect="off"
                             spellCheck={false}
-                            placeholder="напр. player66"
+                            hint={isRegister ? '4–20 символа, латински букви и цифри.' : undefined}
                             required
                         />
 
