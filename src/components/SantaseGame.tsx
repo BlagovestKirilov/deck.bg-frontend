@@ -11,6 +11,7 @@ import RankBadge from './RankBadge';
 import RankIcon, { getRankLabel } from './RankIcon';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
+import Brand from './ui/Brand';
 import Modal from './ui/Modal';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
 
@@ -137,9 +138,7 @@ const Navbar: React.FC<{
     return (
         <>
             <nav style={navStyle}>
-                <span style={navLogoStyle}>
-                    SANTASE <span style={{color: 'var(--text-1)'}}>66</span>
-                </span>
+                <Brand/>
 
                 <div style={{display: 'flex', alignItems: 'center', gap: 'var(--sp-2)'}}>
                     <RankBadge rank={rank} size="small" wins={wins} losses={losses}/>
@@ -198,14 +197,6 @@ const navStyle: React.CSSProperties = {
     borderBottom: '1px solid var(--line)',
     zIndex: 'var(--z-nav)' as unknown as number,
     flexShrink: 0,
-};
-
-const navLogoStyle: React.CSSProperties = {
-    fontFamily: 'var(--font-display)',
-    fontSize: 'clamp(1.1rem, 4.4vw, 1.5rem)',
-    fontWeight: 700,
-    color: 'var(--accent)',
-    letterSpacing: '0.04em',
 };
 
 const navUserStyle: React.CSSProperties = {
@@ -1563,7 +1554,6 @@ const SantaseGame: React.FC = () => {
                             variant="primary"
                             size="lg"
                             block
-                            icon={isSearching ? undefined : 'cards'}
                             loading={isSearching}
                             onClick={startSearch}
                             style={{marginTop: 'var(--sp-4)'}}

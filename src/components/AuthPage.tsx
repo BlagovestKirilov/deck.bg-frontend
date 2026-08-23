@@ -239,7 +239,7 @@ const AuthPage: React.FC = () => {
         }
     };
 
-    const heading = isForgot ? 'Забравена парола' : isLogin ? 'Santase' : 'Регистрация';
+    const heading = isForgot ? 'Забравена парола' : 'Регистрация';
     const sub = isForgot
         ? 'Въведете вашия имейл адрес за възстановяване на парола'
         : isLogin
@@ -257,7 +257,11 @@ const AuthPage: React.FC = () => {
                     <span style={crestStyle}>
                         <Icon name="spade" size="58%" />
                     </span>
-                    <h1 style={headingStyle}>{heading}</h1>
+                    {isLogin ? (
+                        <h1 className="sr-only">Вход</h1>
+                    ) : (
+                        <h1 style={headingStyle}>{heading}</h1>
+                    )}
                     <p style={subStyle}>{sub}</p>
                 </div>
 
