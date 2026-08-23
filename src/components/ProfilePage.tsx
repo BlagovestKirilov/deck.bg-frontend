@@ -229,7 +229,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                 {isLoading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
                         {/* Skeletons reserve the real layout so nothing jumps when data lands */}
-                        <div className="skeleton" style={{ height: 96, width: 96, borderRadius: '50%', margin: '0 auto' }} />
                         <div className="skeleton" style={{ height: 22, width: '52%', margin: '0 auto' }} />
                         <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
                             <div className="skeleton" style={{ height: 84, flex: 1 }} />
@@ -245,9 +244,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
                         {/* identity */}
                         <div style={identityStyle}>
-                            <div style={avatarStyle}>
-                                <Icon name="user" size="52%" />
-                            </div>
                             <h3 style={usernameStyle}>{username}</h3>
                             <RankBadge rank={profile.rank} size="medium" wins={wins} losses={losses} />
                         </div>

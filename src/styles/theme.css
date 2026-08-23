@@ -435,6 +435,10 @@ code, kbd, samp { font-family: var(--font-mono); }
     align-items: center;
     justify-content: center;
     padding: calc(var(--sp-4) + var(--sa-top)) var(--sp-4) calc(var(--sp-4) + var(--sa-bottom));
+    /* the single scroll region for a tall dialog; margin:auto on .modal keeps
+       it centred without clipping the top when it overflows */
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--scrim);
     /* blur signals "the layer behind is dismissible", not decoration */
     backdrop-filter: blur(6px);
@@ -444,7 +448,8 @@ code, kbd, samp { font-family: var(--font-mono); }
 .modal {
     width: 100%;
     max-width: 460px;
-    max-height: min(88vh, 760px);
+    /* height is content-driven; the scrim scrolls if it overflows */
+    margin: auto;
     display: flex;
     flex-direction: column;
     padding: var(--sp-6);
@@ -459,7 +464,7 @@ code, kbd, samp { font-family: var(--font-mono); }
 .modal--danger { border-color: rgba(255,111,111,.45); }
 .modal--narrow { max-width: 380px; }
 
-.modal__body { overflow-y: auto; overscroll-behavior: contain; }
+.modal__body { min-height: 0; }
 
 .modal__actions {
     display: flex;

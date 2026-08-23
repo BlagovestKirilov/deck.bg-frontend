@@ -133,7 +133,7 @@ const Modal: React.FC<ModalProps> = ({
                     </div>
                 )}
 
-                <div className="modal__body scroll-y">{children}</div>
+                <div className="modal__body">{children}</div>
 
                 {actions && <div className="modal__actions">{actions}</div>}
             </div>
