@@ -1,253 +1,204 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {userService} from '../api/userService';
-import {ProfileResponse} from '../types/user.types';
-import {useAuthContext} from '../context/AuthContext';
+import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { userService } from '../api/userService';
+import { ProfileResponse } from '../types/user.types';
+import { useAuthContext } from '../context/AuthContext';
+import Modal from './ui/Modal';
+import Button from './ui/Button';
+import Field from './ui/Field';
+import Note from './ui/Note';
+import Icon from './ui/Icon';
+import RankBadge from './RankBadge';
 
 interface ProfilePageProps {
     username: string;
     onClose: () => void;
-    onLogout?: () => void;
-    windowWidth?: number;
 }
 
-const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, windowWidth = 1024}) => {
+type PasswordErrors = Partial<Record<'currentPassword' | 'newPassword' | 'confirmPassword', string>>;
+
+const PASSWORD_RE = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
+
+const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
     const navigate = useNavigate();
-    const {logout} = useAuthContext();
+    const { logout } = useAuthContext();
+
     const [profile, setProfile] = useState<ProfileResponse | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isResendingEmail, setIsResendingEmail] = useState(false);
-    const [resendEmailMessage, setResendEmailMessage] = useState<string | null>(null);
-    const [emailSentSuccessfully, setEmailSentSuccessfully] = useState(false);
-    const [showPasswordChange, setShowPasswordChange] = useState(false);
-    const [passwordForm, setPasswordForm] = useState({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-    });
-    const [passwordError, setPasswordError] = useState<string | null>(null);
-    const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-    const [isChangingPassword, setIsChangingPassword] = useState(false);
-    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
-    const [deleteError, setDeleteError] = useState<string | null>(null);
-    const [deletePassword, setDeletePassword] = useState('');
-    const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
-    const abortControllerRef = useRef<AbortController | null>(null);
 
-    const isMobile = windowWidth <= 768;
-    const isSmallMobile = windowWidth <= 480;
+    const [isResendingEmail, setIsResendingEmail] = useState(false);
+    const [resendMessage, setResendMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+    const [emailSent, setEmailSent] = useState(false);
+
+    const [showPasswordChange, setShowPasswordChange] = useState(false);
+    const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    const [passwordErrors, setPasswordErrors] = useState<PasswordErrors>({});
+    const [passwordBanner, setPasswordBanner] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+    const [showDeleteSuccess, setShowDeleteSuccess] = useState(false);
+
+    const abortRef = useRef<AbortController | null>(null);
+    const currentPwRef = useRef<HTMLInputElement>(null);
+    const newPwRef = useRef<HTMLInputElement>(null);
+    const confirmPwRef = useRef<HTMLInputElement>(null);
+    const deletePwRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        // Cancel any previous request
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-
-        // Create new AbortController for this request
-        const abortController = new AbortController();
-        abortControllerRef.current = abortController;
+        abortRef.current?.abort();
+        const controller = new AbortController();
+        abortRef.current = controller;
 
         const fetchProfile = async () => {
             try {
                 setIsLoading(true);
                 setError(null);
-                const data = await userService.getProfile(abortController.signal);
-
-                // Check if request was aborted before updating state
-                if (!abortController.signal.aborted) {
-                    setProfile(data);
-                }
+                const data = await userService.getProfile(controller.signal);
+                if (!controller.signal.aborted) setProfile(data);
             } catch (err: any) {
-                // Don't set error if request was aborted
-                if (!abortController.signal.aborted && err.name !== 'CanceledError' && !err.message?.includes('canceled')) {
+                if (!controller.signal.aborted && err.name !== 'CanceledError' && !err.message?.includes('canceled')) {
                     setError('Неуспешно зареждане на профила.');
                     console.error('Error fetching profile:', err);
                 }
             } finally {
-                if (!abortController.signal.aborted) {
-                    setIsLoading(false);
-                }
+                if (!controller.signal.aborted) setIsLoading(false);
             }
         };
 
         fetchProfile();
-
-        return () => {
-            // Cancel request on unmount or re-render
-            abortController.abort();
-        };
+        return () => controller.abort();
     }, []);
 
-    // Clear resend message and reset email sent flag when email becomes confirmed
     useEffect(() => {
         if (profile?.isEmailConfirmed) {
-            if (resendEmailMessage) {
-                setResendEmailMessage(null);
-            }
-            setEmailSentSuccessfully(false);
+            setResendMessage(null);
+            setEmailSent(false);
         }
-    }, [profile?.isEmailConfirmed, resendEmailMessage]);
+    }, [profile?.isEmailConfirmed]);
 
-    const wins = profile?.santaseWins || 0;
-    const losses = profile?.santaseLosses || 0;
+    const wins = profile?.santaseWins ?? 0;
+    const losses = profile?.santaseLosses ?? 0;
     const total = wins + losses;
+    const winPct = total > 0 ? Math.round((wins / total) * 100) : 0;
 
-    // Calculate percentage for status bar
-    const winsPercentage = total > 0 ? (wins / total) * 100 : 50;
-    const lossesPercentage = total > 0 ? (losses / total) * 100 : 50;
+    /* ---------------- email confirmation ---------------- */
 
     const handleResendEmail = async () => {
         setIsResendingEmail(true);
-        setResendEmailMessage(null);
-        setError(null);
-        setEmailSentSuccessfully(false);
-        
+        setResendMessage(null);
+
         try {
             const result = await userService.resendEmail();
-            setResendEmailMessage(result.message);
-            
-            // If email was sent successfully, hide the button and refresh profile
+            setResendMessage({ tone: result.success ? 'success' : 'error', text: result.message });
+
             if (result.success) {
-                setEmailSentSuccessfully(true);
+                setEmailSent(true);
                 setTimeout(async () => {
                     try {
-                        const updatedProfile = await userService.getProfile();
-                        setProfile(updatedProfile);
+                        setProfile(await userService.getProfile());
                     } catch (err) {
                         console.error('Error refreshing profile:', err);
                     }
                 }, 1000);
             }
-        } catch (err: any) {
-            setResendEmailMessage('Грешка при изпращане на имейл. Моля опитайте отново.');
+        } catch (err) {
+            setResendMessage({ tone: 'error', text: 'Грешка при изпращане на имейл. Моля опитайте отново.' });
             console.error('Error resending email:', err);
         } finally {
             setIsResendingEmail(false);
         }
     };
 
-    const validatePasswordForm = (): boolean => {
+    /* ---------------- password change ---------------- */
+
+    const validatePassword = (): PasswordErrors => {
+        const next: PasswordErrors = {};
         const { currentPassword, newPassword, confirmPassword } = passwordForm;
-        const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
 
-        if (!currentPassword) {
-            setPasswordError("Текущата парола не може да бъде празна.");
-            return false;
-        }
+        if (!currentPassword) next.currentPassword = 'Текущата парола не може да бъде празна.';
 
-        if (!newPassword) {
-            setPasswordError("Новата парола не може да бъде празна.");
-            return false;
-        }
-        if (newPassword.length < 5 || newPassword.length > 50) {
-            setPasswordError("Паролата трябва да бъде между 5 и 50 символа.");
-            return false;
-        }
-        if (!passwordRegex.test(newPassword)) {
-            setPasswordError("Паролата съдържа неразрешени символи.");
-            return false;
-        }
+        if (!newPassword) next.newPassword = 'Новата парола не може да бъде празна.';
+        else if (newPassword.length < 5 || newPassword.length > 50)
+            next.newPassword = 'Паролата трябва да бъде между 5 и 50 символа.';
+        else if (!PASSWORD_RE.test(newPassword)) next.newPassword = 'Паролата съдържа неразрешени символи.';
+        else if (newPassword === currentPassword)
+            next.newPassword = 'Новата парола трябва да е различна от текущата.';
 
-        if (newPassword !== confirmPassword) {
-            setPasswordError("Паролите не съвпадат!");
-            return false;
-        }
+        if (newPassword && newPassword !== confirmPassword) next.confirmPassword = 'Паролите не съвпадат!';
 
-        // Check if new password is different from current password (only if new and confirm match)
-        if (newPassword === currentPassword) {
-            setPasswordError("Новата парола трябва да е\nразлична от текущата парола.");
-            return false;
-        }
-
-        return true;
+        return next;
     };
 
-    const handlePasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setPasswordForm({ ...passwordForm, [e.target.name]: e.target.value });
-        if (passwordError) setPasswordError(null);
-        if (passwordSuccess) setPasswordSuccess(null);
+    const onPasswordChange = (key: keyof typeof passwordForm) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = e.target.value;
+        setPasswordForm((f) => ({ ...f, [key]: value }));
+        setPasswordErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
+        setPasswordBanner(null);
     };
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!validatePasswordForm()) return;
+        const found = validatePassword();
+        setPasswordErrors(found);
+        if (Object.keys(found).length > 0) {
+            if (found.currentPassword) currentPwRef.current?.focus();
+            else if (found.newPassword) newPwRef.current?.focus();
+            else confirmPwRef.current?.focus();
+            return;
+        }
 
         setIsChangingPassword(true);
-        setPasswordError(null);
-        setPasswordSuccess(null);
+        setPasswordBanner(null);
 
         try {
-            const result = await userService.changePassword(
-                passwordForm.currentPassword,
-                passwordForm.newPassword
-            );
-            
+            const result = await userService.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+
             if (result.success) {
-                setPasswordSuccess(result.message);
+                setPasswordBanner({ tone: 'success', text: result.message });
                 setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
                 setTimeout(() => {
                     setShowPasswordChange(false);
-                    setPasswordSuccess(null);
-                }, 2000);
+                    setPasswordBanner(null);
+                }, 1800);
             } else {
-                setPasswordError(result.message);
+                setPasswordBanner({ tone: 'error', text: result.message });
             }
-        } catch (err: any) {
-            setPasswordError('Грешка при промяна на паролата. Моля опитайте отново.');
+        } catch (err) {
+            setPasswordBanner({ tone: 'error', text: 'Грешка при промяна на паролата. Моля опитайте отново.' });
             console.error('Error changing password:', err);
         } finally {
             setIsChangingPassword(false);
         }
     };
 
-    const handleOpenPasswordChange = () => {
+    const openPasswordChange = () => {
+        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+        setPasswordErrors({});
+        setPasswordBanner(null);
         setShowPasswordChange(true);
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        setPasswordError(null);
-        setPasswordSuccess(null);
     };
 
-    const handleClosePasswordChange = () => {
-        setShowPasswordChange(false);
-        setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-        setPasswordError(null);
-        setPasswordSuccess(null);
-    };
+    /* ---------------- account deletion ---------------- */
 
-    const handleOpenDeleteConfirmation = () => {
-        setShowDeleteConfirmation(true);
-        setDeleteError(null);
-        setDeletePassword('');
-    };
-
-    const handleCloseDeleteConfirmation = () => {
-        setShowDeleteConfirmation(false);
-        setDeleteError(null);
-        setDeletePassword('');
-    };
-
-    const validateDeletePassword = (): boolean => {
-        const passwordRegex = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
-
+    const handleDeleteAccount = async () => {
         if (!deletePassword) {
             setDeleteError('Паролата не може да бъде празна.');
-            return false;
+            deletePwRef.current?.focus();
+            return;
         }
         if (deletePassword.length < 5 || deletePassword.length > 50) {
             setDeleteError('Паролата трябва да бъде между 5 и 50 символа.');
-            return false;
+            deletePwRef.current?.focus();
+            return;
         }
-        if (!passwordRegex.test(deletePassword)) {
+        if (!PASSWORD_RE.test(deletePassword)) {
             setDeleteError('Паролата съдържа неразрешени символи.');
-            return false;
-        }
-        return true;
-    };
-
-    const handleDeleteAccount = async () => {
-        if (!validateDeletePassword()) {
+            deletePwRef.current?.focus();
             return;
         }
 
@@ -256,14 +207,13 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
 
         try {
             const result = await userService.sendUserDeletionEmail(deletePassword);
-            
             if (result.success) {
-                setShowDeleteConfirmation(false);
+                setShowDeleteConfirm(false);
                 setShowDeleteSuccess(true);
             } else {
                 setDeleteError(result.message);
             }
-        } catch (err: any) {
+        } catch (err) {
             setDeleteError('Грешка при изтриване на акаунта. Моля опитайте отново.');
             console.error('Error deleting account:', err);
         } finally {
@@ -271,1048 +221,292 @@ const ProfilePage: React.FC<ProfilePageProps> = ({username, onClose, onLogout, w
         }
     };
 
-    const handleDeleteSuccessOk = () => {
-        setShowDeleteSuccess(false);
-        logout();
-        navigate('/');
-    };
+    /* ---------------- render ---------------- */
 
     return (
-        <div style={styles.overlay} onClick={onClose}>
-            <div
-                style={{
-                    ...styles.container,
-                    padding: isSmallMobile ? '20px' : isMobile ? '30px' : '30px',
-                    maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '500px',
-                    minWidth: isSmallMobile ? '280px' : '350px',
-                    maxHeight: isMobile ? '90vh' : '85vh',
-                }}
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div style={styles.header}>
-                    <h2 style={{
-                        ...styles.title,
-                        fontSize: isSmallMobile ? '1.5rem' : isMobile ? '1.8rem' : '2rem',
-                    }}>
-                        Профил
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        style={{
-                            ...styles.closeButton,
-                            fontSize: isSmallMobile ? '1.2rem' : '1.5rem',
-                            width: isSmallMobile ? '32px' : '40px',
-                            height: isSmallMobile ? '32px' : '40px',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                            e.currentTarget.style.color = '#fff';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                            e.currentTarget.style.color = '#b0b0b0';
-                        }}
-                    >
-                        ×
-                    </button>
-                </div>
-
+        <>
+            <Modal title="Профил" onClose={onClose}>
                 {isLoading ? (
-                    <div style={styles.loading}>Зареждане...</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                        {/* Skeletons reserve the real layout so nothing jumps when data lands */}
+                        <div className="skeleton" style={{ height: 96, width: 96, borderRadius: '50%', margin: '0 auto' }} />
+                        <div className="skeleton" style={{ height: 22, width: '52%', margin: '0 auto' }} />
+                        <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+                            <div className="skeleton" style={{ height: 84, flex: 1 }} />
+                            <div className="skeleton" style={{ height: 84, flex: 1 }} />
+                            <div className="skeleton" style={{ height: 84, flex: 1 }} />
+                        </div>
+                        <div className="skeleton" style={{ height: 14, width: '100%' }} />
+                        <span className="sr-only">Зареждане на профила…</span>
+                    </div>
                 ) : error ? (
-                    <div style={styles.error}>{error}</div>
+                    <Note tone="error">{error}</Note>
                 ) : profile ? (
-                    <>
-                        <div style={styles.userInfo}>
-                            <div style={{
-                                ...styles.userIcon,
-                                fontSize: isSmallMobile ? '3rem' : isMobile ? '4rem' : '5rem',
-                                width: isSmallMobile ? '80px' : isMobile ? '100px' : '120px',
-                                height: isSmallMobile ? '80px' : isMobile ? '100px' : '120px',
-                            }}>
-                                👤
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
+                        {/* identity */}
+                        <div style={identityStyle}>
+                            <div style={avatarStyle}>
+                                <Icon name="user" size="52%" />
                             </div>
-                            <h3 style={{
-                                ...styles.username,
-                                fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.6rem',
-                            }}>
-                                {username}
-                            </h3>
-                            <div style={{
-                                ...styles.emailStatus,
-                                fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                marginTop: isSmallMobile ? '10px' : '15px',
-                            }}>
-                                <span style={{
-                                    ...styles.emailStatusIcon,
-                                    width: isSmallMobile ? '20px' : isMobile ? '22px' : '24px',
-                                    height: isSmallMobile ? '20px' : isMobile ? '22px' : '24px',
-                                    fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : '1.2rem',
-                                    backgroundColor: profile.isEmailConfirmed ? 'rgba(76, 175, 80, 0.2)' : 'rgba(229, 115, 115, 0.2)',
-                                    color: profile.isEmailConfirmed ? '#66bb6a' : '#e57373',
-                                }}>
-                                    {profile.isEmailConfirmed ? '✓' : '✗'}
-                                </span>
-                                <span style={{
-                                    color: profile.isEmailConfirmed ? '#66bb6a' : '#e57373',
-                                    marginLeft: '8px',
-                                    fontWeight: '600',
-                                }}>
-                                    {profile.isEmailConfirmed ? 'Имейлът е потвърден' : 'Имейлът не е потвърден'}
-                                </span>
-                            </div>
-                            {!profile.isEmailConfirmed && !emailSentSuccessfully && (
-                                <button
+                            <h3 style={usernameStyle}>{username}</h3>
+                            <RankBadge rank={profile.rank} size="medium" wins={wins} losses={losses} />
+                        </div>
+
+                        {/* email confirmation state */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', alignItems: 'center' }}>
+                            <span className={`badge ${profile.isEmailConfirmed ? 'badge--success' : 'badge--danger'}`}>
+                                <Icon name={profile.isEmailConfirmed ? 'checkCircle' : 'xCircle'} size={15} />
+                                {profile.isEmailConfirmed ? 'Имейлът е потвърден' : 'Имейлът не е потвърден'}
+                            </span>
+
+                            {!profile.isEmailConfirmed && !emailSent && (
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon="mail"
+                                    loading={isResendingEmail}
                                     onClick={handleResendEmail}
-                                    disabled={isResendingEmail}
-                                    style={{
-                                        ...styles.resendButton,
-                                        padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
-                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                        marginTop: isSmallMobile ? '15px' : '20px',
-                                        opacity: isResendingEmail ? 0.7 : 1,
-                                        cursor: isResendingEmail ? 'not-allowed' : 'pointer',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isResendingEmail) {
-                                            e.currentTarget.style.backgroundColor = '#2d5a27';
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isResendingEmail) {
-                                            e.currentTarget.style.backgroundColor = '#1a3a16';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                        }
+                                >
+                                    Изпрати имейл за потвърждение
+                                </Button>
+                            )}
+
+                            {resendMessage && <Note tone={resendMessage.tone}>{resendMessage.text}</Note>}
+                        </div>
+
+                        {/* stats */}
+                        <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
+                            <div className="stat">
+                                <div className="stat__value">{wins}</div>
+                                <div className="stat__label">Победи</div>
+                            </div>
+                            <div className="stat">
+                                <div className="stat__value">{losses}</div>
+                                <div className="stat__label">Загуби</div>
+                            </div>
+                            <div className="stat">
+                                <div className="stat__value">{total}</div>
+                                <div className="stat__label">Игри</div>
+                            </div>
+                        </div>
+
+                        {total > 0 && (
+                            <div>
+                                <div className="ratio" role="img" aria-label={`Победи ${wins}, загуби ${losses}, ${winPct}% успеваемост`}>
+                                    <div className="ratio__win" style={{ width: `${winPct}%` }} />
+                                    <div className="ratio__loss" style={{ width: `${100 - winPct}%` }} />
+                                </div>
+                                <div style={ratioLabelsStyle}>
+                                    <span style={{ color: 'var(--success)', fontWeight: 700 }}>{winPct}% победи</span>
+                                    <span style={{ color: 'var(--text-3)' }}>{total} изиграни</span>
+                                    <span style={{ color: 'var(--danger-bright)', fontWeight: 700 }}>
+                                        {100 - winPct}% загуби
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* account actions — destructive one sits apart, below a divider */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+                            <Button variant="secondary" icon="lock" block onClick={openPasswordChange}>
+                                Промени парола
+                            </Button>
+
+                            <div style={dangerZoneStyle}>
+                                <Button
+                                    variant="danger-outline"
+                                    icon="trash"
+                                    block
+                                    onClick={() => {
+                                        setDeletePassword('');
+                                        setDeleteError(null);
+                                        setShowDeleteConfirm(true);
                                     }}
                                 >
-                                    {isResendingEmail ? 'Изпращане...' : 'Изпрати имейл за потвърждение'}
-                                </button>
-                            )}
-                            {resendEmailMessage && (
-                                <div style={{
-                                    ...styles.resendMessage,
-                                    color: resendEmailMessage.includes('успешно') ? '#66bb6a' : '#e57373',
-                                    backgroundColor: resendEmailMessage.includes('успешно') 
-                                        ? 'rgba(76, 175, 80, 0.1)' 
-                                        : 'rgba(229, 115, 115, 0.1)',
-                                    fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
-                                    marginTop: isSmallMobile ? '10px' : '15px',
-                                    padding: isSmallMobile ? '8px 12px' : '10px 15px',
-                                }}>
-                                    {resendEmailMessage}
-                                </div>
-                            )}
-                            {profile.isEmailConfirmed && (
-                                <>
-                                    <button
-                                        onClick={handleOpenPasswordChange}
-                                        style={{
-                                            ...styles.changePasswordButton,
-                                            padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
-                                            fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                            marginTop: isSmallMobile ? '15px' : '20px',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#2d5a27';
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#1a3a16';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                        }}
-                                    >
-                                        Промени парола
-                                    </button>
-                                    <button
-                                        onClick={handleOpenDeleteConfirmation}
-                                        style={{
-                                            ...styles.deleteAccountButton,
-                                            padding: isSmallMobile ? '10px 20px' : isMobile ? '12px 24px' : '14px 28px',
-                                            fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                            marginTop: isSmallMobile ? '15px' : '20px',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#8b2020';
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#6b1515';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                        }}
-                                    >
-                                        Изтрий акаунт
-                                    </button>
-                                </>
-                            )}
-                        </div>
-
-                        <div style={styles.statsContainer}>
-                            <div style={styles.statBox}>
-                                <div style={styles.statValue}>{wins}</div>
-                                <div style={styles.statLabel}>Победи</div>
-                            </div>
-                            <div style={styles.statBox}>
-                                <div style={styles.statValue}>{losses}</div>
-                                <div style={styles.statLabel}>Загуби</div>
-                            </div>
-                            <div style={styles.statBox}>
-                                <div style={styles.statValue}>{total}</div>
-                                <div style={styles.statLabel}>Общо</div>
+                                    Изтрий акаунт
+                                </Button>
                             </div>
                         </div>
-
-                        <div style={styles.statusBarContainer}>
-                            <div style={styles.statusBarLabel}>
-                                Статистика
-                            </div>
-                            <div style={styles.statusBarWrapper}>
-                                <div
-                                    style={{
-                                        ...styles.statusBarGreen,
-                                        width: `${winsPercentage}%`,
-                                    }}
-                                />
-                                <div
-                                    style={{
-                                        ...styles.statusBarRed,
-                                        width: `${lossesPercentage}%`,
-                                    }}
-                                />
-                            </div>
-                            <div style={styles.statusBarText}>
-                                <span style={styles.winsText}>
-                                    {winsPercentage.toFixed(1)}% Победи
-                                </span>
-                                <span style={styles.lossesText}>
-                                    {lossesPercentage.toFixed(1)}% Загуби
-                                </span>
-                            </div>
-                        </div>
-                    </>
+                    </div>
                 ) : null}
-            </div>
+            </Modal>
 
+            {/* ---- change password ---- */}
             {showPasswordChange && (
-                <div style={styles.passwordChangeOverlay} onClick={handleClosePasswordChange}>
-                    <div
-                        style={{
-                            ...styles.passwordChangeContainer,
-                            padding: isSmallMobile ? '20px' : isMobile ? '30px' : '40px',
-                            maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '400px',
-                            minWidth: isSmallMobile ? '280px' : '320px',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={styles.passwordChangeHeader}>
-                            <h3 style={{
-                                ...styles.passwordChangeTitle,
-                                fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
-                            }}>
-                                Промяна на парола
-                            </h3>
-                            <button
-                                onClick={handleClosePasswordChange}
-                                style={{
-                                    ...styles.closeButton,
-                                    fontSize: isSmallMobile ? '1.2rem' : '1.5rem',
-                                    width: isSmallMobile ? '32px' : '40px',
-                                    height: isSmallMobile ? '32px' : '40px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                    e.currentTarget.style.color = '#fff';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.color = '#b0b0b0';
-                                }}
-                            >
-                                ×
-                            </button>
-                        </div>
+                <Modal
+                    title="Промяна на парола"
+                    onClose={() => setShowPasswordChange(false)}
+                    width="narrow"
+                    dismissOnScrim={false}
+                >
+                    <form onSubmit={handleChangePassword} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                        <Field
+                            ref={currentPwRef}
+                            label="Текуща парола"
+                            name="currentPassword"
+                            type="password"
+                            autoComplete="current-password"
+                            value={passwordForm.currentPassword}
+                            onChange={onPasswordChange('currentPassword')}
+                            error={passwordErrors.currentPassword}
+                            placeholder="••••••••"
+                            required
+                        />
+                        <Field
+                            ref={newPwRef}
+                            label="Нова парола"
+                            name="newPassword"
+                            type="password"
+                            autoComplete="new-password"
+                            value={passwordForm.newPassword}
+                            onChange={onPasswordChange('newPassword')}
+                            error={passwordErrors.newPassword}
+                            hint="5–50 символа, латиница и цифри."
+                            placeholder="••••••••"
+                            required
+                        />
+                        <Field
+                            ref={confirmPwRef}
+                            label="Потвърди новата парола"
+                            name="confirmPassword"
+                            type="password"
+                            autoComplete="new-password"
+                            value={passwordForm.confirmPassword}
+                            onChange={onPasswordChange('confirmPassword')}
+                            error={passwordErrors.confirmPassword}
+                            placeholder="••••••••"
+                            required
+                        />
 
-                        <form onSubmit={handleChangePassword} style={styles.passwordChangeForm}>
-                            <div style={{...styles.passwordInputGroup, marginBottom: isSmallMobile ? '15px' : '20px'}}>
-                                <label style={{
-                                    ...styles.passwordLabel,
-                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                    marginBottom: isSmallMobile ? '5px' : '8px',
-                                }}>
-                                    Текуща парола
-                                </label>
-                                <input
-                                    type="password"
-                                    name="currentPassword"
-                                    value={passwordForm.currentPassword}
-                                    onChange={handlePasswordInputChange}
-                                    placeholder="••••••••"
-                                    style={{
-                                        ...styles.passwordInput,
-                                        padding: isSmallMobile ? '10px' : '12px',
-                                        fontSize: isSmallMobile ? '14px' : '16px',
-                                    }}
-                                    onFocus={(e) => {
-                                        e.currentTarget.style.borderColor = '#d4af37';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                    }}
-                                    onBlur={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                                    }}
-                                    required
-                                />
-                            </div>
+                        {passwordBanner && <Note tone={passwordBanner.tone}>{passwordBanner.text}</Note>}
 
-                            <div style={{...styles.passwordInputGroup, marginBottom: isSmallMobile ? '15px' : '20px'}}>
-                                <label style={{
-                                    ...styles.passwordLabel,
-                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                    marginBottom: isSmallMobile ? '5px' : '8px',
-                                }}>
-                                    Нова парола
-                                </label>
-                                <input
-                                    type="password"
-                                    name="newPassword"
-                                    value={passwordForm.newPassword}
-                                    onChange={handlePasswordInputChange}
-                                    placeholder="••••••••"
-                                    style={{
-                                        ...styles.passwordInput,
-                                        padding: isSmallMobile ? '10px' : '12px',
-                                        fontSize: isSmallMobile ? '14px' : '16px',
-                                    }}
-                                    onFocus={(e) => {
-                                        e.currentTarget.style.borderColor = '#d4af37';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                    }}
-                                    onBlur={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                                    }}
-                                    required
-                                />
-                            </div>
-
-                            <div style={{...styles.passwordInputGroup, marginBottom: isSmallMobile ? '15px' : '20px'}}>
-                                <label style={{
-                                    ...styles.passwordLabel,
-                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                    marginBottom: isSmallMobile ? '5px' : '8px',
-                                }}>
-                                    Потвърди новата парола
-                                </label>
-                                <input
-                                    type="password"
-                                    name="confirmPassword"
-                                    value={passwordForm.confirmPassword}
-                                    onChange={handlePasswordInputChange}
-                                    placeholder="••••••••"
-                                    style={{
-                                        ...styles.passwordInput,
-                                        padding: isSmallMobile ? '10px' : '12px',
-                                        fontSize: isSmallMobile ? '14px' : '16px',
-                                    }}
-                                    onFocus={(e) => {
-                                        e.currentTarget.style.borderColor = '#d4af37';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                    }}
-                                    onBlur={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                                    }}
-                                    required
-                                />
-                            </div>
-
-                            <div style={{
-                                ...styles.passwordMessageContainer,
-                                height: (passwordError || passwordSuccess) ? 'auto' : '0px',
-                                minHeight: (passwordError || passwordSuccess) ? (isSmallMobile ? '40px' : isMobile ? '45px' : '50px') : '0px',
-                                marginBottom: (passwordError || passwordSuccess) ? (isSmallMobile ? '10px' : '15px') : '0px',
-                                overflow: 'hidden',
-                            }}>
-                                {passwordError && (
-                                    <div style={{
-                                        ...styles.passwordMessage,
-                                        color: '#e57373',
-                                        backgroundColor: 'rgba(229, 115, 115, 0.1)',
-                                        fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
-                                        padding: isSmallMobile ? '8px 12px' : '10px 15px',
-                                    }}>
-                                        {passwordError}
-                                    </div>
-                                )}
-
-                                {passwordSuccess && (
-                                    <div style={{
-                                        ...styles.passwordMessage,
-                                        color: '#66bb6a',
-                                        backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                                        fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
-                                        padding: isSmallMobile ? '8px 12px' : '10px 15px',
-                                    }}>
-                                        {passwordSuccess}
-                                    </div>
-                                )}
-                            </div>
-
-                            <button
-                                type="submit"
-                                disabled={isChangingPassword}
-                                style={{
-                                    ...styles.passwordChangeSubmitButton,
-                                    padding: isSmallMobile ? '12px' : isMobile ? '13px' : '15px',
-                                    fontSize: isSmallMobile ? '14px' : isMobile ? '16px' : '18px',
-                                    opacity: isChangingPassword ? 0.7 : 1,
-                                    cursor: isChangingPassword ? 'not-allowed' : 'pointer',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (!isChangingPassword) {
-                                        e.currentTarget.style.backgroundColor = '#2d5a27';
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (!isChangingPassword) {
-                                        e.currentTarget.style.backgroundColor = '#1a3a16';
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                    }
-                                }}
-                            >
-                                {isChangingPassword ? 'Промяна...' : 'Промени парола'}
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                        <Button type="submit" variant="primary" block loading={isChangingPassword}>
+                            Промени парола
+                        </Button>
+                    </form>
+                </Modal>
             )}
 
-            {showDeleteConfirmation && (
-                <div style={styles.deleteConfirmationOverlay} onClick={handleCloseDeleteConfirmation}>
-                    <div
-                        style={{
-                            ...styles.deleteConfirmationContainer,
-                            padding: isSmallMobile ? '20px' : isMobile ? '30px' : '40px',
-                            maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '400px',
-                            minWidth: isSmallMobile ? '280px' : '320px',
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <div style={styles.deleteConfirmationHeader}>
-                            <h3 style={{
-                                ...styles.deleteConfirmationTitle,
-                                fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
-                            }}>
-                                Изтриване на акаунт
-                            </h3>
-                            <button
-                                onClick={handleCloseDeleteConfirmation}
-                                style={{
-                                    ...styles.closeButton,
-                                    fontSize: isSmallMobile ? '1.2rem' : '1.5rem',
-                                    width: isSmallMobile ? '32px' : '40px',
-                                    height: isSmallMobile ? '32px' : '40px',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                    e.currentTarget.style.color = '#fff';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                    e.currentTarget.style.color = '#b0b0b0';
-                                }}
-                            >
-                                ×
-                            </button>
-                        </div>
+            {/* ---- delete account confirmation ---- */}
+            {showDeleteConfirm && (
+                <Modal
+                    title="Изтриване на акаунт"
+                    tone="danger"
+                    width="narrow"
+                    onClose={() => setShowDeleteConfirm(false)}
+                    dismissOnScrim={false}
+                    actions={
+                        <>
+                            <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>
+                                Отказ
+                            </Button>
+                            <Button variant="danger" loading={isDeletingAccount} onClick={handleDeleteAccount}>
+                                Изтрий акаунт
+                            </Button>
+                        </>
+                    }
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                        <Note tone="warning">
+                            Това действие е необратимо. Всички ваши данни — статистика, ранг и история на игрите — ще
+                            бъдат премахнати завинаги.
+                        </Note>
 
-                        <div style={styles.deleteConfirmationContent}>
-                            <div style={{
-                                ...styles.warningIcon,
-                                fontSize: isSmallMobile ? '2.5rem' : isMobile ? '3rem' : '3.5rem',
-                            }}>
-                                ⚠️
-                            </div>
-                            <p style={{
-                                ...styles.deleteWarningText,
-                                fontSize: isSmallMobile ? '0.9rem' : isMobile ? '0.95rem' : '1rem',
-                            }}>
-                                За да изтриете акаунта си, моля въведете паролата си. 
-                                Ще получите имейл за потвърждение на изтриването.
-                            </p>
+                        <p style={{ color: 'var(--text-2)', fontSize: 'var(--fs-sm)' }}>
+                            За да продължите, въведете паролата си. Ще получите имейл за потвърждение на изтриването.
+                        </p>
 
-                            <div style={{
-                                ...styles.deletePasswordInputGroup,
-                                marginBottom: isSmallMobile ? '15px' : '20px',
-                                width: '100%',
-                            }}>
-                                <label style={{
-                                    ...styles.passwordLabel,
-                                    fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                    marginBottom: isSmallMobile ? '5px' : '8px',
-                                }}>
-                                    Парола
-                                </label>
-                                <input
-                                    type="password"
-                                    value={deletePassword}
-                                    onChange={(e) => {
-                                        setDeletePassword(e.target.value);
-                                        if (deleteError) setDeleteError(null);
-                                    }}
-                                    placeholder="••••••••"
-                                    style={{
-                                        ...styles.passwordInput,
-                                        padding: isSmallMobile ? '10px' : '12px',
-                                        fontSize: isSmallMobile ? '14px' : '16px',
-                                    }}
-                                    onFocus={(e) => {
-                                        e.currentTarget.style.borderColor = '#e57373';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                    }}
-                                    onBlur={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)';
-                                    }}
-                                />
-                            </div>
-
-                            {deleteError && (
-                                <div style={{
-                                    ...styles.deleteErrorMessage,
-                                    fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.85rem' : '0.9rem',
-                                    padding: isSmallMobile ? '8px 12px' : '10px 15px',
-                                    marginBottom: isSmallMobile ? '15px' : '20px',
-                                }}>
-                                    {deleteError}
-                                </div>
-                            )}
-
-                            <div style={styles.deleteButtonsContainer}>
-                                <button
-                                    onClick={handleCloseDeleteConfirmation}
-                                    style={{
-                                        ...styles.cancelDeleteButton,
-                                        padding: isSmallMobile ? '10px' : isMobile ? '12px' : '14px',
-                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                    }}
-                                >
-                                    Отказ
-                                </button>
-                                <button
-                                    onClick={handleDeleteAccount}
-                                    disabled={isDeletingAccount}
-                                    style={{
-                                        ...styles.confirmDeleteButton,
-                                        padding: isSmallMobile ? '10px' : isMobile ? '12px' : '14px',
-                                        fontSize: isSmallMobile ? '0.85rem' : isMobile ? '0.9rem' : '1rem',
-                                        opacity: isDeletingAccount ? 0.7 : 1,
-                                        cursor: isDeletingAccount ? 'not-allowed' : 'pointer',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isDeletingAccount) {
-                                            e.currentTarget.style.backgroundColor = '#a52a2a';
-                                            e.currentTarget.style.transform = 'translateY(-2px)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isDeletingAccount) {
-                                            e.currentTarget.style.backgroundColor = '#8b0000';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                        }
-                                    }}
-                                >
-                                    {isDeletingAccount ? 'Изпращане...' : 'Изтрий акаунт'}
-                                </button>
-                            </div>
-                        </div>
+                        <Field
+                            ref={deletePwRef}
+                            label="Парола"
+                            type="password"
+                            autoComplete="current-password"
+                            value={deletePassword}
+                            onChange={(e) => {
+                                setDeletePassword(e.target.value);
+                                if (deleteError) setDeleteError(null);
+                            }}
+                            error={deleteError}
+                            placeholder="••••••••"
+                            required
+                        />
                     </div>
-                </div>
+                </Modal>
             )}
 
+            {/* ---- deletion email sent ---- */}
             {showDeleteSuccess && (
-                <div style={styles.deleteConfirmationOverlay}>
-                    <div
-                        style={{
-                            ...styles.deleteConfirmationContainer,
-                            padding: isSmallMobile ? '20px' : isMobile ? '30px' : '40px',
-                            maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '400px',
-                            minWidth: isSmallMobile ? '280px' : '320px',
-                        }}
-                    >
-                        <div style={styles.deleteConfirmationContent}>
-                            <div style={{
-                                ...styles.successIcon,
-                                fontSize: isSmallMobile ? '2.5rem' : isMobile ? '3rem' : '3.5rem',
-                            }}>
-                                ✉️
-                            </div>
-                            <h3 style={{
-                                ...styles.successTitle,
-                                fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.6rem',
-                            }}>
-                                Имейл изпратен
-                            </h3>
-                            <p style={{
-                                ...styles.deleteWarningText,
-                                fontSize: isSmallMobile ? '0.9rem' : isMobile ? '0.95rem' : '1rem',
-                            }}>
-                                Изпратихме ви имейл за потвърждение на изтриването на акаунта. 
-                                Моля, проверете пощата си и следвайте инструкциите.
-                            </p>
-                            <button
-                                onClick={handleDeleteSuccessOk}
-                                style={{
-                                    ...styles.successOkButton,
-                                    padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '16px 40px',
-                                    fontSize: isSmallMobile ? '0.9rem' : isMobile ? '1rem' : '1.1rem',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#2d5a27';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#1a3a16';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                            >
-                                OK
-                            </button>
-                        </div>
+                <Modal
+                    title="Имейл изпратен"
+                    width="narrow"
+                    dismissOnScrim={false}
+                    actions={
+                        <Button
+                            variant="primary"
+                            onClick={() => {
+                                setShowDeleteSuccess(false);
+                                logout();
+                                navigate('/');
+                            }}
+                        >
+                            Разбрах
+                        </Button>
+                    }
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--sp-4)', textAlign: 'center' }}>
+                        <span style={{ ...avatarStyle, color: 'var(--success)', background: 'var(--success-wash)' }}>
+                            <Icon name="mail" size="48%" />
+                        </span>
+                        <p style={{ color: 'var(--text-2)' }}>
+                            Изпратихме ви имейл за потвърждение на изтриването на акаунта. Моля, проверете пощата си и
+                            следвайте инструкциите.
+                        </p>
                     </div>
-                </div>
+                </Modal>
             )}
-        </div>
+        </>
     );
 };
 
-const styles: { [key: string]: React.CSSProperties } = {
-    overlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 1000,
-        backdropFilter: 'blur(5px)',
-    },
-    container: {
-        backgroundColor: 'rgba(26, 26, 26, 0.98)',
-        borderRadius: '20px',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
-        position: 'relative',
-        maxHeight: '90vh',
-        overflow: 'auto',
-    },
-    header: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '20px',
-        borderBottom: '2px solid rgba(255,255,255,0.1)',
-        paddingBottom: '10px',
-    },
-    title: {
-        margin: 0,
-        color: '#d4af37',
-        fontWeight: 'bold',
-    },
-    closeButton: {
-        background: 'transparent',
-        border: 'none',
-        color: '#b0b0b0',
-        cursor: 'pointer',
-        fontSize: '1.5rem',
-        fontWeight: 'bold',
-        width: '40px',
-        height: '40px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: '50%',
-        transition: 'all 0.2s',
-    },
-    userInfo: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        marginBottom: '20px',
-    },
-    userIcon: {
-        background: 'linear-gradient(135deg, #2d5a27 0%, #1a3a16 100%)',
-        borderRadius: '50%',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '15px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.5), 0 0 0 2px rgba(212, 175, 55, 0.3)',
-        width: '120px',
-        height: '120px',
-    },
-    username: {
-        margin: 0,
-        color: '#d4af37',
-        fontWeight: 'bold',
-    },
-    statsContainer: {
-        display: 'flex',
-        justifyContent: 'space-around',
-        marginBottom: '20px',
-        gap: '10px',
-    },
-    statBox: {
-        flex: 1,
-        textAlign: 'center',
-        padding: '15px',
-        background: 'linear-gradient(135deg, rgba(45, 45, 45, 0.8) 0%, rgba(30, 30, 30, 0.9) 100%)',
-        borderRadius: '15px',
-        border: '2px solid rgba(255,255,255,0.1)',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)',
-    },
-    statValue: {
-        fontSize: '1.8rem',
-        fontWeight: 'bold',
-        color: '#d4af37',
-        marginBottom: '5px',
-    },
-    statLabel: {
-        fontSize: '0.9rem',
-        color: '#b0b0b0',
-        textTransform: 'uppercase',
-        fontWeight: '600',
-    },
-    statusBarContainer: {
-        marginTop: '10px',
-    },
-    statusBarLabel: {
-        fontSize: '1rem',
-        fontWeight: '600',
-        color: '#d4af37',
-        marginBottom: '10px',
-        textAlign: 'center',
-    },
-    statusBarWrapper: {
-        width: '100%',
-        height: '35px',
-        borderRadius: '20px',
-        overflow: 'hidden',
-        display: 'flex',
-        border: '2px solid rgba(255,255,255,0.2)',
-        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
-    },
-    statusBarGreen: {
-        height: '100%',
-        background: 'linear-gradient(90deg, #4caf50 0%, #66bb6a 100%)',
-        transition: 'width 0.5s ease-in-out',
-    },
-    statusBarRed: {
-        height: '100%',
-        background: 'linear-gradient(90deg, #f44336 0%, #e57373 100%)',
-        transition: 'width 0.5s ease-in-out',
-    },
-    statusBarText: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        marginTop: '10px',
-        fontSize: '0.9rem',
-    },
-    winsText: {
-        color: '#66bb6a',
-        fontWeight: '600',
-    },
-    lossesText: {
-        color: '#e57373',
-        fontWeight: '600',
-    },
-    loading: {
-        textAlign: 'center',
-        padding: '40px',
-        color: '#b0b0b0',
-        fontSize: '1.1rem',
-    },
-    error: {
-        textAlign: 'center',
-        padding: '40px',
-        color: '#e57373',
-        fontSize: '1.1rem',
-    },
-    emailStatus: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginTop: '15px',
-        fontSize: '1rem',
-    },
-    emailStatusIcon: {
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: '50%',
-        fontWeight: 'bold',
-    },
-    resendButton: {
-        padding: '14px 28px',
-        backgroundColor: '#1a3a16',
-        color: '#d4af37',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '1rem',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        boxShadow: '0 4px 0 #0d1f0b',
-        transition: 'all 0.3s ease',
-        marginTop: '20px',
-    },
-    resendMessage: {
-        textAlign: 'center',
-        borderRadius: '8px',
-        padding: '10px 15px',
-        marginTop: '15px',
-        fontSize: '0.9rem',
-        fontWeight: '600',
-        border: '1px solid',
-    },
-    changePasswordButton: {
-        padding: '14px 28px',
-        backgroundColor: '#1a3a16',
-        color: '#d4af37',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '1rem',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        boxShadow: '0 4px 0 #0d1f0b',
-        transition: 'all 0.3s ease',
-        marginTop: '20px',
-    },
-    passwordChangeOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 2000,
-        backdropFilter: 'blur(5px)',
-    },
-    passwordChangeContainer: {
-        backgroundColor: 'rgba(26, 26, 26, 0.98)',
-        borderRadius: '20px',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
-        position: 'relative',
-        maxHeight: '90vh',
-        overflow: 'auto',
-    },
-    passwordChangeHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '25px',
-        borderBottom: '2px solid rgba(255,255,255,0.1)',
-        paddingBottom: '15px',
-    },
-    passwordChangeTitle: {
-        margin: 0,
-        color: '#d4af37',
-        fontWeight: 'bold',
-    },
-    passwordChangeForm: {
-        display: 'flex',
-        flexDirection: 'column',
-    },
-    passwordInputGroup: {
-        marginBottom: '20px',
-    },
-    passwordLabel: {
-        display: 'block',
-        marginBottom: '8px',
-        fontSize: '1rem',
-        fontWeight: 'bold',
-        color: '#d4af37',
-        textTransform: 'uppercase',
-    },
-    passwordInput: {
-        width: '100%',
-        padding: '12px',
-        borderRadius: '8px',
-        border: '1px solid rgba(255,255,255,0.2)',
-        fontSize: '16px',
-        boxSizing: 'border-box',
-        backgroundColor: 'rgba(255,255,255,0.05)',
-        color: '#fff',
-        outline: 'none',
-        transition: 'all 0.3s ease',
-    },
-    passwordMessageContainer: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: '100%',
-        boxSizing: 'border-box',
-        transition: 'all 0.3s ease',
-    },
-    passwordMessage: {
-        textAlign: 'center',
-        borderRadius: '8px',
-        padding: '10px 15px',
-        fontSize: '0.9rem',
-        fontWeight: '600',
-        border: '1px solid',
-        wordWrap: 'break-word',
-        overflowWrap: 'break-word',
-        maxWidth: '100%',
-        boxSizing: 'border-box',
-        width: '100%',
-        whiteSpace: 'pre-line',
-        lineHeight: '1.4',
-    },
-    passwordChangeSubmitButton: {
-        width: '100%',
-        padding: '15px',
-        backgroundColor: '#1a3a16',
-        color: '#d4af37',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '18px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        boxShadow: '0 4px 0 #0d1f0b',
-        transition: 'all 0.3s ease',
-        marginTop: '10px',
-    },
-    deleteAccountButton: {
-        padding: '14px 28px',
-        backgroundColor: '#6b1515',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '1rem',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        boxShadow: '0 4px 0 #4a0e0e',
-        transition: 'all 0.3s ease',
-        marginTop: '20px',
-    },
-    deleteConfirmationOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.85)',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        zIndex: 2000,
-        backdropFilter: 'blur(5px)',
-    },
-    deleteConfirmationContainer: {
-        backgroundColor: 'rgba(26, 26, 26, 0.98)',
-        borderRadius: '20px',
-        boxShadow: '0 12px 40px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.1)',
-        position: 'relative',
-        maxHeight: '90vh',
-        overflow: 'auto',
-    },
-    deleteConfirmationHeader: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '25px',
-        borderBottom: '2px solid rgba(255,255,255,0.1)',
-        paddingBottom: '15px',
-    },
-    deleteConfirmationTitle: {
-        margin: 0,
-        color: '#e57373',
-        fontWeight: 'bold',
-    },
-    deleteConfirmationContent: {
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        textAlign: 'center',
-    },
-    warningIcon: {
-        marginBottom: '15px',
-    },
-    deleteWarningText: {
-        color: '#b0b0b0',
-        lineHeight: '1.6',
-        marginBottom: '25px',
-    },
-    deleteErrorMessage: {
-        color: '#e57373',
-        backgroundColor: 'rgba(229, 115, 115, 0.1)',
-        borderRadius: '8px',
-        fontWeight: '600',
-        border: '1px solid #e57373',
-        width: '100%',
-        boxSizing: 'border-box',
-    },
-    deleteButtonsContainer: {
-        display: 'flex',
-        gap: '15px',
-        width: '100%',
-        justifyContent: 'center',
-    },
-    cancelDeleteButton: {
-        width: '45%',
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        color: '#b0b0b0',
-        border: 'none',
-        borderRadius: '8px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-    },
-    confirmDeleteButton: {
-        width: '45%',
-        backgroundColor: '#8b0000',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '8px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        boxShadow: '0 4px 0 #5c0000',
-        transition: 'all 0.3s ease',
-    },
-    deletePasswordInputGroup: {
-        marginBottom: '20px',
-    },
-    successIcon: {
-        marginBottom: '15px',
-    },
-    successTitle: {
-        margin: '0 0 15px 0',
-        color: '#66bb6a',
-        fontWeight: 'bold',
-    },
-    successOkButton: {
-        backgroundColor: '#1a3a16',
-        color: '#d4af37',
-        border: 'none',
-        borderRadius: '8px',
-        fontWeight: 'bold',
-        cursor: 'pointer',
-        boxShadow: '0 4px 0 #0d1f0b',
-        transition: 'all 0.3s ease',
-    },
+const identityStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 'var(--sp-3)',
+};
+
+const avatarStyle: React.CSSProperties = {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'clamp(76px, 22vw, 104px)',
+    height: 'clamp(76px, 22vw, 104px)',
+    borderRadius: '50%',
+    background: 'linear-gradient(150deg, var(--surface-3), var(--surface-1))',
+    border: '1px solid var(--line-gold)',
+    color: 'var(--gold)',
+    boxShadow: 'var(--sh-2)',
+};
+
+const usernameStyle: React.CSSProperties = {
+    fontSize: 'var(--fs-xl)',
+    color: 'var(--text-1)',
+    fontWeight: 600,
+    wordBreak: 'break-word',
+    textAlign: 'center',
+};
+
+const ratioLabelsStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 'var(--sp-2)',
+    marginTop: 'var(--sp-2)',
+    fontSize: 'var(--fs-xs)',
+};
+
+const dangerZoneStyle: React.CSSProperties = {
+    marginTop: 'var(--sp-2)',
+    paddingTop: 'var(--sp-4)',
+    borderTop: '1px solid var(--line)',
 };
 
 export default ProfilePage;
-

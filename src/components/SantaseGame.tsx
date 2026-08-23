@@ -9,136 +9,19 @@ import {Rank} from '../types/user.types';
 import ProfilePage from './ProfilePage';
 import RankBadge from './RankBadge';
 import RankIcon, { getRankLabel } from './RankIcon';
+import Button from './ui/Button';
+import Icon from './ui/Icon';
+import Modal from './ui/Modal';
+import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-// Global styles and animations
-if (typeof document !== 'undefined') {
-    const style = document.createElement('style');
-    style.innerHTML = `
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif; background: #0a1f0f; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-        body { overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; }
-        @media (min-width: 769px) {
-            body { overflow: hidden; }
-        }
-        * { -webkit-tap-highlight-color: transparent; }
-        button:focus { outline: none; }
-        #root { height: 100%; width: 100%; }
-        button { 
-            cursor: pointer; 
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            border: none; 
-        }
-        button:hover { 
-            transform: translateY(-2px); 
-            filter: brightness(1.15);
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2) !important;
-        }
-        button:active { 
-            transform: scale(0.96) translateY(0); 
-        }
-        
-        @keyframes floatUpFade {
-            0% { transform: translate(-50%, 0) scale(0.5); opacity: 0; }
-            20% { transform: translate(-50%, -20px) scale(1.1); opacity: 1; }
-            80% { transform: translate(-50%, -60px) scale(1); opacity: 1; }
-            100% { transform: translate(-50%, -100px) scale(0.8); opacity: 0; }
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.1); }
-        }
-        @keyframes fadeInOut {
-            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-            15% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            85% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        @keyframes shimmer {
-            0% { 
-                left: -100%;
-            }
-            100% { 
-                left: 100%;
-            }
-        }
-        .last-drawn-shimmer {
-            position: relative;
-            overflow: hidden;
-            isolation: isolate;
-        }
-        .last-drawn-shimmer::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(76, 175, 80, 0.7),
-                rgba(255, 255, 255, 0.8),
-                rgba(76, 175, 80, 0.7),
-                transparent
-            );
-            animation: shimmer 0.6s ease-out;
-            pointer-events: none;
-            z-index: 1;
-            clip-path: inset(0);
-        }
-        @media (max-width: 768px) {
-            .last-drawn-shimmer {
-                overflow: hidden !important;
-                contain: layout style paint;
-            }
-            .last-drawn-shimmer::before {
-                clip-path: inset(0);
-                will-change: left;
-            }
-        }
-        .bonus-bubble {
-            position: absolute;
-            left: 50%;
-            background: linear-gradient(135deg, #ffeb3b, #fbc02d);
-            color: #000;
-            font-weight: 800;
-            padding: 12px 30px;
-            border-radius: 50px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            animation: floatUpFade 2.5s ease-out forwards;
-            z-index: 1000;
-            pointer-events: none;
-            font-size: 1.3rem;
-            text-transform: uppercase;
-        }
-        
-        @media (max-width: 768px) {
-            .bonus-bubble {
-                padding: 8px 20px;
-                font-size: 1rem;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .bonus-bubble {
-                padding: 6px 15px;
-                font-size: 0.85rem;
-            }
-        }
-    `;
-    document.head.appendChild(style);
-}
 
 const SUIT_MAP: Record<Suit, { symbol: string; color: string }> = {
-    SPADES: {symbol: '♠', color: '#1a1a1a'},
-    HEARTS: {symbol: '♥', color: '#d32f2f'},
-    DIAMONDS: {symbol: '♦', color: '#d32f2f'},
-    CLUBS: {symbol: '♣', color: '#1a1a1a'}
+    SPADES: {symbol: '♠', color: SUIT_COLOR.black},
+    HEARTS: {symbol: '♥', color: SUIT_COLOR.red},
+    DIAMONDS: {symbol: '♦', color: SUIT_COLOR.red},
+    CLUBS: {symbol: '♣', color: SUIT_COLOR.black}
 };
 
 const RANK_ORDER: Record<string, number> = {
@@ -156,111 +39,88 @@ const RANK_PRIORITY: Record<string, number> = {
     'LEGEND': 6,
 };
 
+const RANK_LABEL_BG: Record<string, string> = {
+    ACE: 'Асо', TEN: 'Десетка', KING: 'Поп',
+    QUEEN: 'Дама', JACK: 'Вале', NINE: 'Деветка',
+};
+
+const SUIT_LABEL_BG: Record<Suit, string> = {
+    SPADES: 'пика', HEARTS: 'купа',
+    DIAMONDS: 'каро', CLUBS: 'спатия',
+};
+
+/**
+ * A playing card.
+ *
+ * Sizes come from clamp() rather than a measured window width, so cards scale
+ * continuously instead of snapping at two breakpoints — and resizing no longer
+ * re-renders the whole table. A playable card is a real <button>: it can be
+ * reached with the keyboard and announces itself ("Асо пика").
+ */
 const CardComponent: React.FC<{
     card: Card;
     onClick?: () => void;
     isPlayable?: boolean;
     isSelected?: boolean;
     isSmall?: boolean;
-    windowWidth?: number;
     isLastDrawn?: boolean;
-}> = ({card, onClick, isPlayable = true, isSelected, isSmall, windowWidth = 1024, isLastDrawn = false}) => {
-    const suit = SUIT_MAP[card.suit] || {symbol: '?', color: 'black'};
+}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false}) => {
+    const suit = SUIT_MAP[card.suit] || {symbol: '?', color: SUIT_COLOR.black};
     const displayRank = card.rank === 'NINE' ? '9' : (card.rank === 'TEN' ? '10' : card.rank[0]);
+    const name = `${RANK_LABEL_BG[card.rank] ?? card.rank} ${SUIT_LABEL_BG[card.suit] ?? ''}`.trim();
 
-    // Responsive card sizing
-    const isMobile = windowWidth <= 768;
-    const isSmallMobile = windowWidth <= 480;
+    const width = isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)';
+    const cornerSize = isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
+    const pipSize = isSmall ? 'clamp(1.4rem, 5.2vw, 2.7rem)' : 'clamp(1.8rem, 6.4vw, 2.6rem)';
 
-    const cardWidth = isSmall
-        ? (isSmallMobile ? '55px' : isMobile ? '65px' : '110px')
-        : (isSmallMobile ? '85px' : isMobile ? '100px' : '100px');
-    const cardHeight = isSmall
-        ? (isSmallMobile ? '80px' : isMobile ? '95px' : '150px')
-        : (isSmallMobile ? '120px' : isMobile ? '145px' : '145px');
-    const cardStyle = {
-        ...styles.card,
-        width: cardWidth,
-        height: cardHeight,
-        minWidth: cardWidth,
-        minHeight: cardHeight,
-        maxWidth: cardWidth,
-        maxHeight: cardHeight,
-        flexShrink: 0,
-        borderRadius: '14px',
+    const interactive = isPlayable && !!onClick;
 
-        // 1. OPAQUE: Strictly 1 to prevent seeing cards behind
-        opacity: 1,
+    const className = [
+        'pcard',
+        interactive ? 'pcard--playable' : '',
+        !isPlayable ? 'pcard--blocked' : '',
+        isSelected ? 'pcard--selected' : '',
+        isLastDrawn ? 'card-shimmer' : '',
+    ].filter(Boolean).join(' ');
 
-        // 2. SUIT COLOR: Kept as-is so you still see red/black clearly
+    const style: React.CSSProperties = {
+        width,
+        aspectRatio: '71 / 103',
         color: suit.color,
-
-        // 3. BLUR & DIM: Increased blur slightly for a "pushed back" feel
-        filter: isPlayable ? 'none' : 'brightness(0.75)',
-
-        // // 4. DARKER GREY BACKGROUND: Solid color to hide overlapping content
-        // background: isPlayable
-        //     ? 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)'
-        //     : '#cccccc', // Mid-tone grey (Darker than before)
-
-        // // 5. SEPARATION BORDER: Darker border to define the card edge
-        // border: isSelected
-        //     ? '3px solid #ffd700'
-        //     : isPlayable
-        //         ? '2px solid rgba(255,255,255,0.9)'
-        //         : '2px solid #a1a1a1', // Stronger grey border for overlap clarity
-
-        // // 6. STACKING DEPTH
-        // zIndex: isSelected ? 10 : isPlayable ? 5 : 1,
-        // boxShadow: isSelected
-        //     ? '0 12px 28px rgba(0,0,0,0.3)'
-        //     : isPlayable
-        //         ? '0 8px 16px rgba(0,0,0,0.2)'
-        //         : '0 4px 10px rgba(0,0,0,0.25)', // Slightly heavier shadow for depth
-
-        display: 'flex',
-        flexDirection: 'column' as const,
-        justifyContent: 'space-between',
-        padding: isSmallMobile ? '5px' : isMobile ? '7px' : '10px',
-        position: 'relative' as const,
-        transition: 'all 0.2s ease-in-out',
     };
 
-    const cornerStyle = {
-        display: 'flex',
-        flexDirection: 'column' as const,
-        alignItems: 'center',
-        lineHeight: '1',
-        fontWeight: 'bold' as const,
-        fontSize: isSmall
-            ? (isSmallMobile ? '1.1rem' : isMobile ? '1.2rem' : '1.7rem')
-            : (isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.5rem'),
-    };
+    const face = (
+        <>
+            <span className="pcard__corner" style={{alignSelf: 'flex-start', fontSize: cornerSize}}>
+                <span>{displayRank}</span>
+                <span>{suit.symbol}</span>
+            </span>
+            <span className="pcard__pip" style={{fontSize: pipSize}} aria-hidden="true">
+                {suit.symbol}
+            </span>
+            <span
+                className="pcard__corner"
+                style={{alignSelf: 'flex-end', fontSize: cornerSize, transform: 'rotate(180deg)'}}
+                aria-hidden="true"
+            >
+                <span>{displayRank}</span>
+                <span>{suit.symbol}</span>
+            </span>
+        </>
+    );
 
-    const centerSymbolSize = isSmall
-        ? (isSmallMobile ? '1.6rem' : isMobile ? '1.9rem' : '3rem')
-        : (isSmallMobile ? '2.2rem' : isMobile ? '2.4rem' : '2.9rem');
+    if (!interactive) {
+        return (
+            <div className={className} style={style} role="img" aria-label={name}>
+                {face}
+            </div>
+        );
+    }
 
     return (
-        <div
-            onClick={isPlayable ? onClick : undefined}
-            style={cardStyle}
-            className={isLastDrawn ? 'last-drawn-shimmer' : ''}
-        >
-            <div style={{...cornerStyle, alignSelf: 'flex-start'}}>
-                <span>{displayRank}</span>
-                <span
-                    style={{fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem')}}>{suit.symbol}</span>
-            </div>
-            <div style={{fontSize: centerSymbolSize, alignSelf: 'center', opacity: 0.9}}>
-                {suit.symbol}
-            </div>
-            <div style={{...cornerStyle, alignSelf: 'flex-end', transform: 'rotate(180deg)'}}>
-                <span>{displayRank}</span>
-                <span
-                    style={{fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : (isSmall ? '1.6rem' : '1.4rem')}}>{suit.symbol}</span>
-            </div>
-        </div>
+        <button type="button" className={className} style={style} onClick={onClick} aria-label={`Изиграй ${name}`}>
+            {face}
+        </button>
     );
 };
 
@@ -268,186 +128,99 @@ const Navbar: React.FC<{
     username: string;
     onLogout: () => void;
     onProfileClick: () => void;
-    windowWidth?: number;
     rank?: Rank;
     wins?: number;
     losses?: number;
-}> = ({
-          username,
-          onLogout,
-          onProfileClick,
-          windowWidth = 1024,
-          rank = 'UNRANKED',
-          wins = 0,
-          losses = 0
-      }) => {
+}> = ({username, onLogout, onProfileClick, rank = 'UNRANKED', wins = 0, losses = 0}) => {
     const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
-    const isMobile = windowWidth <= 768;
-    const isSmallMobile = windowWidth <= 480;
-
-    const handleLogoutClick = () => {
-        setShowLogoutConfirm(true);
-    };
-
-    const handleConfirmLogout = () => {
-        setShowLogoutConfirm(false);
-        onLogout();
-    };
-
-    const handleCancelLogout = () => {
-        setShowLogoutConfirm(false);
-    };
 
     return (
         <>
-            <nav style={{
-                ...styles.navbar,
-                height: isSmallMobile ? '50px' : isMobile ? '60px' : '70px',
-                padding: isSmallMobile ? '0 15px' : isMobile ? '0 20px' : '0 40px',
-            }}>
-                <div style={{
-                    ...styles.navLogo,
-                    fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.6rem',
-                }}>
-                    SANTASE <span style={{color: '#fff'}}>66</span>
-                </div>
-                <div style={styles.navLinks}>
-                    {/* Rank Badge */}
-                    <RankBadge 
-                        rank={rank} 
-                        size="small" 
-                        windowWidth={windowWidth}
-                        wins={wins}
-                        losses={losses}
-                    />
-                    <div
+            <nav style={navStyle}>
+                <span style={navLogoStyle}>
+                    SANTASE <span style={{color: 'var(--text-1)'}}>66</span>
+                </span>
+
+                <div style={{display: 'flex', alignItems: 'center', gap: 'var(--sp-2)'}}>
+                    <RankBadge rank={rank} size="small" wins={wins} losses={losses}/>
+
+                    <button
+                        type="button"
                         onClick={onProfileClick}
-                        style={{
-                            ...styles.userInfo,
-                            cursor: 'pointer',
-                            padding: '5px 10px',
-                            borderRadius: '8px',
-                            transition: 'all 0.2s',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
+                        style={navUserStyle}
+                        aria-label={`Отвори профила на ${username}`}
                     >
-                        <span style={styles.userIcon}>👤</span>
-                        {!isSmallMobile && (
-                            <span style={{
-                                fontWeight: 600,
-                                fontSize: isMobile ? '0.9rem' : '1rem',
-                            }}>
-                                {isMobile && username.length > 10 ? username.substring(0, 10) + '...' : username}
-                            </span>
-                        )}
-                    </div>
-                    <button onClick={handleLogoutClick} style={{
-                        ...styles.btnLogout,
-                        padding: isSmallMobile ? '4px 10px' : isMobile ? '5px 12px' : '5px 15px',
-                        fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.9rem' : '1rem',
-                    }}>
-                        {isSmallMobile ? '✕' : 'ИЗХОД'}
+                        <Icon name="user" size={20}/>
+                        <span className="truncate" style={{maxWidth: '12ch', fontWeight: 700}}>{username}</span>
                     </button>
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        icon="logout"
+                        onClick={() => setShowLogoutConfirm(true)}
+                        aria-label="Изход от профила"
+                    >
+                        <span className="nav-label">ИЗХОД</span>
+                    </Button>
                 </div>
             </nav>
 
             {showLogoutConfirm && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 10000,
-                }}>
-                    <div style={{
-                        background: 'linear-gradient(145deg, #2a2a2a, #1a1a1a)',
-                        borderRadius: '16px',
-                        padding: isSmallMobile ? '25px 20px' : isMobile ? '30px 25px' : '35px 40px',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-                        border: '1px solid rgba(255,255,255,0.1)',
-                        textAlign: 'center',
-                        maxWidth: isSmallMobile ? '85vw' : '400px',
-                    }}>
-                        <h3 style={{
-                            margin: '0 0 15px 0',
-                            color: '#d4af37',
-                            fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.4rem' : '1.5rem',
-                        }}>
-                            Изход от профила
-                        </h3>
-                        <p style={{
-                            margin: '0 0 25px 0',
-                            color: '#ccc',
-                            fontSize: isSmallMobile ? '0.9rem' : '1rem',
-                        }}>
-                            Сигурни ли сте, че искате да излезете?
-                        </p>
-                        <div style={{
-                            display: 'flex',
-                            gap: '15px',
-                            justifyContent: 'center',
-                        }}>
-                            <button
-                                onClick={handleCancelLogout}
-                                style={{
-                                    padding: isSmallMobile ? '10px 20px' : '12px 25px',
-                                    backgroundColor: 'transparent',
-                                    color: '#ccc',
-                                    border: '1px solid rgba(255,255,255,0.3)',
-                                    borderRadius: '8px',
-                                    fontSize: isSmallMobile ? '0.9rem' : '1rem',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
-                            >
-                                Отказ
-                            </button>
-                            <button
-                                onClick={handleConfirmLogout}
-                                style={{
-                                    padding: isSmallMobile ? '10px 20px' : '12px 25px',
-                                    backgroundColor: '#c0392b',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontSize: isSmallMobile ? '0.9rem' : '1rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#e74c3c';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#c0392b';
-                                }}
-                            >
-                                Изход
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                <Modal
+                    title="Изход от профила"
+                    width="narrow"
+                    onClose={() => setShowLogoutConfirm(false)}
+                    actions={
+                        <>
+                            <Button variant="ghost" onClick={() => setShowLogoutConfirm(false)}>Отказ</Button>
+                            <Button variant="danger" onClick={onLogout}>Изход</Button>
+                        </>
+                    }
+                >
+                    <p style={{color: 'var(--text-2)'}}>Сигурни ли сте, че искате да излезете?</p>
+                </Modal>
             )}
         </>
     );
 };
 
+const navStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 'var(--sp-3)',
+    width: '100%',
+    minHeight: 'clamp(56px, 12vw, 68px)',
+    padding: 'calc(var(--sa-top) + var(--sp-2)) calc(var(--sp-4) + var(--sa-right)) var(--sp-2) calc(var(--sp-4) + var(--sa-left))',
+    background: 'rgba(4, 12, 8, 0.82)',
+    backdropFilter: 'blur(14px)',
+    borderBottom: '1px solid var(--line)',
+    zIndex: 'var(--z-nav)' as unknown as number,
+    flexShrink: 0,
+};
+
+const navLogoStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-display)',
+    fontSize: 'clamp(1.1rem, 4.4vw, 1.5rem)',
+    fontWeight: 700,
+    color: 'var(--accent)',
+    letterSpacing: '0.04em',
+};
+
+const navUserStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 'var(--sp-2)',
+    minHeight: 'var(--tap)',
+    padding: '0 var(--sp-3)',
+    borderRadius: 'var(--r-md)',
+    color: 'var(--text-1)',
+    fontSize: 'var(--fs-sm)',
+    transition: 'background-color var(--dur-fast) var(--ease-out)',
+};
+
+/** Confirm / acknowledge dialog used across the table. */
 const AppModal: React.FC<{
     title?: string;
     message?: string | React.ReactNode;
@@ -455,127 +228,99 @@ const AppModal: React.FC<{
     onCancel?: () => void;
     confirmText?: string;
     cancelText?: string;
-    windowWidth?: number;
-}> = ({title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ", windowWidth = 1024}) => {
-    const isMobile = windowWidth <= 768;
-    const isSmallMobile = windowWidth <= 480;
+}> = ({title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ"}) => (
+    <Modal
+        title={title}
+        width="narrow"
+        onClose={onCancel}
+        dismissOnScrim={false}
+        actions={
+            <>
+                {onCancel && <Button variant="ghost" onClick={onCancel}>{cancelText}</Button>}
+                <Button variant="primary" onClick={onConfirm}>{confirmText}</Button>
+            </>
+        }
+    >
+        {typeof message === 'string'
+            ? <p style={{color: 'var(--text-2)', textAlign: 'center'}}>{message}</p>
+            : message}
+    </Modal>
+);
 
-    return (
-        <div style={styles.modalOverlay}>
-            <div style={{
-                ...styles.modalBox,
-                padding: isSmallMobile ? '20px' : isMobile ? '25px' : '30px',
-                minWidth: isSmallMobile ? '280px' : isMobile ? '300px' : '300px',
-                maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '500px',
-            }}>
-                {title && <h3 style={{
-                    margin: '0 0 15px 0',
-                    color: '#1a1a1a',
-                    fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.3rem' : '1.5rem',
-                }}>{title}</h3>}
-                {message && <div style={{
-                    marginBottom: '25px',
-                    color: '#444',
-                    fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
-                }}>{message}</div>}
-                <div style={{
-                    ...styles.modalActions,
-                    justifyContent: onCancel ? 'space-between' : 'center',
-                    flexDirection: isSmallMobile ? 'column' : 'row',
-                    gap: isSmallMobile ? '10px' : '10px',
-                }}>
-                    {onCancel && <button onClick={onCancel} style={{
-                        ...styles.btnCancel,
-                        padding: isSmallMobile ? '12px' : '10px',
-                        fontSize: isSmallMobile ? '0.9rem' : '1rem',
-                    }}>{cancelText}</button>}
-                    <button onClick={onConfirm} style={{
-                        ...styles.btnConfirm,
-                        padding: isSmallMobile ? '12px' : '10px',
-                        fontSize: isSmallMobile ? '0.9rem' : '1rem',
-                    }}>{confirmText}</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// Auto-dismissing trick result popup (2 seconds, no button)
+/** End-of-deal scoreboard. Dismisses itself after 2s — no button to hunt for. */
 const TrickResultPopup: React.FC<{
     trickResult: { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number };
-    windowWidth: number;
     onDismiss: () => void;
-}> = ({ trickResult, windowWidth, onDismiss }) => {
-    const isMobile = windowWidth <= 768;
-    const isSmallMobile = windowWidth <= 480;
-
+}> = ({trickResult, onDismiss}) => {
     useEffect(() => {
-        const timer = setTimeout(() => {
-            onDismiss();
-        }, 2000);
+        const timer = setTimeout(onDismiss, 2000);
         return () => clearTimeout(timer);
     }, [onDismiss]);
 
     return (
-        <div style={styles.modalOverlay}>
-            <div style={{
-                ...styles.modalBox,
-                padding: isSmallMobile ? '20px' : isMobile ? '25px' : '30px',
-                minWidth: isSmallMobile ? '280px' : isMobile ? '300px' : '300px',
-                maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '500px',
-            }}>
-                <h3 style={{
-                    margin: '0 0 15px 0',
-                    color: '#1a1a1a',
-                    fontSize: isSmallMobile ? '1.2rem' : isMobile ? '1.3rem' : '1.5rem',
-                    textAlign: 'center',
-                }}>Край на раздаването</h3>
-                <div style={{
-                    textAlign: 'left',
-                    minWidth: isSmallMobile ? '240px' : isMobile ? '260px' : '280px',
-                }}>
-                    <div style={{
-                        textAlign: 'center',
-                        fontWeight: 'bold',
-                        color: '#4CAF50',
-                        fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : '1.2rem',
-                        marginBottom: '20px',
-                        padding: isSmallMobile ? '8px' : '10px',
-                        background: '#f1f8e9',
-                        borderRadius: '8px',
-                    }}>
-                        Победител: {trickResult.winner}
+        <Modal title="Край на раздаването" width="narrow" dismissOnScrim={false}>
+            <div style={{display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)'}}>
+                <div className="note note--success" style={{justifyContent: 'center'}}>
+                    <Icon name="trophy" size={18} className="note__icon"/>
+                    <span><strong>{trickResult.winner}</strong></span>
+                </div>
+
+                <div>
+                    <div style={scoreRowStyle}>
+                        <span className="truncate">{trickResult.p1Name}</span>
+                        <span className="tabular" style={{fontWeight: 800, color: 'var(--gold)'}}>{trickResult.p1Score} т.</span>
                     </div>
-                    <div style={{
-                        ...styles.trickScoreRow,
-                        fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
-                        padding: isSmallMobile ? '10px 0' : '12px 0',
-                    }}>
-                        <span style={{
-                            maxWidth: isSmallMobile ? '120px' : '150px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                        }}>{trickResult.p1Name}</span>
-                        <span style={{fontWeight: 800}}>{trickResult.p1Score} т.</span>
-                    </div>
-                    <div style={{
-                        ...styles.trickScoreRow,
-                        fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
-                        padding: isSmallMobile ? '10px 0' : '12px 0',
-                    }}>
-                        <span style={{
-                            maxWidth: isSmallMobile ? '120px' : '150px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                        }}>{trickResult.p2Name}</span>
-                        <span style={{fontWeight: 800}}>{trickResult.p2Score} т.</span>
+                    <div style={{...scoreRowStyle, borderBottom: 'none'}}>
+                        <span className="truncate">{trickResult.p2Name}</span>
+                        <span className="tabular" style={{fontWeight: 800, color: 'var(--gold)'}}>{trickResult.p2Score} т.</span>
                     </div>
                 </div>
             </div>
-        </div>
+        </Modal>
     );
+};
+
+const scoreRowStyle: React.CSSProperties = {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 'var(--sp-4)',
+    padding: 'var(--sp-3) 0',
+    borderBottom: '1px solid var(--line)',
+    color: 'var(--text-2)',
+};
+
+/**
+ * Coarse layout breakpoints via matchMedia.
+ *
+ * The table used to keep the exact window width in state and re-render the
+ * whole game on every resize/scroll-driven viewport change. Only two structural
+ * decisions actually depend on width, so only those two booleans are tracked;
+ * everything else scales with clamp() in CSS.
+ */
+const useLayout = () => {
+    const query = (q: string) => typeof window !== 'undefined' && window.matchMedia(q).matches;
+
+    const [layout, setLayout] = useState(() => ({
+        isMobile: query('(max-width: 768px)'),
+        isSmallMobile: query('(max-width: 480px)'),
+    }));
+
+    useEffect(() => {
+        const mobile = window.matchMedia('(max-width: 768px)');
+        const small = window.matchMedia('(max-width: 480px)');
+        const sync = () => setLayout({isMobile: mobile.matches, isSmallMobile: small.matches});
+
+        sync();
+        mobile.addEventListener('change', sync);
+        small.addEventListener('change', sync);
+        return () => {
+            mobile.removeEventListener('change', sync);
+            small.removeEventListener('change', sync);
+        };
+    }, []);
+
+    return layout;
 };
 
 const SantaseGame: React.FC = () => {
@@ -599,7 +344,7 @@ const SantaseGame: React.FC = () => {
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
     const [activeBonuses, setActiveBonuses] = useState<{ id: number, val: number, isOpponent: boolean }[]>([]);
     const [notifications, setNotifications] = useState<{ id: number, message: string }[]>([]);
-    const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    const {isMobile, isSmallMobile} = useLayout();
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [showProfile, setShowProfile] = useState<boolean>(false);
     const [userRank, setUserRank] = useState<Rank>('UNRANKED');
@@ -680,18 +425,6 @@ const SantaseGame: React.FC = () => {
     const retryAttemptRef = useRef<number>(0);
     const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const username = user?.username || "Играч";
-
-    // Handle window resize for responsive design
-    useEffect(() => {
-        const handleResize = () => {
-            setWindowWidth(window.innerWidth);
-        };
-
-        window.addEventListener('resize', handleResize);
-        handleResize(); // Initial call
-
-        return () => window.removeEventListener('resize', handleResize);
-    }, []);
 
     // Fetch user profile (including rank) on mount
     useEffect(() => {
@@ -1798,120 +1531,55 @@ const SantaseGame: React.FC = () => {
 
     return (
         <div style={styles.table}>
-            {!gameState && <Navbar username={username} onLogout={logout} onProfileClick={() => setShowProfile(true)}
-                                   windowWidth={windowWidth} rank={userRank} wins={userWins} losses={userLosses}/>}
+            {!gameState && <Navbar username={username} onLogout={logout} onProfileClick={() => setShowProfile(true)} rank={userRank} wins={userWins} losses={userLosses}/>}
 
-            {/* Loading overlay when disconnected */}
+            {/* Connection lost: a blocking layer, because no move can land while offline */}
             {gameState && !isConnected && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                    backdropFilter: 'blur(10px)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 10000,
-                    color: 'white',
-                }}>
-                    <div style={{
-                        width: '60px',
-                        height: '60px',
-                        border: '4px solid rgba(255, 255, 255, 0.3)',
-                        borderTop: '4px solid #4CAF50',
-                        borderRadius: '50%',
-                        animation: 'spin 1s linear infinite',
-                    }}/>
-                    <div style={{
-                        marginTop: '20px',
-                        fontSize: windowWidth <= 768 ? '1.1rem' : '1.3rem',
-                        fontWeight: 600,
-                        textAlign: 'center',
-                    }}>Възстановяване на връзката...
-                    </div>
-                    <div style={{
-                        marginTop: '10px',
-                        fontSize: windowWidth <= 768 ? '0.9rem' : '1rem',
-                        opacity: 0.8,
-                        textAlign: 'center',
-                    }}>Моля, изчакайте
+                <div className="blocking" role="alert" aria-live="assertive">
+                    <span className="spinner spinner--lg" style={{color: 'var(--accent)'}}/>
+                    <div>
+                        <p style={{fontSize: 'var(--fs-lg)', fontWeight: 700}}>Възстановяване на връзката…</p>
+                        <p style={{marginTop: 'var(--sp-2)', color: 'var(--text-3)', fontSize: 'var(--fs-sm)'}}>
+                            Моля, изчакайте
+                        </p>
                     </div>
                 </div>
             )}
 
             {!gameState ? (
                 <div style={styles.lobby}>
-                    {(() => {
-                        const isMobile = windowWidth <= 768;
-                        const isSmallMobile = windowWidth <= 480;
-                        return (
-                            <div style={{
-                                ...styles.lobbyContent,
-                                padding: isSmallMobile ? '25px 15px' : isMobile ? '30px 20px' : '40px',
-                                maxWidth: isSmallMobile ? '280px' : isMobile ? '350px' : '500px',
-                            }}>
-                                <div style={{
-                                    ...styles.logoBadge,
-                                    width: isSmallMobile ? '60px' : isMobile ? '70px' : '80px',
-                                    height: isSmallMobile ? '60px' : isMobile ? '70px' : '80px',
-                                    fontSize: isSmallMobile ? '2rem' : isMobile ? '2.2rem' : '2.5rem',
-                                }}>66
-                                </div>
-                                <h1 style={{
-                                    ...styles.welcomeTitle,
-                                    fontSize: isSmallMobile ? '1.5rem' : isMobile ? '1.8rem' : '2rem',
-                                    marginBottom: isSmallMobile ? '20px' : '30px',
-                                }}>Добре дошли, {username}</h1>
-                                <p style={{
-                                    ...styles.welcomeSub,
-                                    fontSize: isSmallMobile ? '0.9rem' : isMobile ? '1rem' : '1.1rem',
-                                    marginBottom: isSmallMobile ? '25px' : '30px',
-                                }}>Класическо Сантасе срещу реални опоненти</p>
-                                <button
-                                    onClick={startSearch}
-                                    style={{
-                                        ...styles.btnMain,
-                                        background: isSearching ? '#555' : '#ff9800',
-                                        padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '15px 40px',
-                                        fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
-                                    }}
-                                >
-                                    {isSearching ? 'ТЪРСЕНЕ...' : 'НОВА ИГРА'}
-                                </button>
-                            </div>
-                        );
-                    })()}
+                    <div className="panel panel--gold" style={lobbyCardStyle}>
+                        <span style={lobbyCrestStyle}>66</span>
+
+                        <h1 style={{fontSize: 'var(--fs-2xl)', color: 'var(--text-1)'}}>
+                            Добре дошли, <span style={{color: 'var(--gold)'}}>{username}</span>
+                        </h1>
+
+                        <p style={{color: 'var(--text-3)', fontSize: 'var(--fs-sm)'}}>
+                            Класическо Сантасе срещу реални опоненти
+                        </p>
+
+                        <Button
+                            variant="primary"
+                            size="lg"
+                            block
+                            icon={isSearching ? undefined : 'cards'}
+                            loading={isSearching}
+                            onClick={startSearch}
+                            style={{marginTop: 'var(--sp-4)'}}
+                        >
+                            НОВА ИГРА
+                        </Button>
+
+                        {isSearching && (
+                            <p role="status" style={{color: 'var(--text-3)', fontSize: 'var(--fs-sm)'}}>
+                                Търсим опонент…
+                            </p>
+                        )}
+                    </div>
                 </div>
             ) : (
                 <div style={styles.gameWrapper}>
-                    {/* Leave Game Button - Desktop only */}
-                    {(() => {
-                        const isMobile = windowWidth <= 768;
-                        const isSmallMobile = windowWidth <= 480;
-                        // Only show standalone button on desktop
-                        if (isMobile) return null;
-                        return (
-                            <button
-                                onClick={handleLeaveGame}
-                                style={{
-                                    position: 'absolute',
-                                    top: '20px',
-                                    right: '20px',
-                                    zIndex: 1000,
-                                    ...styles.btnLeave,
-                                    width: '50px',
-                                    height: '50px',
-                                    fontSize: '1.2rem',
-                                }}
-                            >
-                                ✕
-                            </button>
-                        );
-                    })()}
 
                     {activeBonuses.map(b => (
                         <div key={b.id} className="bonus-bubble" style={{top: b.isOpponent ? '25%' : '65%'}}>
@@ -1919,211 +1587,78 @@ const SantaseGame: React.FC = () => {
                         </div>
                     ))}
 
-                    {/* Notifications in the middle of screen */}
-                    {notifications.map(notification => {
-                        const isMobile = windowWidth <= 768;
-                        const isSmallMobile = windowWidth <= 480;
-                        return (
-                            <div
-                                key={notification.id}
-                                style={{
-                                    position: 'fixed',
-                                    top: '50%',
-                                    left: '50%',
-                                    transform: 'translate(-50%, -50%)',
-                                    background: 'linear-gradient(135deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.9) 100%)',
-                                    backdropFilter: 'blur(20px) saturate(180%)',
-                                    borderRadius: '20px',
-                                    padding: isSmallMobile ? '15px 25px' : isMobile ? '18px 30px' : '20px 40px',
-                                    color: 'white',
-                                    fontSize: isSmallMobile ? '1rem' : isMobile ? '1.1rem' : '1.3rem',
-                                    fontWeight: 700,
-                                    zIndex: 2000,
-                                    boxShadow: '0 12px 32px rgba(0,0,0,0.6), 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15)',
-                                    border: '2px solid rgba(255,255,255,0.2)',
-                                    textAlign: 'center',
-                                    whiteSpace: 'nowrap',
-                                    animation: 'fadeInOut 3s ease-out forwards',
-                                    pointerEvents: 'none',
-                                }}
-                            >
-                                {notification.message}
-                            </div>
-                        );
-                    })}
+                    {/* Transient game messages. aria-live so they are announced
+                        without stealing focus; wrapping instead of nowrap so long
+                        Bulgarian strings do not overflow a narrow phone. */}
+                    {notifications.map(notification => (
+                        <div key={notification.id} className="game-toast" role="status" aria-live="polite">
+                            {notification.message}
+                        </div>
+                    ))}
 
-                    {/* SCOREBOARD - Different layout for mobile vs desktop */}
-                    {(() => {
-                        const isMobile = windowWidth <= 768;
-                        const isSmallMobile = windowWidth <= 480;
-
-                        // Mobile: vertical scoreboard above opponent cards (same structure as desktop)
-                        if (isMobile) {
-                            return (
-                                <>
-                                    {/* Scoreboard on the left */}
-                                    <div style={{
-                                        ...styles.scoreBoardMobile,
-                                        top: '10px',
-                                        left: '10px',
-                                        right: 'auto',
-                                        width: isSmallMobile ? '160px' : '180px',
-                                        padding: isSmallMobile ? '8px 12px' : '10px 14px',
-                                        fontSize: isSmallMobile ? '0.75rem' : '0.85rem',
-                                        position: 'absolute',
-                                        flexDirection: 'column',
-                                        alignItems: 'stretch',
-                                        justifyContent: 'flex-start',
-                                    }}>
-                                        <div style={{
-                                            ...styles.scoreRow,
-                                            borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                            paddingBottom: isSmallMobile ? '6px' : '8px',
-                                            marginBottom: isSmallMobile ? '6px' : '8px',
-                                        }}>
-                                            <span style={{
-                                                fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
-                                                maxWidth: isSmallMobile ? '70px' : '85px',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                            }}>
-                                                {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
-                                            </span>
-                                            <span style={{
-                                                fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                                fontWeight: 800,
-                                                color: '#ff5252',
-                                                textShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
-                                            }}>
+                    {/* Scoreboard. One markup path for phone and desktop — only the
+                        offsets differ, and those come from clamp(). Scores are tabular
+                        so the digits do not jitter as they change. */}
+                    <div
+                        className="hud"
+                        style={{
+                            ...styles.scoreBoard,
+                            top: 'calc(var(--sa-top) + clamp(10px, 2.5vw, 32px))',
+                            left: 'calc(var(--sa-left) + clamp(10px, 2.5vw, 20px))',
+                        }}
+                    >
+                        <div style={{...styles.scoreRow, paddingBottom: 'var(--sp-2)', borderBottom: '1px solid var(--line)'}}>
+                            <span className="truncate">
+                                {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
+                            </span>
+                            <span className="tabular" style={scoreValueStyle('opponent')}>
                                 {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
                             </span>
-                                        </div>
-                                        <div style={styles.scoreRow}>
-                                            <span style={{
-                                                fontSize: isSmallMobile ? '0.7rem' : '0.8rem',
-                                                maxWidth: isSmallMobile ? '70px' : '85px',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                                whiteSpace: 'nowrap',
-                                            }}>
-                                                {username}
-                                            </span>
-                                            <span style={{
-                                                fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                                fontWeight: 800,
-                                                color: '#4CAF50',
-                                                textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
-                                            }}>
+                        </div>
+                        <div style={styles.scoreRow}>
+                            <span className="truncate" style={{color: 'var(--text-1)', fontWeight: 700}}>{username}</span>
+                            <span className="tabular" style={scoreValueStyle('me')}>
                                 {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
                             </span>
-                                        </div>
-                                    </div>
-                                    {/* Leave Game Button - Mobile - positioned on right */}
-                                    <button
-                                        onClick={handleLeaveGame}
-                                        style={{
-                                            ...styles.btnLeave,
-                                            position: 'absolute',
-                                            top: isSmallMobile ? '10px' : '12px',
-                                            right: isSmallMobile ? '10px' : '12px',
-                                            width: isSmallMobile ? '36px' : '40px',
-                                            height: isSmallMobile ? '36px' : '40px',
-                                            fontSize: isSmallMobile ? '1rem' : '1.1rem',
-                                            zIndex: 1000,
-                                        }}
-                                    >
-                                        ✕
-                                    </button>
-                                </>
-                            );
-                        }
+                        </div>
+                    </div>
 
-                        // Desktop: vertical scoreboard on left
-                        return (
-                            <div style={{
-                                ...styles.scoreBoard,
-                                top: '40px',
-                                left: '20px',
-                                right: 'auto',
-                                padding: '15px',
-                                minWidth: '180px',
-                                fontSize: '1rem',
-                            }}>
-                                <div style={{
-                                    ...styles.scoreRow,
-                                    borderBottom: '1px solid rgba(255,255,255,0.1)',
-                                    paddingBottom: '8px',
-                                    marginBottom: '8px',
-                                }}>
-                                    <span style={{
-                                        fontSize: '1rem',
-                                        maxWidth: '140px',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                    }}>
-                                        {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
-                                    </span>
-                                    <span style={{
-                                        fontSize: '1.4rem',
-                                        fontWeight: 800,
-                                        color: '#ff5252',
-                                        textShadow: '0 2px 4px rgba(255, 82, 82, 0.3)',
-                                    }}>
-                                {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
-                            </span>
-                                </div>
-                                <div style={styles.scoreRow}>
-                                    <span style={{
-                                        fontSize: '1rem',
-                                        maxWidth: '140px',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap',
-                                    }}>
-                                        {username}
-                                    </span>
-                                    <span style={{
-                                        fontSize: '1.4rem',
-                                        fontWeight: 800,
-                                        color: '#4CAF50',
-                                        textShadow: '0 2px 4px rgba(76, 175, 80, 0.3)',
-                                    }}>
-                                {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
-                            </span>
-                                </div>
-                            </div>
-                        );
-                    })()}
+                    <button
+                        type="button"
+                        onClick={handleLeaveGame}
+                        className="round-btn round-btn--danger"
+                        aria-label="Напусни играта"
+                        style={{
+                            position: 'absolute',
+                            top: 'calc(var(--sa-top) + clamp(10px, 2.5vw, 20px))',
+                            right: 'calc(var(--sa-right) + clamp(10px, 2.5vw, 20px))',
+                            zIndex: 'var(--z-hud)' as unknown as number,
+                        }}
+                    >
+                        <Icon name="x" size={20}/>
+                    </button>
+
 
                     {(() => {
-                        const isMobile = windowWidth <= 768;
-                        const isSmallMobile = windowWidth <= 480;
-
+                                                
                         return (
                             <>
                                 <div style={{
                                     ...styles.topSection,
-                                    height: isSmallMobile ? '18vh' : isMobile ? '22vh' : '25vh',
-                                    paddingTop: isMobile ? (isSmallMobile ? '70px' : '75px') : '0',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
+                                    height: 'clamp(18vh, 20vh, 25vh)',
+                                    // clears the absolutely positioned scoreboard on phones
+                                    paddingTop: isMobile ? 'clamp(66px, 17vw, 78px)' : '0',
                                 }}>
-                                    <div style={{
-                                        ...styles.handOpponent,
-                                        gap: isSmallMobile ? '-8px' : isMobile ? '-12px' : '-15px',
-                                    }}>
+                                    <div
+                                        style={{...styles.handOpponent, gap: 'clamp(-14px, -3vw, -8px)'}}
+                                        role="img"
+                                        aria-label={`Карти у опонента: ${gameState.opponentPlayerCardsCount || 0}`}
+                                    >
                                         {Array.from({length: gameState.opponentPlayerCardsCount || 0}).map((_, i) => (
                                             <div
                                                 key={i}
-                                                style={{
-                                                    ...styles.cardBack,
-                                                    width: isSmallMobile ? '50px' : isMobile ? '65px' : '130px',
-                                                    height: isSmallMobile ? '75px' : isMobile ? '95px' : '175px',
-                                                    borderRadius: isMobile ? '5px' : '14px',
-                                                }}
+                                                className="card-back"
+                                                style={{width: 'clamp(50px, 13vw, 116px)', aspectRatio: '71 / 103'}}
                                             />
                                         ))}
                                     </div>
@@ -2131,29 +1666,24 @@ const SantaseGame: React.FC = () => {
 
                                 <div style={{
                                     ...styles.midSection,
-                                    flex: 1,
-                                    padding: isSmallMobile ? '0 10px' : isMobile ? '0 20px' : '0 60px',
-                                    flexDirection: 'row',
-                                    gap: isSmallMobile ? '15px' : isMobile ? '20px' : '30px',
-                                    alignItems: 'center',
+                                    padding: '0 clamp(10px, 4vw, 60px)',
+                                    gap: 'clamp(15px, 4vw, 30px)',
                                 }}>
                                     <div style={{
                                         ...styles.deckSide,
-                                        width: isSmallMobile ? '80px' : isMobile ? '100px' : '120px',
-                                        display: 'flex',
+                                        width: 'clamp(80px, 22vw, 120px)',
                                         justifyContent: 'flex-start',
-                                        alignItems: 'center',
                                     }}>
                                         {gameState.remainingCardsCount > 0 && !gameState.isClosed ? (
                                             <div style={{
                                                 position: 'relative',
-                                                width: isSmallMobile ? '80px' : isMobile ? '100px' : '120px',
-                                                height: isSmallMobile ? '95px' : isMobile ? '120px' : '150px',
+                                                width: 'clamp(80px, 22vw, 120px)',
+                                                height: 'clamp(95px, 26vw, 150px)',
                                             }}>
                                                 <div style={{
                                                     ...styles.trumpUnder,
-                                                    top: isSmallMobile ? '3px' : isMobile ? '5px' : '10px',
-                                                    left: isSmallMobile ? '35px' : isMobile ? '35px' : '90px',
+                                                    top: 'clamp(3px, 1.2vw, 10px)',
+                                                    left: 'clamp(35px, 10vw, 90px)',
                                                     zIndex: 1,
                                                 }} onClick={async () => {
                                                     if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
@@ -2169,16 +1699,12 @@ const SantaseGame: React.FC = () => {
                                                         }
                                                     }
                                                 }}>
-                                                    <CardComponent card={gameState.trumpCard!} isSmall
-                                                                   windowWidth={windowWidth}/>
+                                                    <CardComponent card={gameState.trumpCard!} isSmall/>
                                                 </div>
                                                 <div style={{
                                                     ...styles.deckPile,
-                                                    width: isSmallMobile ? '70px' : isMobile ? '75px' : '140px',
-                                                    height: isSmallMobile ? '100px' : isMobile ? '110px' : '210px',
-                                                    borderRadius: isMobile ? '5px' : '14px',
-                                                    top: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
-                                                    left: isSmallMobile ? '0' : isMobile ? '0' : '-5px',
+                                                    width: 'clamp(70px, 19vw, 140px)',
+                                                    aspectRatio: '71 / 103',
                                                     zIndex: 2,
                                                 }} onClick={() => {
                                                     if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
@@ -2203,38 +1729,29 @@ const SantaseGame: React.FC = () => {
                                                 }}>
                                                     <div style={{
                                                         ...styles.deckCount,
-                                                        fontSize: isSmallMobile ? '1.3rem' : isMobile ? '1.5rem' : '1.8rem',
-                                                        position: 'relative',
-                                                        zIndex: 10,
+                                                        fontSize: 'clamp(1.3rem, 4.4vw, 1.8rem)',
                                                     }}>{gameState.remainingCardsCount}</div>
                                                 </div>
                                             </div>
                                         ) : (
                                             <div style={{
                                                 ...styles.closedTrump,
-                                                width: isSmallMobile ? '60px' : isMobile ? '70px' : '80px',
-                                                height: isSmallMobile ? '60px' : isMobile ? '70px' : '80px',
-                                                fontSize: isSmallMobile ? '1.8rem' : isMobile ? '2.2rem' : '2.5rem',
+                                                width: 'clamp(60px, 16vw, 80px)',
+                                                height: 'clamp(60px, 16vw, 80px)',
+                                                fontSize: 'clamp(1.8rem, 6vw, 2.5rem)',
                                             }}>
                                                 <span style={{
-                                                    fontSize: isSmallMobile ? '0.6rem' : isMobile ? '0.7rem' : '0.8rem',
-                                                    display: 'block',
+                                                    fontSize: 'var(--fs-xs)',
+                                                    letterSpacing: '0.08em',
+                                                    color: 'var(--text-3)',
                                                 }}>КОЗ</span>
                                                 {gameState.trumpCard && (() => {
-                                                    const suit = SUIT_MAP[gameState.trumpCard.suit] || {
-                                                        symbol: '?',
-                                                        color: '#1a1a1a'
-                                                    };
+                                                    const suit = SUIT_MAP[gameState.trumpCard.suit];
+                                                    const isRed = suit?.color === SUIT_COLOR.red;
                                                     return (
-                                                        <span style={{
-                                                            color: suit.color,
-                                                            // Add white text shadow for black suits on dark background to maintain visibility
-                                                            textShadow: suit.color === '#1a1a1a'
-                                                                ? '0 0 3px rgba(255,255,255,0.8), 0 0 6px rgba(255,255,255,0.5)'
-                                                                : 'none',
-                                                        }}>
-                                                {suit.symbol}
-                                            </span>
+                                                        <span style={{color: isRed ? SUIT_ON_DARK.red : SUIT_ON_DARK.black, lineHeight: 1}}>
+                                                            {suit?.symbol ?? '?'}
+                                                        </span>
                                                     );
                                                 })()}
                                             </div>
@@ -2243,111 +1760,89 @@ const SantaseGame: React.FC = () => {
 
                                     <div style={{
                                         ...styles.tableCenter,
-                                        flex: 1,
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        gap: isSmallMobile ? '15px' : isMobile ? '20px' : '30px',
+                                        gap: 'clamp(15px, 5vw, 30px)',
                                     }}>
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                         }}>{gameState.opponentPlayedCard &&
-                                            <CardComponent card={gameState.opponentPlayedCard} isPlayable={true}
-                                                           windowWidth={windowWidth}/>}</div>
+                                            <CardComponent card={gameState.opponentPlayedCard} isPlayable={true}/>}</div>
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                         }}>{gameState.playedCard &&
-                                            <CardComponent card={gameState.playedCard} isPlayable={true}
-                                                           windowWidth={windowWidth}/>}</div>
+                                            <CardComponent card={gameState.playedCard} isPlayable={true}/>}</div>
                                     </div>
                                 </div>
 
                                 <div style={{
                                     ...styles.bottomSection,
-                                    height: isSmallMobile ? '30vh' : isMobile ? '32vh' : '35vh',
+                                    height: 'clamp(30vh, 32vh, 35vh)',
                                     position: 'relative',
-                                    paddingBottom: isSmallMobile ? '15px' : isMobile ? '20px' : '25px',
+                                    paddingBottom: 'clamp(15px, 4vw, 25px)',
                                 }}>
-                                    {/* Turn indicator and 66 button in one row */}
-                                    <div style={{
-                                        position: 'relative',
-                                        width: '100%',
-                                        height: isSmallMobile ? '50px' : isMobile ? '55px' : '60px',
-                                        marginBottom: isSmallMobile ? '12px' : isMobile ? '15px' : '18px',
-                                        paddingLeft: isSmallMobile ? '10px' : isMobile ? '15px' : '20px',
-                                        paddingRight: isSmallMobile ? '10px' : isMobile ? '15px' : '20px',
-                                    }}>
-                                        {/* Turn indicator exactly centered */}
-                                        <div style={{
-                                            ...styles.turnIndicator,
-                                            padding: isSmallMobile ? '6px 18px' : isMobile ? '7px 20px' : '8px 24px',
-                                            fontSize: isSmallMobile ? '0.8rem' : isMobile ? '0.9rem' : '1rem',
-                                            position: 'absolute',
-                                            left: '50%',
-                                            top: '50%',
-                                            transform: 'translate(-50%, -50%)',
-                                            backgroundColor: gameState.isOnTurn && turnTimeRemaining <= 5 
-                                                ? 'rgba(255, 82, 82, 0.15)' 
-                                                : undefined,
-                                            borderColor: gameState.isOnTurn && turnTimeRemaining <= 5 
-                                                ? '#ff5252' 
-                                                : undefined,
-                                        }}>
-                                            <div style={{
-                                                ...styles.pulse,
-                                                width: isSmallMobile ? '7px' : isMobile ? '8px' : '9px',
-                                                height: isSmallMobile ? '7px' : isMobile ? '8px' : '9px',
-                                                backgroundColor: gameState.isOnTurn 
-                                                    ? (turnTimeRemaining <= 5 ? '#ff5252' : '#4CAF50') 
-                                                    : '#ff5252',
-                                            }}/>
-                                            {gameState.isOnTurn ? (
-                                                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <span>ВАШ РЕД</span>
-                                                    <span style={{
-                                                        fontWeight: 700,
-                                                        fontFamily: 'monospace',
-                                                        color: turnTimeRemaining <= 5 ? '#ff5252' : turnTimeRemaining <= 10 ? '#ff9800' : '#4CAF50',
-                                                        minWidth: '24px',
-                                                        textAlign: 'center',
-                                                    }}>
-                                                        {turnTimeRemaining}
-                                                    </span>
-                                                </span>
-                                            ) : (
-                                                <span>
-                                                    {opponentLowOnTime 
-                                                        ? (isSmallMobile ? 'ЧАКАНЕ...' : 'ОПОНЕНТЪТ ИГРАЕ...')
-                                                        : (isSmallMobile ? 'ОПОНЕНТ...' : 'ОПОНЕНТЪТ ИГРАЕ...')
-                                                    }
-                                                </span>
-                                            )}
-                                        </div>
+                                    {/* Turn state + the "66" claim, in a plain centred flex row.
+                                        The button used to be absolutely positioned with magic
+                                        pixel offsets measured from the pill's centre. */}
+                                    {(() => {
+                                        const urgent = gameState.isOnTurn && turnTimeRemaining <= 5;
+                                        const canFinishDeal = gameState.isOnTurn && !gameState.playedCard
+                                            && !gameState.opponentPlayedCard && isConnected;
 
-                                        {/* 66 button next to turn indicator (to the right) */}
-                                        {(() => {
-                                            const canFinishDeal = gameState.isOnTurn && !gameState.playedCard && !gameState.opponentPlayedCard && isConnected;
-                                            return (
+                                        return (
+                                            <div style={turnRowStyle}>
                                                 <div
+                                                    className={`turn-pill ${urgent ? 'turn-pill--urgent' : ''}`}
+                                                    role="status"
+                                                    aria-live="polite"
+                                                >
+                                                    <span
+                                                        className="turn-pill__dot"
+                                                        style={{
+                                                            background: gameState.isOnTurn
+                                                                ? (urgent ? 'var(--danger)' : 'var(--success)')
+                                                                : 'var(--text-3)',
+                                                        }}
+                                                    />
+                                                    {gameState.isOnTurn ? (
+                                                        <>
+                                                            <span>ВАШ РЕД</span>
+                                                            <span
+                                                                className="tabular"
+                                                                style={{
+                                                                    minWidth: '2ch',
+                                                                    textAlign: 'center',
+                                                                    fontWeight: 800,
+                                                                    color: turnTimeRemaining <= 5
+                                                                        ? 'var(--danger)'
+                                                                        : turnTimeRemaining <= 10
+                                                                            ? 'var(--warning)'
+                                                                            : 'var(--success)',
+                                                                }}
+                                                            >
+                                                                {turnTimeRemaining}
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <span>{isSmallMobile ? 'ОПОНЕНТ…' : 'ОПОНЕНТЪТ ИГРАЕ…'}</span>
+                                                    )}
+                                                </div>
+
+                                                {/* a real <button>: focusable, self-describing, and
+                                                    disabled rather than pointer-events:none */}
+                                                <button
+                                                    type="button"
+                                                    className="round-btn round-btn--accent"
+                                                    disabled={!canFinishDeal}
+                                                    aria-label="Обяви 66 точки и приключи раздаването"
                                                     style={{
-                                                        ...styles.icon66,
-                                                        width: isSmallMobile ? '45px' : isMobile ? '45px' : '55px',
-                                                        height: isSmallMobile ? '45px' : isMobile ? '45px' : '55px',
-                                                        fontSize: isSmallMobile ? '1.05rem' : isMobile ? '1.15rem' : '1.25rem',
-                                                        position: 'absolute',
-                                                        left: isSmallMobile ? 'calc(50% + 80px)' : isMobile ? 'calc(50% + 95px)' : 'calc(50% + 110px)',  // Position next to turn indicator
-                                                        top: '50%',
-                                                        transform: 'translateY(-50%)',
-                                                        marginLeft: isSmallMobile ? '12px' : isMobile ? '15px' : '18px',  // Gap between turn indicator and button
-                                                        opacity: canFinishDeal ? 1 : 0.4,  // Dimmed when not player's turn or cards are played or disconnected
-                                                        cursor: canFinishDeal ? 'pointer' : 'not-allowed',
-                                                        pointerEvents: canFinishDeal ? 'auto' : 'none',  // Disable clicks when not player's turn or cards are played or disconnected
+                                                        width: 'clamp(44px, 12vw, 56px)',
+                                                        height: 'clamp(44px, 12vw, 56px)',
+                                                        fontSize: 'clamp(1rem, 3.4vw, 1.25rem)',
                                                     }}
-                                                    onClick={canFinishDeal ? () => setConfirmAction({
+                                                    onClick={() => setConfirmAction({
                                                         title: 'Край',
                                                         message: 'Имате ли 66 точки?',
                                                         action: async () => {
@@ -2355,41 +1850,31 @@ const SantaseGame: React.FC = () => {
                                                             await gameService.finishDeal();
                                                             setConfirmAction(null);
                                                         }
-                                                    }) : undefined}
-                                                    onMouseEnter={canFinishDeal ? (e) => {
-                                                        e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                                                        e.currentTarget.style.boxShadow = '0 10px 28px rgba(255, 152, 0, 0.6), 0 5px 14px rgba(0,0,0,0.3)';
-                                                    } : undefined}
-                                                    onMouseLeave={canFinishDeal ? (e) => {
-                                                        e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
-                                                        e.currentTarget.style.boxShadow = styles.icon66.boxShadow as string;
-                                                    } : undefined}
-                                                >66</div>
-                                            );
-                                        })()}
-                                    </div>
+                                                    })}
+                                                >
+                                                    66
+                                                </button>
+                                            </div>
+                                        );
+                                    })()}
 
                                     {/* Cards section */}
                                     <div style={{
                                         ...styles.handPlayer,
-                                        gap: isMobile ? '0' : '12px',  // No gap for mobile (using margin instead), space for desktop
+                                        // phones fan the cards with a negative margin instead of a gap
+                                        gap: isMobile ? '0' : 'var(--sp-3)',
                                         flexWrap: 'nowrap' as const,
-                                        justifyContent: 'center',
                                         width: '100%',
-                                        maxWidth: '100%',
-                                        overflowX: 'hidden' as const,
-                                        overflowY: 'hidden' as const,
-                                        padding: isSmallMobile ? '0 10px' : isMobile ? '0 15px' : '0 20px',
-                                        marginTop: isMobile ? (isSmallMobile ? '20px' : '25px') : '0',  // Move cards lower on mobile
-                                        boxSizing: 'border-box',
+                                        overflow: 'hidden',
+                                        padding: '0 clamp(10px, 3vw, 20px)',
+                                        marginTop: isMobile ? 'clamp(20px, 5vw, 25px)' : '0',
                                     }}>
                                         {getSortedCards(gameState.deck).map((card, index) => (
                                             <div
                                                 key={card.id}
                                                 style={{
-                                                    marginLeft: isMobile && index > 0
-                                                        ? (isSmallMobile ? '-50.5px' : '-58px')  // Half overlap: each card shows half, next card starts
-                                                        : '0',
+                                                    // half-overlap fan: each card shows its left half
+                                                    marginLeft: isMobile && index > 0 ? 'clamp(-58px, -14vw, -50px)' : '0',
                                                 }}
                                             >
                                                 <CardComponent
@@ -2398,7 +1883,6 @@ const SantaseGame: React.FC = () => {
                                                     isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')}
                                                     isLastDrawn={card.isLastDrawn}
                                                     onClick={() => handlePlayCard(card)}
-                                                    windowWidth={windowWidth}
                                                 />
                                             </div>
                                         ))}
@@ -2409,210 +1893,130 @@ const SantaseGame: React.FC = () => {
                     })()}
 
                     {finalWinner && !trickResult && gameState && (() => {
-                        const isMobile = windowWidth <= 768;
-                        const isSmallMobile = windowWidth <= 480;
                         const surrenderedPlayer = gameState.surrenderPlayerUsername;
                         const isSurrender = !!surrenderedPlayer;
                         const opponentSurrendered = surrenderedPlayer && surrenderedPlayer !== username;
-                        
+                        const iWon = finalWinner === username;
+
+                        const myScore = isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult;
+                        const theirScore = isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult;
+                        const opponentName = isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername;
+
                         return (
-                            <div style={styles.resultOverlay}>
-                                <div style={{
-                                    ...styles.resultBox,
-                                    padding: isSmallMobile ? '30px 20px' : isMobile ? '40px 30px' : '50px',
-                                    maxWidth: isSmallMobile ? '90vw' : isMobile ? '85vw' : '500px',
-                                }}>
-                                    <div style={{
-                                        fontSize: isSmallMobile ? '3rem' : isMobile ? '3.5rem' : '4rem',
-                                        marginBottom: '10px',
-                                    }}>
-                                        {finalWinner === username ? '🏆' : '🏳️'}
+                            <Modal
+                                title="ИГРАТА ПРИКЛЮЧИ"
+                                width="narrow"
+                                dismissOnScrim={false}
+                                actions={
+                                    <Button variant="primary" size="lg" onClick={() => finishGameAndReturn()}>
+                                        КЪМ НАЧАЛО
+                                    </Button>
+                                }
+                            >
+                                <div style={resultBodyStyle}>
+                                    {/* icon + wording both carry the outcome, so it reads
+                                        the same in grayscale or to a screen reader */}
+                                    <span
+                                        style={{
+                                            ...resultMarkStyle,
+                                            color: iWon ? 'var(--gold)' : 'var(--text-3)',
+                                            background: iWon ? 'var(--gold-wash)' : 'rgba(255,255,255,0.06)',
+                                            borderColor: iWon ? 'var(--line-gold)' : 'var(--line)',
+                                        }}
+                                    >
+                                        <Icon name={iWon ? 'trophy' : 'flag'} size="50%"/>
+                                    </span>
+
+                                    <p style={{fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)'}}>
+                                        {isSurrender
+                                            ? (opponentSurrendered
+                                                ? `${surrenderedPlayer} се предаде!`
+                                                : 'Вие се предадохте.')
+                                            : (iWon
+                                                ? 'Брилянтна победа!'
+                                                : `${finalWinner} спечели тази игра.`)}
+                                    </p>
+
+                                    <div style={finalScoreStyle}>
+                                        <div style={{textAlign: 'center', minWidth: 0}}>
+                                            <div className="truncate" style={{color: 'var(--text-3)', fontSize: 'var(--fs-xs)'}}>{username}</div>
+                                            <div className="tabular" style={{...finalScoreNumStyle, color: iWon ? 'var(--success)' : 'var(--text-2)'}}>{myScore}</div>
+                                        </div>
+                                        <span style={{color: 'var(--text-3)', fontSize: 'var(--fs-lg)'}}>:</span>
+                                        <div style={{textAlign: 'center', minWidth: 0}}>
+                                            <div className="truncate" style={{color: 'var(--text-3)', fontSize: 'var(--fs-xs)'}}>{opponentName}</div>
+                                            <div className="tabular" style={{...finalScoreNumStyle, color: iWon ? 'var(--text-2)' : 'var(--danger-bright)'}}>{theirScore}</div>
+                                        </div>
                                     </div>
-                                    <h2 style={{
-                                        margin: '0 0 10px 0',
-                                        fontSize: isSmallMobile ? '1.5rem' : isMobile ? '1.8rem' : '2rem',
-                                    }}>ИГРАТА ПРИКЛЮЧИ</h2>
-                                    <div style={{
-                                        fontSize: isSmallMobile ? '1rem' : isMobile ? '1.2rem' : '1.4rem',
-                                        marginBottom: isSmallMobile ? '20px' : '30px',
-                                        fontWeight: 300,
-                                    }}>
-                                        <p style={{margin: '0 0 10px 0'}}>
-                                            {isSurrender
-                                                ? (opponentSurrendered 
-                                                    ? `${surrenderedPlayer} се предаде!`
-                                                    : 'Вие се предадохте.')
-                                                : (finalWinner === username
-                                                    ? 'Брилянтна победа!'
-                                                    : `${finalWinner} спечели тази игра.`)
-                                            }
-                                        </p>
-                                        <p style={{margin: 0}}>
-                                            {finalWinner === username
-                                                ? `${username} ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} - ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} ${isFirstPlayerMe ? gameState?.secondPlayerUsername : gameState?.firstPlayerUsername}`
-                                                : `${finalWinner} ${isFirstPlayerMe ? gameState?.secondPlayerResult : gameState?.firstPlayerResult} - ${isFirstPlayerMe ? gameState?.firstPlayerResult : gameState?.secondPlayerResult} ${username}`
-                                            }
-                                        </p>
-                                    </div>
-                                    <button onClick={() => { finishGameAndReturn(); }} style={{
-                                        ...styles.btnMain,
-                                        padding: isSmallMobile ? '12px 30px' : isMobile ? '14px 35px' : '15px 40px',
-                                        fontSize: isSmallMobile ? '0.95rem' : isMobile ? '1rem' : '1.1rem',
-                                    }}>КЪМ НАЧАЛО
-                                    </button>
                                 </div>
-                            </div>
+                            </Modal>
                         );
                     })()}
                 </div>
             )}
 
-            {/* Inactivity warning popup */}
-            {showInactivityPopup && gameState && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    zIndex: 10001,
-                    padding: windowWidth <= 480 ? '0 16px' : '0',
-                }}>
-                    <div style={{
-                        background: 'linear-gradient(145deg, #3a1c1c, #2a1010)',
-                        borderRadius: '16px',
-                        padding: windowWidth <= 480 ? '25px 20px' : windowWidth <= 768 ? '30px 25px' : '35px 40px',
-                        boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(255, 82, 82, 0.3)',
-                        border: '2px solid #ff5252',
-                        textAlign: 'center',
-                        maxWidth: windowWidth <= 480 ? 'calc(100vw - 32px)' : '420px',
-                        width: windowWidth <= 480 ? '100%' : 'auto',
-                        animation: 'pulseWarning 1s ease-in-out infinite',
-                    }}>
-                        <div style={{
-                            fontSize: windowWidth <= 480 ? '2.5rem' : '3rem',
-                            marginBottom: '10px',
-                        }}>
-                            ⚠️
-                        </div>
-                        <h3 style={{
-                            margin: '0 0 10px 0',
-                            color: '#ff5252',
-                            fontSize: windowWidth <= 480 ? '1.3rem' : windowWidth <= 768 ? '1.5rem' : '1.7rem',
-                            fontWeight: 700,
-                        }}>
-                            Времето изтича!
-                        </h3>
-                        <div style={{
-                            fontSize: windowWidth <= 480 ? '3rem' : '4rem',
-                            fontWeight: 900,
-                            color: turnTimeRemaining <= 3 ? '#ff1744' : '#ff5252',
-                            marginBottom: '15px',
-                            fontFamily: 'monospace',
-                            textShadow: turnTimeRemaining <= 3 ? '0 0 20px rgba(255, 23, 68, 0.8)' : 'none',
-                        }}>
-                            {turnTimeRemaining}
-                        </div>
-                        <p style={{
-                            margin: '0 0 10px 0',
-                            color: '#ffcdd2',
-                            fontSize: windowWidth <= 480 ? '0.9rem' : '1rem',
-                            lineHeight: 1.4,
-                        }}>
-                            Ако не предприемете действие, играта ще приключи като загуба.
-                        </p>
-                        <div style={{
-                            margin: '0 0 20px 0',
-                            padding: '8px 16px',
-                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: '8px',
-                            display: 'inline-block',
-                        }}>
-                            <span style={{
-                                color: (gameState?.inactivityCount ?? 0) >= MAX_INACTIVITY - 1 ? '#ff8a80' : '#fff',
-                                fontSize: windowWidth <= 480 ? '0.85rem' : '0.95rem',
-                                fontWeight: 600,
-                            }}>
-                                Оставащи удължения: {Math.max(0, MAX_INACTIVITY - (gameState?.inactivityCount ?? 0))} / {MAX_INACTIVITY}
+            {/* Countdown before an auto-loss. Deliberately NOT dismissible by
+                scrim or Escape: the only ways out are the two explicit choices. */}
+            {showInactivityPopup && gameState && (() => {
+                const used = gameState?.inactivityCount ?? 0;
+                const extensionsLeft = Math.max(0, MAX_INACTIVITY - used);
+                const noneLeft = used >= MAX_INACTIVITY;
+                const critical = turnTimeRemaining <= 3;
+
+                return (
+                    <Modal
+                        title="Времето изтича!"
+                        tone="danger"
+                        width="narrow"
+                        dismissOnScrim={false}
+                        className="modal--urgent"
+                        actions={
+                            <>
+                                <Button
+                                    variant="danger-outline"
+                                    onClick={handleInactivitySurrender}
+                                >
+                                    Предавам се
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    disabled={noneLeft}
+                                    onClick={handleInactivityContinue}
+                                >
+                                    {noneLeft ? 'Няма удължения' : 'Продължи (+20)'}
+                                </Button>
+                            </>
+                        }
+                    >
+                        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--sp-4)', textAlign: 'center'}}>
+                            <div
+                                className="tabular"
+                                role="timer"
+                                aria-live="assertive"
+                                aria-label={`Остават ${turnTimeRemaining} секунди`}
+                                style={{
+                                    fontFamily: 'var(--font-display)',
+                                    fontSize: 'clamp(3rem, 16vw, 4.5rem)',
+                                    fontWeight: 700,
+                                    lineHeight: 1,
+                                    color: critical ? 'var(--danger)' : 'var(--warning)',
+                                }}
+                            >
+                                {turnTimeRemaining}
+                            </div>
+
+                            <p style={{color: 'var(--text-2)', fontSize: 'var(--fs-sm)'}}>
+                                Ако не предприемете действие, играта ще приключи като загуба.
+                            </p>
+
+                            <span className={`badge ${extensionsLeft === 0 ? 'badge--danger' : 'badge--success'}`}>
+                                <Icon name="clock" size={15}/>
+                                Оставащи удължения: {extensionsLeft} / {MAX_INACTIVITY}
                             </span>
                         </div>
-                        <div style={{
-                            display: 'flex',
-                            gap: '15px',
-                            justifyContent: 'center',
-                            flexDirection: windowWidth <= 380 ? 'column' : 'row',
-                        }}>
-                            <button
-                                onClick={handleInactivityContinue}
-                                disabled={(gameState?.inactivityCount ?? 0) >= MAX_INACTIVITY}
-                                style={{
-                                    padding: windowWidth <= 480 ? '12px 20px' : '14px 28px',
-                                    backgroundColor: (gameState?.inactivityCount ?? 0) >= MAX_INACTIVITY ? '#666' : '#4CAF50',
-                                    color: '#fff',
-                                    border: 'none',
-                                    borderRadius: '8px',
-                                    fontSize: windowWidth <= 480 ? '0.95rem' : '1.1rem',
-                                    fontWeight: 700,
-                                    cursor: (gameState?.inactivityCount ?? 0) >= MAX_INACTIVITY ? 'not-allowed' : 'pointer',
-                                    transition: 'all 0.2s',
-                                    boxShadow: (gameState?.inactivityCount ?? 0) >= MAX_INACTIVITY ? 'none' : '0 4px 0 #2e7d32',
-                                    opacity: (gameState?.inactivityCount ?? 0) >= MAX_INACTIVITY ? 0.6 : 1,
-                                }}
-                                onMouseEnter={(e) => {
-                                    if ((gameState?.inactivityCount ?? 0) < MAX_INACTIVITY) {
-                                        e.currentTarget.style.backgroundColor = '#66bb6a';
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if ((gameState?.inactivityCount ?? 0) < MAX_INACTIVITY) {
-                                        e.currentTarget.style.backgroundColor = '#4CAF50';
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                    }
-                                }}
-                            >
-                                {(gameState?.inactivityCount ?? 0) >= MAX_INACTIVITY ? 'Няма удължения' : 'Продължи (+20)'}
-                            </button>
-                            <button
-                                onClick={handleInactivitySurrender}
-                                style={{
-                                    padding: windowWidth <= 480 ? '12px 20px' : '14px 28px',
-                                    backgroundColor: 'transparent',
-                                    color: '#ff8a80',
-                                    border: '2px solid #ff5252',
-                                    borderRadius: '8px',
-                                    fontSize: windowWidth <= 480 ? '0.95rem' : '1.1rem',
-                                    fontWeight: 600,
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'rgba(255, 82, 82, 0.2)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
-                            >
-                                Предавам се
-                            </button>
-                        </div>
-                    </div>
-                    <style>{`
-                        @keyframes pulseWarning {
-                            0%, 100% { 
-                                box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(255, 82, 82, 0.3);
-                            }
-                            50% { 
-                                box-shadow: 0 10px 40px rgba(0,0,0,0.5), 0 0 50px rgba(255, 82, 82, 0.5);
-                            }
-                        }
-                    `}</style>
-                </div>
-            )}
+                    </Modal>
+                );
+            })()}
 
             {confirmAction && (
                 <AppModal
@@ -2620,7 +2024,6 @@ const SantaseGame: React.FC = () => {
                     message={confirmAction.message}
                     onConfirm={confirmAction.action}
                     onCancel={confirmAction.onCancel ? confirmAction.onCancel : () => setConfirmAction(null)}
-                    windowWidth={windowWidth}
                 />
             )}
 
@@ -2642,13 +2045,11 @@ const SantaseGame: React.FC = () => {
                     )}
                     onConfirm={() => setShowRankUpModal(false)}
                     confirmText="ОК"
-                    windowWidth={windowWidth}
                 />
             )}
 
             {trickResult && <TrickResultPopup 
                 trickResult={trickResult}
-                windowWidth={windowWidth}
                 onDismiss={() => setTrickResult(null)}
             />}
 
@@ -2656,147 +2057,67 @@ const SantaseGame: React.FC = () => {
                 <ProfilePage
                     username={username}
                     onClose={() => setShowProfile(false)}
-                    windowWidth={windowWidth}
                 />
             )}
         </div>
     );
 };
 
+/* ---------------------------------------------------------------------------
+   Table styles. Every value is a token; sizes that used to be picked from a
+   measured window width are clamp() expressions so they scale continuously.
+   --------------------------------------------------------------------------- */
+
 const styles: Record<string, React.CSSProperties> = {
     table: {
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
         width: '100%',
         height: '100%',
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
         overflow: 'hidden',
-        background: `radial-gradient(ellipse at center, #1a4d2e 0%, #0f3a1f 40%, #081a0f 100%)`,
+        background: 'var(--felt)',
         touchAction: 'manipulation',
     },
     gameWrapper: {
-        width: '100%',
-        height: '100%',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
+        width: '100%',
+        height: '100%',
         overflow: 'hidden',
+        paddingTop: 'var(--sa-top)',
+        paddingBottom: 'var(--sa-bottom)',
     },
     lobby: {
-        height: '80%',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        boxSizing: 'border-box',
-    },
-    lobbyContent: {
-        textAlign: 'center',
-        color: 'white',
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.5) 100%)',
-        borderRadius: '36px',
-        backdropFilter: 'blur(20px) saturate(180%)',
-        width: '100%',
-        maxWidth: '500px',
-        border: '2px solid rgba(255,255,255,0.2)',
-        boxShadow: '0 20px 56px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
-        // Responsive maxWidth will be set inline
-    },
-    logoBadge: {
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 50%, #e65100 100%)',
-        margin: '0 auto 20px',
+        flex: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontWeight: 900,
-        border: '5px solid rgba(255,255,255,0.95)',
-        boxShadow: '0 12px 32px rgba(255, 152, 0, 0.5), 0 6px 16px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.4), inset 0 -3px 6px rgba(0,0,0,0.2)',
-        color: 'white',
-        textShadow: '0 2px 8px rgba(0,0,0,0.4)',
-    },
-    welcomeTitle: {
-        color: '#fff',
-    },
-    welcomeSub: {
-        color: 'rgba(255,255,255,0.9)',
-    },
-    navbar: {
-        width: '100%',
-        background: 'linear-gradient(135deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.6) 100%)',
-        backdropFilter: 'blur(20px) saturate(180%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        boxSizing: 'border-box',
-        zIndex: 100,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3)',
-        borderBottom: '2px solid rgba(255,255,255,0.15)',
-    },
-    navLogo: {
-        color: '#ff9800',
-        fontWeight: 900,
-    },
-    navLinks: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '20px',
-    },
-    userInfo: {
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-    },
-    userIcon: {
-        background: 'rgba(255,255,255,0.1)',
-        padding: '5px',
-        borderRadius: '50%',
-    },
-    btnLogout: {
-        background: 'linear-gradient(135deg, rgba(255, 82, 82, 0.15) 0%, rgba(211, 47, 47, 0.2) 100%)',
-        border: '2px solid rgba(255, 82, 82, 0.6)',
-        color: '#ff5252',
-        borderRadius: '10px',
-        touchAction: 'manipulation',
-        fontWeight: 600,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        boxShadow: '0 4px 12px rgba(255, 82, 82, 0.3), inset 0 1px 0 rgba(255,255,255,0.1)',
+        padding: 'var(--sp-5)',
+        paddingBottom: 'calc(var(--sp-5) + var(--sa-bottom))',
     },
     scoreBoard: {
         position: 'absolute',
-        zIndex: 10,
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.75) 100%)',
-        backdropFilter: 'blur(20px) saturate(180%)',
-        borderRadius: '20px',
-        color: 'white',
-        border: '2px solid rgba(255,255,255,0.2)',
-        boxShadow: '0 12px 32px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
-    },
-    scoreBoardMobile: {
-        position: 'absolute',
-        top: '10px',
-        left: '10px',
-        right: '10px',
-        zIndex: 10,
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.8) 100%)',
-        backdropFilter: 'blur(20px) saturate(180%)',
-        borderRadius: '16px',
-        color: 'white',
-        border: '2px solid rgba(255,255,255,0.2)',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
         display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--sp-2)',
+        padding: 'var(--sp-3) var(--sp-4)',
+        minWidth: 'clamp(150px, 42vw, 200px)',
+        zIndex: 'var(--z-hud)' as unknown as number,
     },
     scoreRow: {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
+        gap: 'var(--sp-3)',
+        color: 'var(--text-2)',
+        fontSize: 'var(--fs-sm)',
     },
     topSection: {
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
         overflow: 'hidden',
@@ -2804,16 +2125,6 @@ const styles: Record<string, React.CSSProperties> = {
     handOpponent: {
         display: 'flex',
         justifyContent: 'center',
-    },
-    cardBack: {
-        backgroundImage: 'url(/card-back.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        // border: '3px solid rgba(255,255,255,0.95)',
-        // boxShadow: '0 8px 20px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.25), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 -2px 6px rgba(0,0,0,0.3)',
-        position: 'relative' as const,
-        overflow: 'hidden',
     },
     midSection: {
         flex: 1,
@@ -2834,43 +2145,29 @@ const styles: Record<string, React.CSSProperties> = {
         justifyContent: 'center',
         alignItems: 'center',
     },
-    feltArea: {
-        display: 'flex',
-    },
-    cardSlot: {
-        borderRadius: '10px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    actionsSide: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     deckPile: {
         position: 'absolute',
         top: 0,
         left: 0,
-        backgroundImage: 'url(/card-back.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        // border: '3px solid rgba(255,255,255,0.95)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        zIndex: 2,
+        backgroundImage: 'url(/card-back.png)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        borderRadius: 'var(--r-md)',
+        boxShadow: 'var(--sh-2)',
         cursor: 'pointer',
         overflow: 'hidden',
-        // boxShadow: '0 8px 20px rgba(0,0,0,0.4), 0 4px 10px rgba(0,0,0,0.3), inset 0 2px 6px rgba(255,255,255,0.25), inset 0 0 0 2px rgba(255,255,255,0.1)',
         touchAction: 'manipulation',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1.5)',
+        transition: 'transform var(--dur-fast) var(--ease-out)',
     },
     deckCount: {
-        color: 'white',
-        fontWeight: 900,
-        WebkitTextStroke: '1px black',
+        fontFamily: 'var(--font-display)',
+        fontWeight: 800,
+        color: '#fff',
+        // dark halo keeps the count legible over any card back artwork
+        textShadow: '0 1px 3px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7)',
     },
     trumpUnder: {
         position: 'absolute',
@@ -2884,191 +2181,105 @@ const styles: Record<string, React.CSSProperties> = {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        border: '3px solid rgba(255,255,255,0.5)',
+        gap: 'var(--sp-1)',
+        border: '1px solid var(--line-gold)',
         borderRadius: '50%',
-        color: 'white',
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.5) 0%, rgba(0,0,0,0.4) 100%)',
-        boxShadow: '0 6px 16px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 2px 6px rgba(255,255,255,0.15)',
-        backdropFilter: 'blur(10px) saturate(150%)',
-    },
-    icon66: {
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 40%, #e65100 100%)',
-        border: '3px solid rgba(255,255,255,0.95)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontWeight: 900,
-        cursor: 'pointer',
-        boxShadow: '0 8px 24px rgba(255, 152, 0, 0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 3px 6px rgba(255,255,255,0.5), inset 0 -3px 6px rgba(0,0,0,0.25)',
-        touchAction: 'manipulation',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        color: 'white',
-        textShadow: '0 2px 8px rgba(0,0,0,0.5)',
-    },
-    btnLeave: {
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, rgba(255, 82, 82, 0.5) 0%, rgba(211, 47, 47, 0.6) 40%, rgba(183, 28, 28, 0.7) 100%)',
-        border: '3px solid rgba(255,255,255,0.7)',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        touchAction: 'manipulation',
-        boxShadow: '0 6px 20px rgba(255, 82, 82, 0.4), 0 3px 10px rgba(0,0,0,0.3), inset 0 3px 6px rgba(255,255,255,0.35), inset 0 -3px 6px rgba(0,0,0,0.25)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        fontWeight: 700,
-        textShadow: '0 2px 6px rgba(0,0,0,0.4)',
-        lineHeight: 1,
-        padding: 0,
-        textAlign: 'center' as const,
-    },
-    menuButton: {
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, rgba(100, 100, 100, 0.4) 0%, rgba(70, 70, 70, 0.5) 100%)',
-        border: '3px solid rgba(255,255,255,0.3)',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        cursor: 'pointer',
-        touchAction: 'manipulation',
-        boxShadow: '0 6px 18px rgba(0, 0, 0, 0.4), 0 3px 10px rgba(0,0,0,0.3), inset 0 3px 6px rgba(255,255,255,0.2), inset 0 -3px 6px rgba(0,0,0,0.25)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        fontWeight: 700,
-        lineHeight: '1',
-        letterSpacing: '-2px',
+        background: 'rgba(5, 14, 9, 0.8)',
+        color: 'var(--text-1)',
+        boxShadow: 'var(--sh-2)',
+        backdropFilter: 'blur(10px)',
     },
     bottomSection: {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         overflow: 'hidden',
-        paddingBottom: '10px',
-    },
-    turnIndicator: {
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.7) 100%)',
-        backdropFilter: 'blur(15px) saturate(150%)',
-        borderRadius: '28px',
-        color: 'white',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        border: '2px solid rgba(255,255,255,0.2)',
-        boxShadow: '0 6px 20px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.15)',
-        fontWeight: 600,
-        letterSpacing: '0.5px',
-    },
-    pulse: {
-        borderRadius: '50%',
-        boxShadow: '0 0 8px currentColor, 0 0 16px currentColor',
-        animation: 'pulse 2s ease-in-out infinite',
     },
     handPlayer: {
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'flex-end',
     },
-    card: {
-        borderRadius: '14px',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        cursor: 'pointer',
-        touchAction: 'manipulation',
-        userSelect: 'none',
-        outline: 'none',
-        WebkitTapHighlightColor: 'transparent',
-        background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
-    },
-    btnMain: {
-        background: 'linear-gradient(135deg, #ff9800 0%, #f57c00 50%, #e65100 100%)',
-        color: 'white',
-        borderRadius: '32px',
-        fontWeight: 800,
-        touchAction: 'manipulation',
-        boxShadow: '0 8px 24px rgba(255, 152, 0, 0.5), 0 4px 12px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.3)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        border: 'none',
-        textShadow: '0 2px 6px rgba(0,0,0,0.3)',
-    },
-    modalOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        background: 'rgba(0,0,0,0.8)',
-        zIndex: 1000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        boxSizing: 'border-box',
-    },
-    modalBox: {
-        background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
-        borderRadius: '28px',
-        textAlign: 'center',
-        width: '100%',
-        maxWidth: '500px',
-        boxShadow: '0 24px 64px rgba(0,0,0,0.4), 0 8px 24px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.9)',
-        border: '2px solid rgba(255,255,255,0.9)',
-    },
-    modalActions: {
-        display: 'flex',
-        marginTop: '20px',
-    },
-    btnCancel: {
-        flex: 1,
-        background: 'linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%)',
-        borderRadius: '14px',
-        touchAction: 'manipulation',
-        border: '2px solid rgba(0,0,0,0.1)',
-        fontWeight: 600,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.8)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        color: '#333',
-    },
-    btnConfirm: {
-        flex: 1,
-        background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 50%, #0d4f14 100%)',
-        color: 'white',
-        borderRadius: '14px',
-        touchAction: 'manipulation',
-        fontWeight: 600,
-        boxShadow: '0 6px 16px rgba(46, 125, 50, 0.5), 0 3px 8px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2)',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        border: 'none',
-        textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-    },
-    resultOverlay: {
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        background: 'rgba(0,0,0,0.9)',
-        zIndex: 2000,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '20px',
-        boxSizing: 'border-box',
-    },
-    resultBox: {
-        background: 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
-        borderRadius: '36px',
-        textAlign: 'center',
-        width: '100%',
-        maxWidth: '500px',
-        boxShadow: '0 28px 72px rgba(0,0,0,0.5), 0 12px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.9)',
-        border: '2px solid rgba(255,255,255,0.95)',
-    },
-    trickScoreRow: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        borderBottom: '1px solid #eee',
-    },
+};
+
+/** Score colour: my score reads as progress, the opponent's as pressure. */
+const scoreValueStyle = (who: 'me' | 'opponent'): React.CSSProperties => ({
+    fontFamily: 'var(--font-display)',
+    fontSize: 'clamp(1.05rem, 3.6vw, 1.5rem)',
+    fontWeight: 800,
+    color: who === 'me' ? 'var(--success)' : 'var(--danger)',
+});
+
+const turnRowStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--sp-3)',
+    width: '100%',
+    padding: '0 var(--sp-4)',
+    marginBottom: 'clamp(12px, 3vw, 18px)',
+};
+
+const lobbyCardStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 'var(--sp-3)',
+    width: '100%',
+    maxWidth: '420px',
+    padding: 'clamp(24px, 7vw, 44px)',
+    textAlign: 'center',
+};
+
+const lobbyCrestStyle: React.CSSProperties = {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'clamp(60px, 17vw, 84px)',
+    height: 'clamp(60px, 17vw, 84px)',
+    marginBottom: 'var(--sp-2)',
+    borderRadius: '50%',
+    background: 'linear-gradient(135deg, var(--accent-bright), var(--accent) 55%, var(--accent-deep))',
+    color: 'var(--text-on-accent)',
+    fontFamily: 'var(--font-display)',
+    fontSize: 'clamp(1.6rem, 6vw, 2.2rem)',
+    fontWeight: 700,
+    boxShadow: 'var(--glow-accent)',
+};
+
+const resultBodyStyle: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 'var(--sp-4)',
+    textAlign: 'center',
+};
+
+const resultMarkStyle: React.CSSProperties = {
+    display: 'grid',
+    placeItems: 'center',
+    width: 'clamp(72px, 20vw, 96px)',
+    height: 'clamp(72px, 20vw, 96px)',
+    borderRadius: '50%',
+    border: '1px solid',
+    animation: 'scale-in var(--dur-slow) var(--ease-spring)',
+};
+
+const finalScoreStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 'var(--sp-4)',
+    width: '100%',
+    padding: 'var(--sp-4)',
+    background: 'var(--surface-raised)',
+    border: '1px solid var(--line)',
+    borderRadius: 'var(--r-lg)',
+};
+
+const finalScoreNumStyle: React.CSSProperties = {
+    fontFamily: 'var(--font-display)',
+    fontSize: 'var(--fs-2xl)',
+    fontWeight: 700,
 };
 
 export default SantaseGame;
