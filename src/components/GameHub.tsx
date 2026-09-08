@@ -20,15 +20,15 @@ const GAMES: GameCard[] = [
     {
         key: 'santase',
         title: 'Сантасе 66',
-        tagline: 'Класическа игра на карти за двама',
+        tagline: 'Класическо Сантасе срещу реални опоненти',
         icon: 'cards',
         crest: '66',
         path: '/play/santase',
     },
     {
         key: 'tabla',
-        title: 'Обикновена табла',
-        tagline: 'Табла срещу реален опонент',
+        title: 'Табла',
+        tagline: 'Класическа табла срещу реални опоненти',
         icon: 'dice',
         crest: '',
         path: '/play/tabla',
