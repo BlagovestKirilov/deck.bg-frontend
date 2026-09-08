@@ -101,9 +101,9 @@ const TablaGame: React.FC = () => {
                     <span style={crest}>
                         <Icon name="dice" size="56%" />
                     </span>
-                    <h1 style={{ fontSize: 'var(--fs-2xl)', color: 'var(--text-1)' }}>Обикновена табла</h1>
+                    <h1 style={{ fontSize: 'var(--fs-2xl)', color: 'var(--text-1)' }}>Табла</h1>
                     <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
-                        Класическа табла срещу реален опонент
+                        Класическа табла срещу реални опоненти
                     </p>
 
                     <Button

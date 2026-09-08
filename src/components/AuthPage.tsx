@@ -247,7 +247,7 @@ const AuthPage: React.FC = () => {
           : 'Стани част от елита';
 
     return (
-        <main className="screen" style={{ overflow: 'hidden' }}>
+        <main className="screen">
             <div aria-hidden="true" style={driftLayerStyle}>
                 {driftingSymbols}
             </div>
@@ -403,6 +403,9 @@ const driftLayerStyle: React.CSSProperties = {
 const cardStyle: React.CSSProperties = {
     position: 'relative',
     zIndex: 1,
+    // margin:auto rather than relying on align-items, so a tall form keeps its
+    // top reachable when it overflows and the screen has to scroll.
+    margin: 'auto',
     width: '100%',
     maxWidth: '400px',
     padding: 'clamp(24px, 6vw, 40px)',

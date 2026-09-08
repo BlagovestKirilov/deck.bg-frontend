@@ -1,4 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
+import {useNavigate} from 'react-router-dom';
 import SockJS from 'sockjs-client';
 import {Stomp} from '@stomp/stompjs';
 import {useAuthContext} from '../context/AuthContext';
@@ -315,6 +316,7 @@ const useLayout = () => {
 };
 
 const SantaseGame: React.FC = () => {
+    const navigate = useNavigate();
     const {user, logout} = useAuthContext();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isSearching, setIsSearching] = useState(false);
@@ -1522,7 +1524,7 @@ const SantaseGame: React.FC = () => {
 
     return (
         <div style={styles.table}>
-            {!gameState && <Navbar username={username} onLogout={logout} onProfileClick={() => setShowProfile(true)} rank={userRank} wins={userWins} losses={userLosses}/>}
+
 
             {/* Connection lost: a blocking layer, because no move can land while offline */}
             {gameState && !isConnected && (
@@ -1542,9 +1544,7 @@ const SantaseGame: React.FC = () => {
                     <div className="panel panel--gold" style={lobbyCardStyle}>
                         <span style={lobbyCrestStyle}>66</span>
 
-                        <h1 style={{fontSize: 'var(--fs-2xl)', color: 'var(--text-1)'}}>
-                            Добре дошли, <span style={{color: 'var(--gold)'}}>{username}</span>
-                        </h1>
+                        <h1 style={{fontSize: 'var(--fs-2xl)', color: 'var(--text-1)'}}>Сантасе 66</h1>
 
                         <p style={{color: 'var(--text-3)', fontSize: 'var(--fs-sm)'}}>
                             Класическо Сантасе срещу реални опоненти
@@ -1566,6 +1566,11 @@ const SantaseGame: React.FC = () => {
                                 Търсим опонент…
                             </p>
                         )}
+
+                        <button type="button" className="btn btn--link" onClick={() => navigate('/')}>
+                            <Icon name="arrowLeft" size={16}/>
+                            Назад
+                        </button>
                     </div>
                 </div>
             ) : (
