@@ -863,27 +863,42 @@ code, kbd, samp { font-family: var(--font-mono); }
    checkers stay proportional at any width.
    ===================================================================== */
 
-.tabla-wrap {
-    /* Space taken by the two HUD rows and the action bar. */
-    --tabla-chrome: 13rem;
+/* The board's box: it takes whatever vertical room the HUDs and the action bar
+   leave over, and nothing more. Guessing that height from the viewport was what
+   pushed the dice off the bottom of the screen, so the box measures itself and
+   the board reads that measurement through container query units. */
+.tabla-fit {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    container-type: size;
+}
+
+/* Everything below the board keeps its natural height so it can never be
+   squeezed out of view. */
+.tabla-footer {
+    flex: 0 0 auto;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--sp-3);
-    min-height: 0;
+    gap: var(--sp-2);
 }
 
 .tabla-board {
     /* A flex child shrinks by default, which flattened the board to a few pixels
-       on short landscape screens and threw away the aspect ratio. Never shrink,
-       and derive the width from the height that is actually available so the
-       whole board always fits without scrolling. */
+       on short landscape screens and threw away the aspect ratio. Never shrink. */
     flex: 0 0 auto;
-    width: min(100%, 46rem, calc((100dvh - var(--tabla-chrome)) * 14 / 11));
+    /* Fallback for engines without container query units. */
+    width: min(100%, 46rem);
+    /* Fit whichever runs out first — the width of the box or its height. */
+    width: min(100cqw, 46rem, calc(100cqh * 14 / 11));
     aspect-ratio: 14 / 11;
     display: grid;
-    grid-template-columns: repeat(6, 1fr) 7% repeat(6, 1fr) 9%;
+    grid-template-columns: repeat(6, 1fr) 7% repeat(6, 1fr) 10%;
     grid-template-rows: 1fr 1fr;
     gap: 0;
     container-type: inline-size;
@@ -1002,14 +1017,19 @@ code, kbd, samp { font-family: var(--font-mono); }
 .tabla-off--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
 
 .tabla-off__label {
-    font-size: 2.6cqw;
-    letter-spacing: .08em;
+    /* Capped in px as well as cqw: on a wide board 2.6cqw grew past the tray and
+       clipped the word. */
+    font-size: clamp(7px, 2.1cqw, 12px);
+    line-height: 1.1;
+    max-width: 100%;
+    text-align: center;
+    letter-spacing: .02em;
     text-transform: uppercase;
     color: var(--text-3);
 }
 .tabla-off__count {
     font-family: var(--font-display);
-    font-size: 4.4cqw;
+    font-size: clamp(12px, 4.2cqw, 26px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
@@ -1017,14 +1037,19 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* Dice: a 3x3 pip grid, never the unicode faces — those render wildly
    differently across Android and iOS. */
 .die {
+    /* One length drives the whole die. Percentage padding and gap would resolve
+       against the *action bar's* width, not the die's: that inflated the die to
+       ~400px with a zero-width content box, which is why the pips were invisible
+       and the faces looked like blank cream squares. */
+    --die: clamp(36px, 11vw, 52px);
     flex: 0 0 auto;
-    width: clamp(38px, 12vw, 50px);
-    aspect-ratio: 1;
+    width: var(--die);
+    height: var(--die);
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
-    gap: 8%;
-    padding: 14%;
+    gap: calc(var(--die) * .08);
+    padding: calc(var(--die) * .14);
     border-radius: var(--r-sm);
     background: linear-gradient(160deg, #fdfaf1, #e3d9c2);
     box-shadow: var(--sh-1);
@@ -1042,7 +1067,7 @@ code, kbd, samp { font-family: var(--font-mono); }
     padding: 0;
     color: var(--text-on-light);
     font-family: var(--font-display);
-    font-size: 60%;
+    font-size: calc(var(--die) * .6);
     font-weight: 700;
 }
 
@@ -1077,7 +1102,8 @@ code, kbd, samp { font-family: var(--font-mono); }
     gap: var(--sp-3);
     flex-wrap: wrap;
     width: 100%;
-    padding-bottom: var(--sa-bottom);
+    /* Reserved so the board does not jump a row when the dice appear. */
+    min-height: clamp(44px, 12vw, 56px);
 }
 
 /* Phones: the board fills the width and the HUD stacks around it. Rotating
@@ -1090,6 +1116,6 @@ code, kbd, samp { font-family: var(--font-mono); }
 
 /* Short landscape screens have less room above and below the board. */
 @media (max-height: 520px) and (orientation: landscape) {
-    .tabla-wrap { --tabla-chrome: 8rem; }
     .tabla-hud { padding-block: 0; }
+    .tabla-actions { min-height: 40px; }
 }
