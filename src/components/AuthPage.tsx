@@ -247,7 +247,7 @@ const AuthPage: React.FC = () => {
           : 'Стани част от елита';
 
     return (
-        <main className="screen">
+        <main className="screen screen--flow">
             <div aria-hidden="true" style={driftLayerStyle}>
                 {driftingSymbols}
             </div>

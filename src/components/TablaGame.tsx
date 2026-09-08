@@ -12,14 +12,6 @@ import Modal from './ui/Modal';
 const TURN_SECONDS = 33;
 const WARNING_AT = 10;
 
-const RESULT_TEXT: Record<string, string> = {
-    SINGLE: 'Обикновена победа',
-    GAMMON: 'МАРС!',
-    BACKGAMMON: 'КОКС!',
-};
-
-
-
 const TablaGame: React.FC = () => {
     const navigate = useNavigate();
     const { user } = useAuthContext();
@@ -153,7 +145,7 @@ const TablaGame: React.FC = () => {
             {toast && <div className="game-toast" role="status" aria-live="polite">{toast}</div>}
 
             {/* opponent */}
-            <div className="tabla-hud">
+            <div className="tabla-hud" style={{ flex: '0 0 auto' }}>
                 <span className="tabla-hud__name">
                     <span className="truncate" style={{ color: 'var(--text-1)', fontWeight: 700 }}>
                         {opponentName}
@@ -171,14 +163,16 @@ const TablaGame: React.FC = () => {
                 </button>
             </div>
 
-            <div className="tabla-wrap">
+            <div className="tabla-fit">
                 <TablaBoard
                     state={state}
                     selected={selected}
                     onSelect={setSelected}
                     onMove={handleMove}
                 />
+            </div>
 
+            <div className="tabla-footer">
                 {/* my side + turn */}
                 <div className="tabla-hud">
                     <span className="tabla-hud__name">
@@ -273,23 +267,6 @@ const TablaGame: React.FC = () => {
                                 : (iWon ? 'Победа!' : `${state.winnerUsername} спечели.`)}
                         </p>
 
-                        {state.resultKind && state.resultKind !== 'SINGLE' && (
-                            <span className="badge badge--success">{RESULT_TEXT[state.resultKind]}</span>
-                        )}
-
-                        {state.serverSeed && (
-                            <details style={{ width: '100%', textAlign: 'left' }}>
-                                <summary style={{ cursor: 'pointer', color: 'var(--text-3)', fontSize: 'var(--fs-xs)' }}>
-                                    Проверка на заровете
-                                </summary>
-                                <p style={seedText}>
-                                    Отпечатък: {state.serverSeedHash}
-                                </p>
-                                <p style={seedText}>
-                                    Ключ: {state.serverSeed}
-                                </p>
-                            </details>
-                        )}
                     </div>
                 </Modal>
             )}
@@ -303,7 +280,9 @@ const tableStyle: React.CSSProperties = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    justifyContent: 'center',
+    // The board is the only part that flexes; the HUDs and the action row keep
+    // their natural height, so the dice can never be pushed off-screen.
+    justifyContent: 'flex-start',
     gap: 'var(--sp-2)',
     padding: 'calc(var(--sa-top) + var(--sp-2)) var(--sp-2) calc(var(--sa-bottom) + var(--sp-2))',
     background: 'var(--felt)',
@@ -349,14 +328,6 @@ const resultMark: React.CSSProperties = {
     borderRadius: '50%',
     border: '1px solid',
     animation: 'scale-in var(--dur-slow) var(--ease-spring)',
-};
-
-const seedText: React.CSSProperties = {
-    marginTop: 'var(--sp-2)',
-    fontFamily: 'var(--font-mono)',
-    fontSize: '0.7rem',
-    color: 'var(--text-3)',
-    wordBreak: 'break-all',
 };
 
 export default TablaGame;
