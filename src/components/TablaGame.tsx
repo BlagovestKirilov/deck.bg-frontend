@@ -9,7 +9,18 @@ import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
 
-const TURN_SECONDS = 33;
+/**
+ * Turn budget, matching the server's TABLA_TURN_SECONDS (45 + 10 + 3 slack).
+ *
+ * A табла turn is several taps — roll, play each die, confirm — so it gets 45s
+ * where Santase gets 20. Running out does not lose the game: like Santase, the
+ * first two timeouts only raise the "still there?" prompt, and the third ends
+ * the game.
+ */
+const TURN_SECONDS = 45;
+/** Seconds on the prompt before the game is given up. */
+const WARNING_SECONDS = 10;
+/** When the turn pill starts reading as urgent. */
 const WARNING_AT = 10;
 
 const TablaGame: React.FC = () => {
@@ -22,6 +33,8 @@ const TablaGame: React.FC = () => {
     const [busy, setBusy] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState(TURN_SECONDS);
     const [showResult, setShowResult] = useState(false);
+    /** True while the "still there?" prompt is up and its own clock is running. */
+    const [inWarning, setInWarning] = useState(false);
     const lastTurnKeyRef = useRef<string>('');
 
     // The api object is stable so the session hook does not re-subscribe.
@@ -43,21 +56,6 @@ const TablaGame: React.FC = () => {
 
     const session = useGameSession<TablaState>({ gameKey: 'tabla', username, api, onState });
     const { state, isConnected, isSearching, startSearch, leaveGame, finishAndReturn } = session;
-
-    /* ---------------- turn clock ---------------- */
-
-    useEffect(() => {
-        if (!state || state.winnerUsername) return undefined;
-
-        // Trust the server's remaining seconds; it is authoritative and survives
-        // a refresh, unlike a locally started countdown.
-        setSecondsLeft(state.nextMoveTimeInSeconds ?? TURN_SECONDS);
-
-        if (!state.isOnTurn) return undefined;
-
-        const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-        return () => clearInterval(id);
-    }, [state?.isOnTurn, state?.nextMoveTimeInSeconds, state?.winnerUsername, state]);
 
     /* ---------------- actions ---------------- */
 
@@ -83,6 +81,105 @@ const TablaGame: React.FC = () => {
     const handleMove = useCallback((from: number, die: number) => {
         void guard(() => tablaService.move(from, die));
     }, [guard]);
+
+    /* ---------------- turn clock ---------------- */
+
+    /*
+     * One absolute deadline drives both phases.
+     *
+     * Counting down a number held in state does not survive here: the server
+     * pushes a fresh state on every roll, move and timeout report, and each push
+     * would restart the countdown. So the deadline is kept as a timestamp and
+     * only moved when the server actually grants more time. Everything visible
+     * is derived from it: above WARNING_SECONDS remaining it is the main phase,
+     * below that it is the prompt.
+     */
+    const deadlineRef = useRef(0);
+    /** The timeout for this window has already been reported. */
+    const reportedRef = useRef(false);
+    /** Guards against firing the give-up call once per tick at zero. */
+    const givingUpRef = useRef(false);
+
+    const giveUp = useCallback(async () => {
+        if (givingUpRef.current) return;
+        givingUpRef.current = true;
+        setInWarning(false);
+        try {
+            await tablaService.surrender();
+        } catch {
+            // The server may have ended the game first; leaving is still right.
+        }
+        finishAndReturn();
+        navigate('/');
+    }, [finishAndReturn, navigate]);
+
+    // The main phase ran out. Report it and let the prompt run: only when the
+    // server says the allowance is spent (400) is the game actually lost.
+    const reportTimeout = useCallback(async () => {
+        try {
+            await tablaService.inactivity();
+        } catch (err: any) {
+            if (err?.response?.status === 400) void giveUp();
+            // Anything else is network trouble, not a spent allowance. The
+            // server's own timer still guards the game, so the prompt stays up.
+        }
+    }, [giveUp]);
+
+    const handleContinue = useCallback(async () => {
+        try {
+            await tablaService.extendTime();
+            // Optimistic: the server's push resyncs this to its own deadline.
+            deadlineRef.current = Date.now() + (TURN_SECONDS + WARNING_SECONDS) * 1000;
+            reportedRef.current = false;
+            setInWarning(false);
+        } catch (err: any) {
+            if (err?.response?.status === 400) void giveUp();
+        }
+    }, [giveUp]);
+
+    // Resync only when the server grants MORE time than is being counted — a new
+    // turn, or Continue. A push that merely reports the current deadline (the
+    // timeout report itself) must not reset the prompt.
+    useEffect(() => {
+        const fromServer = state?.nextMoveTimeInSeconds;
+        if (fromServer == null) return;
+        const remaining = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
+        if (fromServer > remaining + 1) {
+            deadlineRef.current = Date.now() + fromServer * 1000;
+            reportedRef.current = false;
+            givingUpRef.current = false;
+        }
+    }, [state?.nextMoveTimeInSeconds, state?.isOnTurn]);
+
+    useEffect(() => {
+        if (!state || state.winnerUsername || !state.isOnTurn) {
+            setInWarning(false);
+            return undefined;
+        }
+
+        const tick = () => {
+            const remaining = Math.max(0, Math.round((deadlineRef.current - Date.now()) / 1000));
+
+            if (remaining > WARNING_SECONDS) {
+                setInWarning(false);
+                setSecondsLeft(remaining - WARNING_SECONDS);
+                return;
+            }
+
+            setInWarning(true);
+            setSecondsLeft(remaining);
+
+            if (!reportedRef.current) {
+                reportedRef.current = true;
+                void reportTimeout();
+            }
+            if (remaining === 0) void giveUp();
+        };
+
+        tick();
+        const id = setInterval(tick, 1000);
+        return () => clearInterval(id);
+    }, [state, reportTimeout, giveUp]);
 
     /* ---------------- lobby ---------------- */
 
@@ -225,6 +322,15 @@ const TablaGame: React.FC = () => {
                         </Button>
                     )}
 
+                    {/* The turn is committed here, not by the last move: until
+                        this is pressed every hop can still be taken back. */}
+                    {state.mustConfirm && (
+                        <Button variant="primary" icon="check" loading={busy}
+                                onClick={() => void guard(tablaService.confirm)}>
+                            Потвърди
+                        </Button>
+                    )}
+
                     {canUndo && (
                         <Button variant="ghost" icon="arrowLeft" disabled={busy}
                                 onClick={() => void guard(tablaService.undo)}>
@@ -237,6 +343,28 @@ const TablaGame: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {inWarning && !state.winnerUsername && (
+                <Modal
+                    title="Още ли сте тук?"
+                    width="narrow"
+                    tone="danger"
+                    dismissOnScrim={false}
+                    actions={
+                        <Button variant="primary" size="lg" onClick={() => void handleContinue()}>
+                            ПРОДЪЛЖИ
+                        </Button>
+                    }
+                >
+                    <p style={{ textAlign: 'center', color: 'var(--text-2)' }}>
+                        Времето за хода изтече. Продължете в следващите{' '}
+                        <span className="tabular" style={{ color: 'var(--danger)', fontWeight: 800 }}>
+                            {secondsLeft}
+                        </span>{' '}
+                        секунди, иначе играта се брои за загубена.
+                    </p>
+                </Modal>
+            )}
 
             {showResult && state.winnerUsername && (
                 <Modal
