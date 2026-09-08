@@ -100,14 +100,9 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
         }
 
         if (movableOrigins.has(normalised)) {
-            const options = hopsFrom(normalised);
-            // With only two distinct dice a single destination is the common
-            // case, so play it immediately rather than making them tap twice.
-            if (options.length === 1) {
-                onMove(options[0].from, options[0].die);
-                onSelect(null);
-                return;
-            }
+            // Always show the destinations first, even when there is only one.
+            // Playing a lone option on the first tap meant the green targets
+            // flashed past unseen and a checker moved before it was aimed.
             onSelect(normalised === selected ? null : normalised);
             return;
         }
@@ -180,13 +175,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
                 className={`tabla-bar ${barLegal ? 'tabla-bar--legal' : ''} ${selected === BAR ? 'tabla-bar--source' : ''}`}
                 onClick={() => {
                     if (!barLegal) return;
-                    const options = hopsFrom(BAR);
-                    if (options.length === 1) {
-                        onMove(BAR, options[0].die);
-                        onSelect(null);
-                    } else {
-                        onSelect(selected === BAR ? null : BAR);
-                    }
+                    onSelect(selected === BAR ? null : BAR);
                 }}
                 disabled={!barLegal}
                 aria-label={`Централна лента: ваши ${state.myBar}, на опонента ${state.opponentBar}`}
@@ -214,12 +203,20 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
                     }
                 }}
                 disabled={!offLegal}
-                aria-label={`Изведени: ваши ${state.myOff} от 15, на опонента ${state.opponentOff}`}
+                aria-label={`Изведени пулове: ваши ${state.myOff} от 15, на опонента ${state.opponentOff} от 15`}
             >
-                <span className="tabla-off__label">Опонент</span>
-                <span className="tabla-off__count">{state.opponentOff}</span>
-                <span className="tabla-off__label">Вие</span>
-                <span className="tabla-off__count" style={{ color: 'var(--gold)' }}>{state.myOff}</span>
+                <span className="tabla-off__side">
+                    <Checker side={opponentSide} />
+                    <span className="tabla-off__count">
+                        {state.opponentOff}<span className="tabla-off__total">/15</span>
+                    </span>
+                </span>
+                <span className="tabla-off__side">
+                    <Checker side={mySide} />
+                    <span className="tabla-off__count" style={{ color: 'var(--gold)' }}>
+                        {state.myOff}<span className="tabla-off__total">/15</span>
+                    </span>
+                </span>
             </button>
         </div>
     );

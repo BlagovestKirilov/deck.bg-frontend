@@ -937,7 +937,9 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* A point you can move to, and the one you picked up from. */
 .tabla-point--legal { --point-fill: rgba(87, 198, 125, 0.34); cursor: pointer; }
 .tabla-point--source { --point-fill: rgba(227, 191, 93, 0.42); cursor: pointer; }
-.tabla-point--playable { cursor: pointer; }
+/* Every point you hold a legal move from, marked before you tap anything, so
+   the playable checkers are visible without hunting for them. */
+.tabla-point--playable { --point-fill: rgba(227, 191, 93, 0.26); cursor: pointer; }
 .tabla-point--legal::after,
 .tabla-point--source::after {
     content: '';
@@ -1016,20 +1018,29 @@ code, kbd, samp { font-family: var(--font-mono); }
 .tabla-bar--source { background: rgba(227, 191, 93, 0.32); cursor: pointer; }
 .tabla-off--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
 
-.tabla-off__label {
-    /* Capped in px as well as cqw: on a wide board 2.6cqw grew past the tray and
-       clipped the word. */
-    font-size: clamp(7px, 2.1cqw, 12px);
-    line-height: 1.1;
-    max-width: 100%;
-    text-align: center;
-    letter-spacing: .02em;
-    text-transform: uppercase;
+/* One tray row: whose checkers, and how many of the fifteen are off. The words
+   ОПОНЕНТ / ВИЕ used to sit here; they read as a match score and outgrew the
+   column, so the side is shown with a checker in its own colour instead. */
+.tabla-off__side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6%;
+    width: 100%;
+    min-width: 0;
+}
+.tabla-off__side .checker {
+    width: 58%;
+    max-width: 5.5cqw;
+}
+.tabla-off__total {
+    font-size: .62em;
     color: var(--text-3);
 }
 .tabla-off__count {
+    white-space: nowrap;
     font-family: var(--font-display);
-    font-size: clamp(12px, 4.2cqw, 26px);
+    font-size: clamp(10px, 3.4cqw, 20px);
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
