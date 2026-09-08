@@ -1066,7 +1066,7 @@ const SantaseGame: React.FC = () => {
         processNextMessage();
     };
 
-    const SUIT_COLOR: Record<Suit, 'BLACK' | 'RED'> = {
+    const SUIT_COLOR_GROUP: Record<Suit, 'BLACK' | 'RED'> = {
         SPADES: 'BLACK',
         CLUBS: 'BLACK',
         HEARTS: 'RED',
@@ -1094,14 +1094,14 @@ const SantaseGame: React.FC = () => {
         while (result.length < presentSuits.length) {
             const lastColor =
                 result.length > 0
-                    ? SUIT_COLOR[result[result.length - 1]]
+                    ? SUIT_COLOR_GROUP[result[result.length - 1]]
                     : null;
 
             // Prefer opposite color
             const next = presentSuits.find(
                 s =>
                     !used.has(s) &&
-                    (lastColor === null || SUIT_COLOR[s] !== lastColor)
+                    (lastColor === null || SUIT_COLOR_GROUP[s] !== lastColor)
             );
 
             // Fallback if alternation is impossible
