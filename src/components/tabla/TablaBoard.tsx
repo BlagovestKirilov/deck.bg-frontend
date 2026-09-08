@@ -48,13 +48,27 @@ const PIP_SLOTS: Record<number, number[]> = {
     6: [0, 2, 3, 5, 6, 8],
 };
 
-export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }) => (
-    <span className={`die ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
-        {Array.from({ length: 9 }).map((_, i) => (
-            <span key={i} className="die__pip" style={{ opacity: PIP_SLOTS[value]?.includes(i) ? 1 : 0 }} />
-        ))}
-    </span>
-);
+export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }) => {
+    const slots = PIP_SLOTS[value];
+
+    // Never render a blank face: if the value is somehow outside 1..6, show it
+    // as a number rather than an empty square.
+    if (!slots) {
+        return (
+            <span className={`die die--numeric ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
+                {value}
+            </span>
+        );
+    }
+
+    return (
+        <span className={`die ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
+            {slots.map((slot) => (
+                <span key={slot} className="die__pip" style={{ gridArea: `${Math.floor(slot / 3) + 1} / ${(slot % 3) + 1}` }} />
+            ))}
+        </span>
+    );
+};
 
 const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
     const { points, mySide, legalHops } = state;

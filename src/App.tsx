@@ -41,11 +41,14 @@ const App: React.FC = () => {
 };
 
 const shellStyle: React.CSSProperties = {
-    position: 'fixed',
-    inset: 0,
+    // Deliberately not position:fixed. A fixed shell keeps its full height when
+    // the on-screen keyboard opens, so the focused field ends up behind the
+    // keyboard with nothing able to scroll. In normal flow the document can
+    // scroll and the browser brings the focused input into view.
+    position: 'relative',
     width: '100%',
-    height: '100%',
-    overflow: 'hidden',
+    minHeight: '100dvh',
+    overflowX: 'hidden',
     background: 'var(--bg)',
     fontFamily: 'var(--font-body)',
 };

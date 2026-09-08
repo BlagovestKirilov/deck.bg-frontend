@@ -105,7 +105,7 @@ const ResetPassword: React.FC = () => {
     // a bare spinner, so the transition into the form does not jump.
     if (!token || isValidatingLink) {
         return (
-            <main className="screen">
+            <main className="screen screen--flow">
                 <div className="panel panel--gold" style={cardStyle}>
                     <div className="skeleton" style={{ height: 84, width: 84, borderRadius: '50%', margin: '0 auto' }} />
                     <div className="skeleton" style={{ height: 26, width: '70%', margin: 'var(--sp-5) auto 0' }} />
@@ -119,7 +119,7 @@ const ResetPassword: React.FC = () => {
     }
 
     return (
-        <main className="screen">
+        <main className="screen screen--flow">
             <div className="panel panel--gold" style={cardStyle}>
                 <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
                     <span style={crestStyle}>
