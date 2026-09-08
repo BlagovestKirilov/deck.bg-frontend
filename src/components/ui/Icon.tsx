@@ -33,7 +33,8 @@ export type IconName =
     | 'cards'
     | 'logout'
     | 'search'
-    | 'compass';
+    | 'compass'
+    | 'dice';
 
 interface IconProps {
     name: IconName;
@@ -182,6 +183,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
         <>
             <circle cx="10.8" cy="10.8" r="6.4" />
             <path d="m15.6 15.6 4.4 4.4" />
+        </>
+    ),
+    dice: (
+        <>
+            <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4" />
+            <path d="M8.4 8.4v.01M15.6 8.4v.01M12 12v.01M8.4 15.6v.01M15.6 15.6v.01" />
         </>
     ),
     compass: (
