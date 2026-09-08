@@ -2,7 +2,9 @@ import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { useAuthContext } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
+import GameHub from './components/GameHub';
 import SantaseGame from './components/SantaseGame';
+import TablaGame from './components/TablaGame';
 import ConfirmationSuccess from './components/ConfirmationSuccess';
 import ConfirmationInvalid from './components/ConfirmationInvalid';
 import ResetPassword from './components/ResetPassword';
@@ -29,7 +31,9 @@ const App: React.FC = () => {
                 <Route path="/invalid" element={<ConfirmationInvalid />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/deletion-success" element={<DeletionSuccess />} />
-                <Route path="/" element={isAuthenticated ? <SantaseGame /> : <AuthPage />} />
+                <Route path="/" element={isAuthenticated ? <GameHub /> : <AuthPage />} />
+                <Route path="/play/santase" element={isAuthenticated ? <SantaseGame /> : <AuthPage />} />
+                <Route path="/play/tabla" element={isAuthenticated ? <TablaGame /> : <AuthPage />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </div>
