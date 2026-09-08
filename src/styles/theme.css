@@ -120,7 +120,10 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html, body, #root { height: 100%; width: 100%; }
+html, body { height: 100%; width: 100%; }
+/* min-height, not height: the shell is in normal flow so it has to be able to
+   grow past the viewport when a form is taller than the screen. */
+#root { min-height: 100%; width: 100%; }
 
 body {
     margin: 0;
@@ -185,6 +188,15 @@ code, kbd, samp { font-family: var(--font-mono); }
     background: var(--felt);
     overflow-y: auto;
     overscroll-behavior: contain;
+}
+
+/* Form pages use this instead of the pinned .screen: it grows with its content
+   so the document scrolls and the browser can bring a focused input above the
+   on-screen keyboard. */
+.screen--flow {
+    position: static;
+    min-height: 100dvh;
+    height: auto;
 }
 
 .stack { display: flex; flex-direction: column; }
@@ -1005,7 +1017,8 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* Dice: a 3x3 pip grid, never the unicode faces — those render wildly
    differently across Android and iOS. */
 .die {
-    width: clamp(34px, 11vw, 46px);
+    flex: 0 0 auto;
+    width: clamp(38px, 12vw, 50px);
     aspect-ratio: 1;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
@@ -1022,6 +1035,16 @@ code, kbd, samp { font-family: var(--font-mono); }
     background: var(--text-on-light);
 }
 .die--used { opacity: .32; }
+/* Fallback face when a value is not 1..6, so a die is never blank. */
+.die--numeric {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    color: var(--text-on-light);
+    font-family: var(--font-display);
+    font-size: 60%;
+    font-weight: 700;
+}
 
 .tabla-hud {
     display: flex;

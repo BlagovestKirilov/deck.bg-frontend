@@ -273,23 +273,6 @@ const TablaGame: React.FC = () => {
                                 : (iWon ? 'Победа!' : `${state.winnerUsername} спечели.`)}
                         </p>
 
-                        {state.resultKind && state.resultKind !== 'SINGLE' && (
-                            <span className="badge badge--success">{RESULT_TEXT[state.resultKind]}</span>
-                        )}
-
-                        {state.serverSeed && (
-                            <details style={{ width: '100%', textAlign: 'left' }}>
-                                <summary style={{ cursor: 'pointer', color: 'var(--text-3)', fontSize: 'var(--fs-xs)' }}>
-                                    Проверка на заровете
-                                </summary>
-                                <p style={seedText}>
-                                    Отпечатък: {state.serverSeedHash}
-                                </p>
-                                <p style={seedText}>
-                                    Ключ: {state.serverSeed}
-                                </p>
-                            </details>
-                        )}
                     </div>
                 </Modal>
             )}
