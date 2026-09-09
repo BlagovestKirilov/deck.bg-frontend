@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import { authService } from '../api/authService';
 import Button from './ui/Button';
 import Field from './ui/Field';
@@ -24,6 +25,10 @@ const AuthPage: React.FC = () => {
     const [isForgotLoading, setIsForgotLoading] = useState(false);
 
     const { performAction, isLoading, error: serverError } = useAuth();
+
+    // Without this the password field sits behind the on-screen keyboard with
+    // nothing able to scroll on iOS and in the WebView.
+    useKeyboardInset();
 
     const usernameRef = useRef<HTMLInputElement>(null);
     const emailRef = useRef<HTMLInputElement>(null);
@@ -107,6 +112,30 @@ const AuthPage: React.FC = () => {
 
         return next;
     };
+
+    /**
+     * The fields in tab order for the current mode.
+     *
+     * The phone keyboard's action key submits the form by default, so typing a
+     * username and pressing it fired the whole login or registration with the
+     * rest of the form empty. Enter now walks this list instead, and only the
+     * last field submits.
+     */
+    const fieldOrder = isRegister
+        ? [usernameRef, emailRef, passwordRef, confirmRef]
+        : [usernameRef, passwordRef];
+
+    const onFieldKeyDown = (index: number) => (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key !== 'Enter') return;
+        const next = fieldOrder[index + 1];
+        if (!next) return;              // last field: let it submit
+        e.preventDefault();
+        next.current?.focus();
+    };
+
+    /** 'next' walks the form; only the final field offers 'go'. */
+    const enterHint = (index: number): 'next' | 'go' =>
+        index + 1 < fieldOrder.length ? 'next' : 'go';
 
     /** Puts the cursor in the first field that failed — no hunting. */
     const focusFirstError = (errs: Errors) => {
@@ -278,6 +307,8 @@ const AuthPage: React.FC = () => {
                             autoCapitalize="none"
                             autoCorrect="off"
                             spellCheck={false}
+                            enterKeyHint={enterHint(0)}
+                            onKeyDown={onFieldKeyDown(0)}
                             hint={isRegister ? '4–20 символа, латински букви и цифри.' : undefined}
                             required
                         />
@@ -296,6 +327,8 @@ const AuthPage: React.FC = () => {
                                 autoCapitalize="none"
                                 placeholder="example@mail.com"
                                 hint="Използва се само за потвърждение и възстановяване на парола."
+                                enterKeyHint={enterHint(1)}
+                                onKeyDown={onFieldKeyDown(1)}
                                 required
                             />
                         )}
@@ -310,6 +343,8 @@ const AuthPage: React.FC = () => {
                             error={errors.password}
                             autoComplete={isLogin ? 'current-password' : 'new-password'}
                             placeholder="••••••••"
+                            enterKeyHint={enterHint(isRegister ? 2 : 1)}
+                            onKeyDown={onFieldKeyDown(isRegister ? 2 : 1)}
                             required
                         />
 
@@ -324,6 +359,7 @@ const AuthPage: React.FC = () => {
                                 error={errors.confirmPassword}
                                 autoComplete="new-password"
                                 placeholder="••••••••"
+                                enterKeyHint="go"
                                 required
                             />
                         )}
@@ -352,6 +388,7 @@ const AuthPage: React.FC = () => {
                             autoComplete="email"
                             autoCapitalize="none"
                             placeholder="example@mail.com"
+                            enterKeyHint="go"
                             required
                         />
 

@@ -131,9 +131,9 @@ const Navbar: React.FC<{
     onLogout: () => void;
     onProfileClick: () => void;
     rank?: Rank;
-    wins?: number;
-    losses?: number;
-}> = ({username, onLogout, onProfileClick, rank = 'UNRANKED', wins = 0, losses = 0}) => {
+    /** Games still needed before the Santase rank is assigned. */
+    placementGamesRemaining?: number;
+}> = ({username, onLogout, onProfileClick, rank = 'UNRANKED', placementGamesRemaining = 0}) => {
     const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
 
     return (
@@ -142,7 +142,7 @@ const Navbar: React.FC<{
                 <Brand/>
 
                 <div style={{display: 'flex', alignItems: 'center', gap: 'var(--sp-2)'}}>
-                    <RankBadge rank={rank} size="small" wins={wins} losses={losses}/>
+                    <RankBadge rank={rank} size="small" placementGamesRemaining={placementGamesRemaining}/>
 
                     <button
                         type="button"
@@ -341,8 +341,7 @@ const SantaseGame: React.FC = () => {
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [showProfile, setShowProfile] = useState<boolean>(false);
     const [userRank, setUserRank] = useState<Rank>('UNRANKED');
-    const [userWins, setUserWins] = useState<number>(0);
-    const [userLosses, setUserLosses] = useState<number>(0);
+    const [placementLeft, setPlacementLeft] = useState<number>(0);
     const prevGameStateRef = useRef<GameState | null>(null);
     const profileFetchedRef = useRef<boolean>(false);
 
@@ -364,9 +363,11 @@ const SantaseGame: React.FC = () => {
     const fetchProfileInitial = async () => {
         try {
             const profile = await userService.getProfile();
-            setUserRank(profile.rank);
-            setUserWins(profile.santaseWins || 0);
-            setUserLosses(profile.santaseLosses || 0);
+            // Rank is per game now; this screen is Santase.
+            const santase = profile.stats?.SANTASE;
+            setUserRank(santase?.rank ?? profile.rank);
+            setPlacementLeft(santase?.placementGamesRemaining
+                ?? Math.max(0, 10 - (profile.santaseWins || 0) - (profile.santaseLosses || 0)));
 
             // Just save current rank to localStorage without checking for rank-up
             try {
@@ -383,20 +384,23 @@ const SantaseGame: React.FC = () => {
     const refreshProfileAndCheckRank = async () => {
         try {
             const profile = await userService.getProfile();
-            setUserRank(profile.rank);
-            setUserWins(profile.santaseWins || 0);
-            setUserLosses(profile.santaseLosses || 0);
+            // Rank is per game now; this screen is Santase.
+            const santase = profile.stats?.SANTASE;
+            setUserRank(santase?.rank ?? profile.rank);
+            setPlacementLeft(santase?.placementGamesRemaining
+                ?? Math.max(0, 10 - (profile.santaseWins || 0) - (profile.santaseLosses || 0)));
 
             try {
+                const current = santase?.rank ?? profile.rank;
                 const saved = (localStorage.getItem('lastSantaseRank') as Rank | null) || 'UNRANKED';
                 const savedVal = RANK_PRIORITY[saved] ?? 0;
-                const newVal = RANK_PRIORITY[profile.rank] ?? 0;
+                const newVal = RANK_PRIORITY[current] ?? 0;
                 if (newVal > savedVal && !rankPopupShownRef.current) {
                     rankPopupShownRef.current = true;
-                    setRankUpNewRank(profile.rank);
+                    setRankUpNewRank(current);
                     setShowRankUpModal(true);
                 }
-                localStorage.setItem('lastSantaseRank', profile.rank);
+                localStorage.setItem('lastSantaseRank', current);
             } catch (e) {
                 console.warn('Could not access localStorage for rank persistence', e);
             }

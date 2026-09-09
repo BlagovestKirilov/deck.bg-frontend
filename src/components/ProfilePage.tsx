@@ -1,14 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userService } from '../api/userService';
-import { ProfileResponse } from '../types/user.types';
+import { GameKey, GameStats, ProfileResponse } from '../types/user.types';
 import { useAuthContext } from '../context/AuthContext';
 import Modal from './ui/Modal';
 import Button from './ui/Button';
 import Field from './ui/Field';
 import Note from './ui/Note';
 import Icon from './ui/Icon';
-import RankBadge from './RankBadge';
+import GameStatsCard from './GameStatsCard';
 
 interface ProfilePageProps {
     username: string;
@@ -81,10 +81,34 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
         }
     }, [profile?.isEmailConfirmed]);
 
-    const wins = profile?.santaseWins ?? 0;
-    const losses = profile?.santaseLosses ?? 0;
-    const total = wins + losses;
-    const winPct = total > 0 ? Math.round((wins / total) * 100) : 0;
+    /**
+     * Rating and rank are per game, so the profile lists one card per game.
+     *
+     * `stats` is the current shape; the legacy top-level santaseWins/Losses are
+     * still read as a fallback so an older server does not blank the page.
+     */
+    const gameCards: { key: GameKey; title: string; icon: 'cards' | 'dice'; stats: GameStats }[] =
+        profile
+            ? ([
+                  { key: 'SANTASE' as const, title: 'Сантасе', icon: 'cards' as const },
+                  { key: 'TABLA' as const, title: 'Табла', icon: 'dice' as const },
+              ]
+                  .map((game) => {
+                      const stats = profile.stats?.[game.key]
+                          ?? (game.key === 'SANTASE'
+                              ? {
+                                    wins: profile.santaseWins ?? 0,
+                                    losses: profile.santaseLosses ?? 0,
+                                    rating: 0,
+                                    rank: profile.rank,
+                                    placementGamesRemaining: Math.max(
+                                        0, 10 - (profile.santaseWins ?? 0) - (profile.santaseLosses ?? 0)),
+                                }
+                              : null);
+                      return stats ? { ...game, stats } : null;
+                  })
+                  .filter(Boolean) as { key: GameKey; title: string; icon: 'cards' | 'dice'; stats: GameStats }[])
+            : [];
 
     /* ---------------- email confirmation ---------------- */
 
@@ -245,7 +269,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                         {/* identity */}
                         <div style={identityStyle}>
                             <h3 style={usernameStyle}>{username}</h3>
-                            <RankBadge rank={profile.rank} size="medium" wins={wins} losses={losses} />
                         </div>
 
                         {/* email confirmation state */}
@@ -270,37 +293,17 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                             {resendMessage && <Note tone={resendMessage.tone}>{resendMessage.text}</Note>}
                         </div>
 
-                        {/* stats */}
-                        <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
-                            <div className="stat">
-                                <div className="stat__value">{wins}</div>
-                                <div className="stat__label">Победи</div>
-                            </div>
-                            <div className="stat">
-                                <div className="stat__value">{losses}</div>
-                                <div className="stat__label">Загуби</div>
-                            </div>
-                            <div className="stat">
-                                <div className="stat__value">{total}</div>
-                                <div className="stat__label">Игри</div>
-                            </div>
+                        {/* stats — one card per game, each with its own rank */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                            {gameCards.map((game) => (
+                                <GameStatsCard
+                                    key={game.key}
+                                    title={game.title}
+                                    icon={game.icon}
+                                    stats={game.stats}
+                                />
+                            ))}
                         </div>
-
-                        {total > 0 && (
-                            <div>
-                                <div className="ratio" role="img" aria-label={`Победи ${wins}, загуби ${losses}, ${winPct}% успеваемост`}>
-                                    <div className="ratio__win" style={{ width: `${winPct}%` }} />
-                                    <div className="ratio__loss" style={{ width: `${100 - winPct}%` }} />
-                                </div>
-                                <div style={ratioLabelsStyle}>
-                                    <span style={{ color: 'var(--success)', fontWeight: 700 }}>{winPct}% победи</span>
-                                    <span style={{ color: 'var(--text-3)' }}>{total} изиграни</span>
-                                    <span style={{ color: 'var(--danger-bright)', fontWeight: 700 }}>
-                                        {100 - winPct}% загуби
-                                    </span>
-                                </div>
-                            </div>
-                        )}
 
                         {/* account actions — same size; the rule above the
                             destructive one keeps it visually separated */}
@@ -490,14 +493,6 @@ const usernameStyle: React.CSSProperties = {
     fontWeight: 600,
     wordBreak: 'break-word',
     textAlign: 'center',
-};
-
-const ratioLabelsStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    gap: 'var(--sp-2)',
-    marginTop: 'var(--sp-2)',
-    fontSize: 'var(--fs-xs)',
 };
 
 const dividerStyle: React.CSSProperties = {

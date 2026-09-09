@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authService } from '../api/authService';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import Button from './ui/Button';
 import Field from './ui/Field';
 import Note from './ui/Note';
@@ -23,6 +24,16 @@ const ResetPassword: React.FC = () => {
 
     const newPwRef = useRef<HTMLInputElement>(null);
     const confirmPwRef = useRef<HTMLInputElement>(null);
+
+    useKeyboardInset();
+
+    // Enter moves to the confirmation field rather than submitting a half-typed
+    // form — the phone keyboard's action key does that by default.
+    const onNewPasswordKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        confirmPwRef.current?.focus();
+    };
 
     useEffect(() => {
         if (!token) {
@@ -141,6 +152,8 @@ const ResetPassword: React.FC = () => {
                         error={errors.newPassword}
                         hint="5–50 символа, латиница и цифри."
                         placeholder="••••••••"
+                        enterKeyHint="next"
+                        onKeyDown={onNewPasswordKeyDown}
                         required
                     />
 
@@ -154,6 +167,7 @@ const ResetPassword: React.FC = () => {
                         onChange={onChange('confirmPassword')}
                         error={errors.confirmPassword}
                         placeholder="••••••••"
+                        enterKeyHint="go"
                         required
                     />
 
