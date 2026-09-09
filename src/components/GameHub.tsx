@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
+import { userService } from '../api/userService';
+import { GameKey, GameStats } from '../types/user.types';
+import { RankMedal, rankName } from './RankBadge';
 import Brand from './ui/Brand';
 import Button from './ui/Button';
 import Icon, { IconName } from './ui/Icon';
@@ -8,7 +11,7 @@ import Modal from './ui/Modal';
 import ProfilePage from './ProfilePage';
 
 interface GameCard {
-    key: string;
+    key: GameKey;
     title: string;
     tagline: string;
     icon: IconName;
@@ -18,7 +21,7 @@ interface GameCard {
 
 const GAMES: GameCard[] = [
     {
-        key: 'santase',
+        key: 'SANTASE',
         title: 'Сантасе 66',
         tagline: 'Класическо Сантасе срещу реални опоненти',
         icon: 'cards',
@@ -26,7 +29,7 @@ const GAMES: GameCard[] = [
         path: '/play/santase',
     },
     {
-        key: 'tabla',
+        key: 'TABLA',
         title: 'Табла',
         tagline: 'Класическа табла срещу реални опоненти',
         icon: 'dice',
@@ -45,6 +48,24 @@ const GameHub: React.FC = () => {
     const [showProfile, setShowProfile] = useState(false);
     const [confirmLogout, setConfirmLogout] = useState(false);
     const username = user?.username ?? '';
+
+    // Each game is rated separately, so the picker shows the record for that
+    // game rather than one account-wide number.
+    const [stats, setStats] = useState<Partial<Record<GameKey, GameStats>> | null>(null);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        userService
+            .getProfile(controller.signal)
+            .then((profile) => {
+                if (!controller.signal.aborted) setStats(profile.stats ?? {});
+            })
+            .catch(() => {
+                // A missing record just means the cards show no rank line; the
+                // hub must still be usable offline or on an older server.
+            });
+        return () => controller.abort();
+    }, []);
 
     return (
         <main className="screen" style={{ alignItems: 'flex-start' }}>
@@ -105,6 +126,8 @@ const GameHub: React.FC = () => {
                             <span style={{ color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
                                 {game.tagline}
                             </span>
+
+                            {stats?.[game.key] && <GameRecord stats={stats[game.key]!} />}
                         </button>
                     ))}
                 </div>
@@ -128,6 +151,31 @@ const GameHub: React.FC = () => {
                 </Modal>
             )}
         </main>
+    );
+};
+
+/**
+ * The rank line on a game card. Purely presentational — the card itself is the
+ * button, so this must not contain one.
+ */
+const GameRecord: React.FC<{ stats: GameStats }> = ({ stats }) => {
+    const { wins, losses, rating, rank, placementGamesRemaining } = stats;
+    const inPlacement = placementGamesRemaining > 0;
+
+    return (
+        <span className="hub-record">
+            <RankMedal rank={rank} size="small" />
+            <span className="hub-record__text">
+                <span className="hub-record__rank">
+                    {inPlacement
+                        ? `Още ${placementGamesRemaining} ${placementGamesRemaining === 1 ? 'игра' : 'игри'} до ранг`
+                        : `${rankName(rank)} · ${rating}`}
+                </span>
+                <span className="hub-record__wl tabular">
+                    {wins}–{losses}
+                </span>
+            </span>
+        </span>
     );
 };
 
