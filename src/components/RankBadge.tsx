@@ -4,8 +4,12 @@ import { Rank } from '../types/user.types';
 interface RankBadgeProps {
     rank: Rank;
     size?: 'small' | 'medium' | 'large';
-    wins?: number;
-    losses?: number;
+    /**
+     * Games still needed before a rank is assigned. Comes from the server,
+     * which owns the placement threshold — the badge used to hardcode 10 and
+     * derive it from wins + losses, which is wrong the moment that changes.
+     */
+    placementGamesRemaining?: number;
 }
 
 const RANK_CONFIG: Record<Rank, { name: string; borderColor: string; glowColor: string; textColor: string; image: string }> = {
@@ -67,21 +71,60 @@ const SIZE: Record<NonNullable<RankBadgeProps['size']>, string> = {
     large: 'clamp(70px, 18vw, 96px)',
 };
 
+/** Bulgarian name of a rank, for labels outside the badge. */
+export const rankName = (rank: Rank): string => RANK_CONFIG[rank].name;
+
+/**
+ * The medal on its own — no button, no tooltip.
+ *
+ * Needed wherever a rank is shown inside something already interactive (the
+ * game hub's cards are buttons), where nesting the full badge would produce
+ * invalid, unfocusable markup.
+ */
+export const RankMedal: React.FC<{ rank: Rank; size?: RankBadgeProps['size']; alt?: string }> = ({
+    rank,
+    size = 'small',
+    alt = '',
+}) => {
+    const config = RANK_CONFIG[rank];
+    const dimension = SIZE[size];
+    return (
+        <img
+            src={config.image}
+            alt={alt}
+            aria-hidden={alt ? undefined : true}
+            width={44}
+            height={44}
+            loading="lazy"
+            decoding="async"
+            style={{
+                width: dimension,
+                height: dimension,
+                objectFit: 'contain',
+                display: 'block',
+                flex: '0 0 auto',
+                filter: rank === 'LEGEND'
+                    ? `drop-shadow(0 0 8px ${config.glowColor})`
+                    : 'drop-shadow(0 2px 4px rgba(0,0,0,0.35))',
+            }}
+        />
+    );
+};
+
 /**
  * Rank medal with a label on hover (pointer) or tap/Enter (touch, keyboard).
  * It is a real <button> so the label is reachable without a mouse — the old
  * version was a div that only responded to hover.
  */
-const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', wins = 0, losses = 0 }) => {
+const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', placementGamesRemaining = 0 }) => {
     const [open, setOpen] = useState(false);
     const wrapRef = useRef<HTMLDivElement>(null);
     const config = RANK_CONFIG[rank];
     const isLegend = rank === 'LEGEND';
 
-    const gamesLeft = Math.max(0, 10 - wins - losses);
     const label =
         rank === 'UNRANKED'
-            ? `Рангът ще бъде отключен след ${gamesLeft} ${gamesLeft === 1 ? 'игра' : 'игри'}`
+            ? `Рангът ще бъде отключен след ${placementGamesRemaining} ${placementGamesRemaining === 1 ? 'игра' : 'игри'}`
             : config.name;
 
     // Tap anywhere else closes the label on touch devices.

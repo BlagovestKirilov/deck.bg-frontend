@@ -193,10 +193,32 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* Form pages use this instead of the pinned .screen: it grows with its content
    so the document scrolls and the browser can bring a focused input above the
    on-screen keyboard. */
+/* Form pages: normal flow, so the document itself scrolls. The extra bottom
+   padding is the height of the on-screen keyboard (see useKeyboardInset); it is
+   what makes the page taller than the visible area on iOS and in the Capacitor
+   WebView, where the layout viewport does not shrink on its own. */
+/* Form pages: normal flow, so the DOCUMENT scrolls.
+   `.screen` is a pinned, viewport-tall scroll container (`overflow-y: auto`)
+   with `overscroll-behavior: contain`. Inheriting that was the real reason a
+   focused username field left the password unreachable: the page could never
+   grow, so the browser had nothing to scroll to lift the field above the
+   keyboard, and the contained overscroll stopped the gesture from chaining out.
+   Both are reset here, and the bottom padding is the keyboard's own height
+   (see useKeyboardInset) so the document is genuinely taller than the screen. */
 .screen--flow {
     position: static;
-    min-height: 100dvh;
+    /* The keyboard's height is ADDED to the minimum, not just padded inside it.
+       A short form is smaller than one viewport, so padding alone left the
+       document exactly 100dvh tall with zero scroll range — and a field the
+       keyboard covered still could not be lifted. With this the page is always
+       taller than the screen by exactly the keyboard, which is all the room the
+       browser needs to scroll any field into view. */
+    min-height: calc(100dvh + var(--kb-inset, 0px));
     height: auto;
+    overflow: visible;
+    overscroll-behavior: auto;
+    padding-bottom: calc(var(--sp-6) + var(--sa-bottom) + var(--kb-inset, 0px));
+    scroll-padding-bottom: var(--kb-inset, 0px);
 }
 
 .stack { display: flex; flex-direction: column; }
@@ -542,6 +564,98 @@ code, kbd, samp { font-family: var(--font-mono); }
 }
 .badge--success { background: var(--success-wash); color: var(--success); }
 .badge--danger  { background: var(--danger-wash);  color: var(--danger-bright); }
+
+/* The rank line on a game-hub card. */
+.hub-record {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--r-pill);
+    background: rgba(255, 255, 255, .05);
+    border: 1px solid var(--line);
+}
+.hub-record__text {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    min-width: 0;
+}
+.hub-record__rank {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: .04em;
+    color: var(--text-2);
+}
+.hub-record__wl {
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--gold);
+}
+
+/* =====================================================================
+   Per-game record card (profile)
+   One per game, because rating and rank are tracked per game.
+   ===================================================================== */
+
+.game-stats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding: var(--sp-4);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--r-lg);
+}
+.game-stats__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    min-width: 0;
+}
+.game-stats__title {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
+    font-family: var(--font-display);
+    font-size: var(--fs-md);
+    font-weight: 700;
+    color: var(--text-1);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.game-stats__rank {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex: 0 0 auto;
+}
+.game-stats__rating {
+    font-family: var(--font-display);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--gold);
+}
+.game-stats__row {
+    display: flex;
+    gap: var(--sp-3);
+}
+.game-stats__legend {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+    font-size: var(--fs-xs);
+}
+.game-stats__empty {
+    font-size: var(--fs-xs);
+    color: var(--text-3);
+    text-align: center;
+}
 
 .stat {
     flex: 1;
