@@ -34,6 +34,8 @@ const TablaGame: React.FC = () => {
     const [myColor, setMyColor] = useCheckerColor();
     /** Up while a blocked roll is being acknowledged. */
     const [showPass, setShowPass] = useState(false);
+    /** Leaving forfeits the game, so it is confirmed first — as in Сантасе. */
+    const [confirmLeave, setConfirmLeave] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState(TURN_SECONDS);
@@ -315,7 +317,7 @@ const TablaGame: React.FC = () => {
                 <button
                     type="button"
                     className="round-btn round-btn--danger"
-                    onClick={() => void leaveGame().then(() => navigate('/'))}
+                    onClick={() => setConfirmLeave(true)}
                     aria-label="Напусни играта"
                 >
                     <Icon name="x" size={20} />
@@ -373,7 +375,8 @@ const TablaGame: React.FC = () => {
                             />
                             {state.die1 === state.die2 && (
                                 <span className="badge badge--success">
-                                    ×{state.remainingDice.length} останали
+                                    ×{state.remainingDice.length}
+                                    <span className="phone-hide"> останали</span>
                                 </span>
                             )}
                         </>
@@ -381,6 +384,7 @@ const TablaGame: React.FC = () => {
 
                     {canRoll && (
                         <Button variant="primary" icon="dice" loading={busy}
+                                aria-label="Хвърли заровете"
                                 onClick={() => void guard(tablaService.roll)}>
                             Хвърли
                         </Button>
@@ -390,6 +394,7 @@ const TablaGame: React.FC = () => {
                         this is pressed every hop can still be taken back. */}
                     {state.mustConfirm && (
                         <Button variant="primary" icon="check" loading={busy}
+                                aria-label="Потвърди хода"
                                 onClick={() => void guard(tablaService.confirm)}>
                             Потвърди
                         </Button>
@@ -397,18 +402,50 @@ const TablaGame: React.FC = () => {
 
                     {canUndo && (
                         <Button variant="ghost" icon="arrowLeft" disabled={busy}
+                                aria-label="Върни последния ход"
                                 onClick={() => void guard(tablaService.undo)}>
                             Върни
                         </Button>
                     )}
 
                     {state.noMovesAvailable && state.isOnTurn && (
-                        <Button variant="primary" icon="check" loading={busy} onClick={passNow}>
+                        <Button variant="primary" icon="check" loading={busy}
+                                aria-label="Почиваш — предай реда"
+                                onClick={passNow}>
                             Почиваш
                         </Button>
                     )}
                 </div>
             </div>
+
+            {confirmLeave && (
+                <Modal
+                    title="Напускане на играта"
+                    width="narrow"
+                    tone="danger"
+                    onClose={() => setConfirmLeave(false)}
+                    actions={
+                        <>
+                            <Button variant="ghost" onClick={() => setConfirmLeave(false)}>
+                                Отказ
+                            </Button>
+                            <Button
+                                variant="danger"
+                                onClick={() => {
+                                    setConfirmLeave(false);
+                                    void leaveGame().then(() => navigate('/'));
+                                }}
+                            >
+                                Потвърди
+                            </Button>
+                        </>
+                    }
+                >
+                    <p style={{ color: 'var(--text-2)' }}>
+                        Сигурни ли сте, че искате да напуснете играта? Играта се брои за загубена.
+                    </p>
+                </Modal>
+            )}
 
             {showPass && !state.winnerUsername && (
                 <Modal
