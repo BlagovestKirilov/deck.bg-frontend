@@ -59,7 +59,7 @@ const Button: React.FC<ButtonProps> = ({
         >
             <span className={loading ? 'btn__label--loading' : undefined} style={contentStyle}>
                 {icon && <Icon name={icon} />}
-                {children}
+                {children != null && <span className="btn__label">{children}</span>}
                 {iconAfter && <Icon name={iconAfter} />}
             </span>
             {loading && (

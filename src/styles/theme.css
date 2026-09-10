@@ -1331,7 +1331,22 @@ code, kbd, samp { font-family: var(--font-mono); }
 @media (max-width: 560px) {
     .tabla-board { max-width: 100%; border-radius: var(--r-md); }
     .tabla-hud { padding: var(--sp-1) var(--sp-2); }
-    .tabla-actions { gap: var(--sp-2); }
+
+    /* The action row must stay a single line. When Върни wrapped onto a second
+       row the row grew, the board shrank to fit, and the whole table jumped
+       every time a move was played. Labels go; the icons and each button's
+       aria-label carry the meaning. */
+    .tabla-actions {
+        gap: var(--sp-2);
+        flex-wrap: nowrap;
+    }
+    .tabla-actions .btn__label { display: none; }
+    .tabla-actions .btn {
+        flex: 0 0 auto;
+        padding-inline: 0;
+        width: var(--tap);
+    }
+    .phone-hide { display: none; }
 }
 
 /* Short landscape screens have less room above and below the board. */
