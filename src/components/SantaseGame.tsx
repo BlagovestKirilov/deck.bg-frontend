@@ -8,11 +8,9 @@ import {userService} from '../api/userService';
 import {Card, GameState, Suit} from '../types/game.types';
 import {Rank} from '../types/user.types';
 import ProfilePage from './ProfilePage';
-import RankBadge from './RankBadge';
 import RankIcon, { getRankLabel } from './RankIcon';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
-import Brand from './ui/Brand';
 import Modal from './ui/Modal';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
 
@@ -124,92 +122,6 @@ const CardComponent: React.FC<{
             {face}
         </button>
     );
-};
-
-const Navbar: React.FC<{
-    username: string;
-    onLogout: () => void;
-    onProfileClick: () => void;
-    rank?: Rank;
-    /** Games still needed before the Santase rank is assigned. */
-    placementGamesRemaining?: number;
-}> = ({username, onLogout, onProfileClick, rank = 'UNRANKED', placementGamesRemaining = 0}) => {
-    const [showLogoutConfirm, setShowLogoutConfirm] = React.useState(false);
-
-    return (
-        <>
-            <nav style={navStyle}>
-                <Brand/>
-
-                <div style={{display: 'flex', alignItems: 'center', gap: 'var(--sp-2)'}}>
-                    <RankBadge rank={rank} size="small" placementGamesRemaining={placementGamesRemaining}/>
-
-                    <button
-                        type="button"
-                        onClick={onProfileClick}
-                        style={navUserStyle}
-                        aria-label={`Отвори профила на ${username}`}
-                    >
-                        <Icon name="user" size={20}/>
-                        <span className="truncate" style={{maxWidth: '12ch', fontWeight: 700}}>{username}</span>
-                    </button>
-
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        icon="logout"
-                        onClick={() => setShowLogoutConfirm(true)}
-                        aria-label="Изход от профила"
-                    >
-                        <span className="nav-label">ИЗХОД</span>
-                    </Button>
-                </div>
-            </nav>
-
-            {showLogoutConfirm && (
-                <Modal
-                    title="Изход от профила"
-                    width="narrow"
-                    onClose={() => setShowLogoutConfirm(false)}
-                    actions={
-                        <>
-                            <Button variant="ghost" onClick={() => setShowLogoutConfirm(false)}>Отказ</Button>
-                            <Button variant="danger" onClick={onLogout}>Изход</Button>
-                        </>
-                    }
-                >
-                    <p style={{color: 'var(--text-2)'}}>Сигурни ли сте, че искате да излезете?</p>
-                </Modal>
-            )}
-        </>
-    );
-};
-
-const navStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 'var(--sp-3)',
-    width: '100%',
-    minHeight: 'clamp(56px, 12vw, 68px)',
-    padding: 'calc(var(--sa-top) + var(--sp-2)) calc(var(--sp-4) + var(--sa-right)) var(--sp-2) calc(var(--sp-4) + var(--sa-left))',
-    background: 'rgba(4, 12, 8, 0.82)',
-    backdropFilter: 'blur(14px)',
-    borderBottom: '1px solid var(--line)',
-    zIndex: 'var(--z-nav)' as unknown as number,
-    flexShrink: 0,
-};
-
-const navUserStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--sp-2)',
-    minHeight: 'var(--tap)',
-    padding: '0 var(--sp-3)',
-    borderRadius: 'var(--r-md)',
-    color: 'var(--text-1)',
-    fontSize: 'var(--fs-sm)',
-    transition: 'background-color var(--dur-fast) var(--ease-out)',
 };
 
 /** Confirm / acknowledge dialog used across the table. */
@@ -340,8 +252,6 @@ const SantaseGame: React.FC = () => {
     const {isMobile, isSmallMobile} = useLayout();
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [showProfile, setShowProfile] = useState<boolean>(false);
-    const [userRank, setUserRank] = useState<Rank>('UNRANKED');
-    const [placementLeft, setPlacementLeft] = useState<number>(0);
     const prevGameStateRef = useRef<GameState | null>(null);
     const profileFetchedRef = useRef<boolean>(false);
 
@@ -363,11 +273,6 @@ const SantaseGame: React.FC = () => {
     const fetchProfileInitial = async () => {
         try {
             const profile = await userService.getProfile();
-            // Rank is per game now; this screen is Santase.
-            const santase = profile.stats?.SANTASE;
-            setUserRank(santase?.rank ?? profile.rank);
-            setPlacementLeft(santase?.placementGamesRemaining
-                ?? Math.max(0, 10 - (profile.santaseWins || 0) - (profile.santaseLosses || 0)));
 
             // Just save current rank to localStorage without checking for rank-up
             try {
@@ -386,9 +291,6 @@ const SantaseGame: React.FC = () => {
             const profile = await userService.getProfile();
             // Rank is per game now; this screen is Santase.
             const santase = profile.stats?.SANTASE;
-            setUserRank(santase?.rank ?? profile.rank);
-            setPlacementLeft(santase?.placementGamesRemaining
-                ?? Math.max(0, 10 - (profile.santaseWins || 0) - (profile.santaseLosses || 0)));
 
             try {
                 const current = santase?.rank ?? profile.rank;

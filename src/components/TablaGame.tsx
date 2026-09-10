@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { tablaService } from '../api/tablaService';
+import { isSessionExpired } from '../api/apiClient';
 import { useGameSession } from '../hooks/useGameSession';
-import { TablaState } from '../types/tabla.types';
+import { CheckerColor, ComboHop, TablaState } from '../types/tabla.types';
+import { useCheckerColor } from '../hooks/useCheckerColor';
 import TablaBoard, { Die } from './tabla/TablaBoard';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
@@ -29,6 +31,9 @@ const TablaGame: React.FC = () => {
     const username = user?.username ?? '';
 
     const [selected, setSelected] = useState<number | null>(null);
+    const [myColor, setMyColor] = useCheckerColor();
+    /** Up while a blocked roll is being acknowledged. */
+    const [showPass, setShowPass] = useState(false);
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState(TURN_SECONDS);
@@ -66,7 +71,13 @@ const TablaGame: React.FC = () => {
             await fn();
             if (label) setToast(label);
         } catch (err: any) {
-            setToast(err?.response?.data?.message ?? 'Нещо се обърка. Опитайте отново.');
+            // An expired token is not a failed move. The client refreshes and
+            // retries on its own, and if the session is really over the player
+            // is being sent to the login screen — either way "Нещо се обърка"
+            // tells them nothing and looks like the game broke.
+            if (!isSessionExpired(err)) {
+                setToast(err?.response?.data?.message ?? 'Нещо се обърка. Опитайте отново.');
+            }
         } finally {
             setBusy(false);
         }
@@ -80,6 +91,16 @@ const TablaGame: React.FC = () => {
 
     const handleMove = useCallback((from: number, die: number) => {
         void guard(() => tablaService.move(from, die));
+    }, [guard]);
+
+    // Both dice with one checker. Sent as the two hops it really is, in order,
+    // so the server needs no new endpoint and Върни still steps back one die at
+    // a time. The second hop is only sent once the first has been accepted.
+    const handleCombo = useCallback((combo: ComboHop) => {
+        void guard(async () => {
+            await tablaService.move(combo.from, combo.firstDie);
+            await tablaService.move(combo.via, combo.secondDie);
+        });
     }, [guard]);
 
     /* ---------------- turn clock ---------------- */
@@ -181,6 +202,45 @@ const TablaGame: React.FC = () => {
         return () => clearInterval(id);
     }, [state, reportTimeout, giveUp]);
 
+    /* ---------------- a blocked roll ---------------- */
+
+    /*
+     * A roll with no legal move used to pass the turn inside the same request,
+     * so the dice were wiped before either player could see them. The turn now
+     * stays open until it is acknowledged: both players get a moment with the
+     * dice on the table, and the prompt closes itself so nobody has to sit and
+     * wait for a tap.
+     */
+    const blocked = Boolean(state?.isOnTurn && state?.noMovesAvailable);
+
+    /** One pass per blocked roll, whoever sends it — the timer or the button. */
+    const passSentRef = useRef(false);
+
+    const passNow = useCallback(() => {
+        setShowPass(false);
+        if (passSentRef.current) return;
+        passSentRef.current = true;
+        void guard(tablaService.confirm);
+    }, [guard]);
+
+    // Held in a ref so the timer below can stay out of the effect's deps.
+    // `guard` is rebuilt every time `busy` flips, and depending on it restarted
+    // the timer mid-pass — which sent confirm a second time, after the turn had
+    // already moved on.
+    const passNowRef = useRef(passNow);
+    passNowRef.current = passNow;
+
+    useEffect(() => {
+        if (!blocked) {
+            passSentRef.current = false;
+            setShowPass(false);
+            return undefined;
+        }
+        setShowPass(true);
+        const id = setTimeout(() => passNowRef.current(), 2600);
+        return () => clearTimeout(id);
+    }, [blocked]);
+
     /* ---------------- lobby ---------------- */
 
     if (!state) {
@@ -195,13 +255,15 @@ const TablaGame: React.FC = () => {
                         Класическа табла срещу реални опоненти
                     </p>
 
+                    <ColorChoice value={myColor} onChange={setMyColor} />
+
                     <Button
                         variant="primary"
                         size="lg"
                         block
                         loading={isSearching}
                         onClick={startSearch}
-                        style={{ marginTop: 'var(--sp-4)' }}
+                        style={{ marginTop: 'var(--sp-2)' }}
                     >
                         НОВА ИГРА
                     </Button>
@@ -266,6 +328,8 @@ const TablaGame: React.FC = () => {
                     selected={selected}
                     onSelect={setSelected}
                     onMove={handleMove}
+                    onCombo={handleCombo}
+                    myColor={myColor}
                 />
             </div>
 
@@ -338,11 +402,38 @@ const TablaGame: React.FC = () => {
                         </Button>
                     )}
 
-                    {state.noMovesAvailable && (
-                        <span className="badge badge--danger">Няма възможен ход</span>
+                    {state.noMovesAvailable && state.isOnTurn && (
+                        <Button variant="primary" icon="check" loading={busy} onClick={passNow}>
+                            Почиваш
+                        </Button>
                     )}
                 </div>
             </div>
+
+            {showPass && !state.winnerUsername && (
+                <Modal
+                    title="Почиваш"
+                    width="narrow"
+                    dismissOnScrim={false}
+                    actions={
+                        <Button variant="primary" size="lg" onClick={passNow}>
+                            ДОБРЕ
+                        </Button>
+                    }
+                >
+                    <div style={passBody}>
+                        {state.die1 != null && state.die2 != null && (
+                            <span className="tabla-actions" style={{ minHeight: 0 }}>
+                                <Die value={state.die1} />
+                                <Die value={state.die2} />
+                            </span>
+                        )}
+                        <p style={{ color: 'var(--text-2)' }}>
+                            С тези зарове нямате възможен ход. Редът минава към опонента.
+                        </p>
+                    </div>
+                </Modal>
+            )}
 
             {inWarning && !state.winnerUsername && (
                 <Modal
@@ -415,6 +506,46 @@ const tableStyle: React.CSSProperties = {
     padding: 'calc(var(--sa-top) + var(--sp-2)) var(--sp-2) calc(var(--sa-bottom) + var(--sp-2))',
     background: 'var(--felt)',
     overflow: 'hidden',
+};
+
+/**
+ * Which colour this player's checkers are drawn in.
+ *
+ * Local and cosmetic: the server still decides who moves first, so both players
+ * may pick white and each sees their own checkers white and the opponent's
+ * black. Kept in the lobby because that is where the choice is made calmly,
+ * before a clock is running.
+ */
+const ColorChoice: React.FC<{ value: CheckerColor; onChange: (next: CheckerColor) => void }> = ({
+    value,
+    onChange,
+}) => (
+    <div className="color-choice" role="radiogroup" aria-label="Цвят на вашите пулове">
+        <span className="color-choice__label">Твоите пулове</span>
+        <div className="color-choice__options">
+            {(['white', 'black'] as const).map((option) => (
+                <button
+                    key={option}
+                    type="button"
+                    role="radio"
+                    aria-checked={value === option}
+                    className={`color-choice__option ${value === option ? 'is-selected' : ''}`}
+                    onClick={() => onChange(option)}
+                >
+                    <span className={`checker checker--${option} color-choice__chip`} aria-hidden="true" />
+                    {option === 'white' ? 'Бели' : 'Черни'}
+                </button>
+            ))}
+        </div>
+    </div>
+);
+
+const passBody: React.CSSProperties = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 'var(--sp-4)',
+    textAlign: 'center',
 };
 
 const lobbyCard: React.CSSProperties = {
