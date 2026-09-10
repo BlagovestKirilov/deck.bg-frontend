@@ -1,5 +1,5 @@
 import React from 'react';
-import { BAR, Hop, OFF, Side, TablaState } from '../../types/tabla.types';
+import { BAR, CheckerColor, ComboHop, Hop, OFF, Side, TablaState } from '../../types/tabla.types';
 
 interface Props {
     state: TablaState;
@@ -7,6 +7,10 @@ interface Props {
     selected: number | null;
     onSelect: (from: number | null) => void;
     onMove: (from: number, die: number) => void;
+    /** Plays both dice with one checker. */
+    onCombo: (combo: ComboHop) => void;
+    /** Colour this player's own checkers are drawn in. */
+    myColor: CheckerColor;
 }
 
 /**
@@ -32,8 +36,12 @@ function screenSlot(point: number, side: Side): { col: number; row: number } {
 
 const MAX_VISIBLE = 5;
 
-const Checker: React.FC<{ side: Side; label?: string }> = ({ side, label }) => (
-    <span className={`checker checker--${side === 'WHITE' ? 'white' : 'black'}`} aria-hidden="true">
+/**
+ * `color` is how a checker is painted, which is now separate from which side it
+ * belongs to — that is what lets both players choose white for themselves.
+ */
+const Checker: React.FC<{ color: CheckerColor; label?: string }> = ({ color, label }) => (
+    <span className={`checker checker--${color}`} aria-hidden="true">
         {label}
     </span>
 );
@@ -70,14 +78,24 @@ export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }
     );
 };
 
-const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
+const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onCombo, myColor }) => {
     const { points, mySide, legalHops } = state;
-    const opponentSide: Side = mySide === 'WHITE' ? 'BLACK' : 'WHITE';
+    const comboHops = state.comboHops ?? [];
+    const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
+
+    /** How a canonical side is painted on this screen. */
+    const colorOf = (side: Side): CheckerColor => (side === mySide ? myColor : otherColor);
 
     const hopsFrom = (from: number) => legalHops.filter((h) => h.from === from);
+    const combosFrom = (from: number) => comboHops.filter((c) => c.from === from);
     const movableOrigins = new Set(legalHops.map((h) => h.from));
     const targets: Hop[] = selected === null ? [] : hopsFrom(selected);
     const targetPoints = new Set(targets.map((h) => h.to));
+
+    // Squares reachable only by spending both dice. Marked apart from ordinary
+    // targets, because playing one commits two dice rather than one.
+    const comboTargets: ComboHop[] = selected === null ? [] : combosFrom(selected);
+    const comboByPoint = new Map(comboTargets.map((c) => [c.to, c]));
 
     /** My checkers are counted in my own direction; the array is canonical. */
     const occupancy = (point: number): { side: Side; count: number } | null => {
@@ -94,6 +112,14 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
             const hop = targets.find((h) => h.to === normalised);
             if (hop) {
                 onMove(hop.from, hop.die);
+                onSelect(null);
+                return;
+            }
+            // Single-die hops win where a square is reachable both ways: that is
+            // the smaller commitment, and the far square stays one tap away.
+            const combo = comboByPoint.get(normalised);
+            if (combo) {
+                onCombo(combo);
                 onSelect(null);
                 return;
             }
@@ -116,6 +142,8 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
         const occ = occupancy(canonicalPoint);
 
         const isLegalTarget = targetPoints.has(normalised);
+        const combo = comboByPoint.get(normalised);
+        const isComboTarget = !isLegalTarget && combo !== undefined;
         const isSource = selected === normalised;
         const isMovable = movableOrigins.has(normalised);
 
@@ -124,14 +152,17 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
             row === 2 ? 'tabla-point--bottom' : '',
             canonicalPoint % 2 === 0 ? 'tabla-point--dark' : 'tabla-point--light',
             isLegalTarget ? 'tabla-point--legal' : '',
+            isComboTarget ? 'tabla-point--combo' : '',
             isSource ? 'tabla-point--source' : '',
-            !isLegalTarget && !isSource && isMovable ? 'tabla-point--playable' : '',
+            !isLegalTarget && !isComboTarget && !isSource && isMovable ? 'tabla-point--playable' : '',
         ].filter(Boolean).join(' ');
 
-        const interactive = isMovable || isLegalTarget;
+        const interactive = isMovable || isLegalTarget || isComboTarget;
         const label = occ
             ? `Поле ${canonicalPoint}: ${occ.count} ${occ.side === mySide ? 'ваши' : 'на опонента'}`
-            : `Поле ${canonicalPoint}: празно`;
+            : isComboTarget
+              ? `Поле ${canonicalPoint}: празно, достижимо с двата зара (${combo!.firstDie} и ${combo!.secondDie})`
+              : `Поле ${canonicalPoint}: празно`;
 
         return (
             <button
@@ -147,7 +178,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
                     {occ && Array.from({ length: Math.min(occ.count, MAX_VISIBLE) }).map((_, i) => (
                         <Checker
                             key={i}
-                            side={occ.side}
+                            color={colorOf(occ.side)}
                             // Past five, the top checker carries the count so a tall
                             // stack never overflows its point.
                             label={i === MAX_VISIBLE - 1 && occ.count > MAX_VISIBLE
@@ -166,7 +197,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
         <div
             className="tabla-board"
             role="group"
-            aria-label={`Дъска за табла, играете с ${mySide === 'WHITE' ? 'белите' : 'черните'}`}
+            aria-label={`Дъска за табла, вашите пулове са ${myColor === 'white' ? 'бели' : 'черни'}`}
         >
             {Array.from({ length: 24 }).map((_, i) => renderPoint(i + 1))}
 
@@ -181,12 +212,12 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
                 aria-label={`Централна лента: ваши ${state.myBar}, на опонента ${state.opponentBar}`}
             >
                 {Array.from({ length: Math.min(state.opponentBar, 3) }).map((_, i) => (
-                    <Checker key={`ob${i}`} side={opponentSide} />
+                    <Checker key={`ob${i}`} color={otherColor} />
                 ))}
                 {Array.from({ length: Math.min(state.myBar, 3) }).map((_, i) => (
                     <Checker
                         key={`mb${i}`}
-                        side={mySide}
+                        color={myColor}
                         label={i === 2 && state.myBar > 3 ? String(state.myBar) : undefined}
                     />
                 ))}
@@ -206,13 +237,13 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove }) => {
                 aria-label={`Изведени пулове: ваши ${state.myOff} от 15, на опонента ${state.opponentOff} от 15`}
             >
                 <span className="tabla-off__side">
-                    <Checker side={opponentSide} />
+                    <Checker color={otherColor} />
                     <span className="tabla-off__count">
                         {state.opponentOff}<span className="tabla-off__total">/15</span>
                     </span>
                 </span>
                 <span className="tabla-off__side">
-                    <Checker side={mySide} />
+                    <Checker color={myColor} />
                     <span className="tabla-off__count" style={{ color: 'var(--gold)' }}>
                         {state.myOff}<span className="tabla-off__total">/15</span>
                     </span>
