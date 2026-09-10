@@ -66,12 +66,14 @@ const TablaGame: React.FC = () => {
 
     /* ---------------- actions ---------------- */
 
-    const guard = useCallback(async (fn: () => Promise<unknown>, label?: string) => {
-        if (busy) return;
+    /** Runs a table action. Returns false when it did not go through. */
+    const guard = useCallback(async (fn: () => Promise<unknown>, label?: string): Promise<boolean> => {
+        if (busy) return false;
         setBusy(true);
         try {
             await fn();
             if (label) setToast(label);
+            return true;
         } catch (err: any) {
             // An expired token is not a failed move. The client refreshes and
             // retries on its own, and if the session is really over the player
@@ -80,6 +82,7 @@ const TablaGame: React.FC = () => {
             if (!isSessionExpired(err)) {
                 setToast(err?.response?.data?.message ?? 'Нещо се обърка. Опитайте отново.');
             }
+            return false;
         } finally {
             setBusy(false);
         }
@@ -215,22 +218,30 @@ const TablaGame: React.FC = () => {
      */
     const blocked = Boolean(state?.isOnTurn && state?.noMovesAvailable);
 
-    /** One pass per blocked roll, whoever sends it — the timer or the button. */
+    /** One pass per blocked roll, whether the timer sends it or ДОБРЕ does. */
     const passSentRef = useRef(false);
 
-    const passNow = useCallback(() => {
+    const passNow = useCallback(async () => {
         setShowPass(false);
         if (passSentRef.current) return;
         passSentRef.current = true;
-        void guard(tablaService.confirm);
+
+        // If the pass never reached the server the turn is still ours. Put the
+        // prompt back rather than leaving the player on a board they cannot act
+        // on: ДОБРЕ is then the retry, and the error itself is in the toast.
+        const passed = await guard(tablaService.confirm);
+        if (!passed) {
+            passSentRef.current = false;
+            setShowPass(true);
+        }
     }, [guard]);
 
     // Held in a ref so the timer below can stay out of the effect's deps.
     // `guard` is rebuilt every time `busy` flips, and depending on it restarted
     // the timer mid-pass — which sent confirm a second time, after the turn had
     // already moved on.
-    const passNowRef = useRef(passNow);
-    passNowRef.current = passNow;
+    const passNowRef = useRef<() => void>(() => {});
+    passNowRef.current = () => void passNow();
 
     useEffect(() => {
         if (!blocked) {
@@ -384,6 +395,7 @@ const TablaGame: React.FC = () => {
 
                     {canRoll && (
                         <Button variant="primary" icon="dice" loading={busy}
+                                className="btn--keep-label"
                                 aria-label="Хвърли заровете"
                                 onClick={() => void guard(tablaService.roll)}>
                             Хвърли
@@ -405,14 +417,6 @@ const TablaGame: React.FC = () => {
                                 aria-label="Върни последния ход"
                                 onClick={() => void guard(tablaService.undo)}>
                             Върни
-                        </Button>
-                    )}
-
-                    {state.noMovesAvailable && state.isOnTurn && (
-                        <Button variant="primary" icon="check" loading={busy}
-                                aria-label="Почиваш — предай реда"
-                                onClick={passNow}>
-                            Почиваш
                         </Button>
                     )}
                 </div>
@@ -449,11 +453,11 @@ const TablaGame: React.FC = () => {
 
             {showPass && !state.winnerUsername && (
                 <Modal
-                    title="Почиваш"
+                    title="ПОЧИВАШ"
                     width="narrow"
                     dismissOnScrim={false}
                     actions={
-                        <Button variant="primary" size="lg" onClick={passNow}>
+                        <Button variant="primary" size="lg" onClick={() => void passNow()}>
                             ДОБРЕ
                         </Button>
                     }

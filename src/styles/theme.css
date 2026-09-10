@@ -1345,7 +1345,21 @@ code, kbd, samp { font-family: var(--font-mono); }
         flex: 0 0 auto;
         padding-inline: 0;
         width: var(--tap);
+        /* Pinned so a labelled button and an icon-only one are the same height.
+           Without this the row was 51px before the roll and 46px during a move,
+           and the board resized by those 5px the moment the dice appeared. */
+        height: var(--tap);
+        min-height: var(--tap);
     }
+
+    /* Only the buttons that share the row with another one lose their label.
+       Хвърли and Почиваш are each alone with the dice, so there is room for the
+       word and no reason to make the player decode an icon. */
+    .tabla-actions .btn--keep-label {
+        width: auto;
+        padding-inline: var(--sp-5);
+    }
+    .tabla-actions .btn--keep-label .btn__label { display: inline; }
     .phone-hide { display: none; }
 }
 
