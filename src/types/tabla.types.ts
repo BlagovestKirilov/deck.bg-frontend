@@ -7,6 +7,25 @@ export const BAR = 25;
 /** Pseudo-point for the off tray. */
 export const OFF = 0;
 
+/**
+ * Which colour the local player's own checkers are drawn in.
+ *
+ * Purely cosmetic and purely local: the canonical side (WHITE moves first) is
+ * unchanged, so both players may pick white and each still sees their own
+ * checkers white and the opponent's black.
+ */
+export type CheckerColor = 'white' | 'black';
+
+/** One checker playing both dice, offered as a single destination. */
+export interface ComboHop {
+    from: number;
+    /** The intermediate point — itself a legal landing square. */
+    via: number;
+    to: number;
+    firstDie: number;
+    secondDie: number;
+}
+
 export interface Hop {
     /** 1..24, or 25 for the bar. */
     from: number;
@@ -56,6 +75,8 @@ export interface TablaState {
     noMovesAvailable: boolean;
 
     legalHops: Hop[];
+    /** Destinations reachable by playing both dice with one checker. */
+    comboHops: ComboHop[];
     pendingHops: Hop[];
 
     winnerUsername?: string;
