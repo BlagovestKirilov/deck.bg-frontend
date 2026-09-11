@@ -87,10 +87,12 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
      * `stats` is the current shape; the legacy top-level santaseWins/Losses are
      * still read as a fallback so an older server does not blank the page.
      */
-    const gameCards: { key: GameKey; title: string; icon: 'cards' | 'dice'; stats: GameStats }[] =
+    const gameCards: {
+        key: GameKey; title: string; icon?: 'dice'; crest?: string; stats: GameStats;
+    }[] =
         profile
             ? ([
-                  { key: 'SANTASE' as const, title: 'Сантасе', icon: 'cards' as const },
+                  { key: 'SANTASE' as const, title: 'Сантасе', crest: '66' },
                   { key: 'TABLA' as const, title: 'Табла', icon: 'dice' as const },
               ]
                   .map((game) => {
@@ -99,7 +101,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                               ? {
                                     wins: profile.santaseWins ?? 0,
                                     losses: profile.santaseLosses ?? 0,
-                                    rating: 0,
                                     rank: profile.rank,
                                     placementGamesRemaining: Math.max(
                                         0, 10 - (profile.santaseWins ?? 0) - (profile.santaseLosses ?? 0)),
@@ -107,7 +108,9 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                               : null);
                       return stats ? { ...game, stats } : null;
                   })
-                  .filter(Boolean) as { key: GameKey; title: string; icon: 'cards' | 'dice'; stats: GameStats }[])
+                  .filter(Boolean) as {
+                      key: GameKey; title: string; icon?: 'dice'; crest?: string; stats: GameStats;
+                  }[])
             : [];
 
     /* ---------------- email confirmation ---------------- */
@@ -300,6 +303,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                                     key={game.key}
                                     title={game.title}
                                     icon={game.icon}
+                                    crest={game.crest}
                                     stats={game.stats}
                                 />
                             ))}
