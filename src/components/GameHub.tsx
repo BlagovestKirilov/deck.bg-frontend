@@ -159,7 +159,7 @@ const GameHub: React.FC = () => {
  * button, so this must not contain one.
  */
 const GameRecord: React.FC<{ stats: GameStats }> = ({ stats }) => {
-    const { wins, losses, rating, rank, placementGamesRemaining } = stats;
+    const { rank, placementGamesRemaining } = stats;
     const inPlacement = placementGamesRemaining > 0;
 
     return (
@@ -169,10 +169,7 @@ const GameRecord: React.FC<{ stats: GameStats }> = ({ stats }) => {
                 <span className="hub-record__rank">
                     {inPlacement
                         ? `Още ${placementGamesRemaining} ${placementGamesRemaining === 1 ? 'игра' : 'игри'} до ранг`
-                        : `${rankName(rank)} · ${rating}`}
-                </span>
-                <span className="hub-record__wl tabular">
-                    {wins}–{losses}
+                        : rankName(rank)}
                 </span>
             </span>
         </span>

@@ -5,19 +5,22 @@ import Icon, { IconName } from './ui/Icon';
 
 interface Props {
     title: string;
-    icon: IconName;
+    /** Shown when the game has no crest of its own. */
+    icon?: IconName;
+    /** A short mark — Сантасе is known by its 66, the same as on the hub. */
+    crest?: string;
     stats: GameStats;
 }
 
 /**
- * One game's record: rank, rating, W/L and the win ratio.
+ * One game's record: rank, W/L and the win ratio.
  *
- * Each game is rated separately, so the profile shows one of these per game
+ * Each game is ranked separately, so the profile shows one of these per game
  * rather than a single account-wide number — a Santase rank says nothing about
  * how someone plays табла.
  */
-const GameStatsCard: React.FC<Props> = ({ title, icon, stats }) => {
-    const { wins, losses, rating, rank, placementGamesRemaining } = stats;
+const GameStatsCard: React.FC<Props> = ({ title, icon, crest, stats }) => {
+    const { wins, losses, rank, placementGamesRemaining } = stats;
     const total = wins + losses;
     const winPct = total > 0 ? Math.round((wins / total) * 100) : 0;
     const inPlacement = placementGamesRemaining > 0;
@@ -26,16 +29,13 @@ const GameStatsCard: React.FC<Props> = ({ title, icon, stats }) => {
         <section className="game-stats" aria-label={`Статистика: ${title}`}>
             <header className="game-stats__head">
                 <span className="game-stats__title">
-                    <Icon name={icon} size={18} />
+                    {crest
+                        ? <span className="game-stats__crest">{crest}</span>
+                        : icon && <Icon name={icon} size={18} />}
                     {title}
                 </span>
 
                 <span className="game-stats__rank">
-                    {!inPlacement && (
-                        <span className="game-stats__rating tabular" title="Рейтинг">
-                            {rating}
-                        </span>
-                    )}
                     <RankBadge
                         rank={rank}
                         size="small"

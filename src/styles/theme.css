@@ -588,16 +588,11 @@ code, kbd, samp { font-family: var(--font-mono); }
     letter-spacing: .04em;
     color: var(--text-2);
 }
-.hub-record__wl {
-    font-family: var(--font-display);
-    font-size: var(--fs-xs);
-    font-weight: 700;
-    color: var(--gold);
-}
+
 
 /* =====================================================================
    Per-game record card (profile)
-   One per game, because rating and rank are tracked per game.
+   One per game, because a rank is earned per game.
    ===================================================================== */
 
 .game-stats {
@@ -634,11 +629,21 @@ code, kbd, samp { font-family: var(--font-mono); }
     gap: var(--sp-2);
     flex: 0 0 auto;
 }
-.game-stats__rating {
-    font-family: var(--font-display);
-    font-size: var(--fs-sm);
-    font-weight: 700;
+/* Сантасе is known by its 66 — the same mark the game hub uses, rather than a
+   generic card glyph that read as a copy icon. */
+.game-stats__crest {
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--gold-wash);
+    border: 1px solid var(--line-gold);
     color: var(--gold);
+    font-family: var(--font-display);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    letter-spacing: 0;
 }
 .game-stats__row {
     display: flex;

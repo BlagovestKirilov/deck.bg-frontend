@@ -7,7 +7,6 @@ export type GameKey = 'SANTASE' | 'TABLA';
 export interface GameStats {
     wins: number;
     losses: number;
-    rating: number;
     rank: Rank;
     /**
      * Games still needed before a rank is assigned. Sent by the server so the
