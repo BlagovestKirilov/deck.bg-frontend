@@ -629,21 +629,22 @@ code, kbd, samp { font-family: var(--font-mono); }
     gap: var(--sp-2);
     flex: 0 0 auto;
 }
-/* Сантасе is known by its 66 — the same mark the game hub uses, rather than a
-   generic card glyph that read as a copy icon. */
+/* Сантасе is known by its 66 — the same mark the game hub uses, rather than the
+   generic card glyph that read as a copy icon. Drawn in the title's own colour
+   at the same 18px as Табла's dice icon, so the two card headers read as the
+   same kind of mark; the gold pill this had at first made Сантасе look like the
+   more important of the two games. */
 .game-stats__crest {
-    display: grid;
+    display: inline-grid;
     place-items: center;
-    width: 26px;
-    height: 26px;
-    border-radius: 50%;
-    background: var(--gold-wash);
-    border: 1px solid var(--line-gold);
-    color: var(--gold);
+    min-width: 18px;
+    height: 18px;
+    color: inherit;
     font-family: var(--font-display);
-    font-size: var(--fs-xs);
+    font-size: 14px;
     font-weight: 700;
-    letter-spacing: 0;
+    line-height: 1;
+    letter-spacing: -.01em;
 }
 .game-stats__row {
     display: flex;
