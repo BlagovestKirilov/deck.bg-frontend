@@ -190,21 +190,21 @@ code, kbd, samp { font-family: var(--font-mono); }
     overscroll-behavior: contain;
 }
 
-/* Form pages use this instead of the pinned .screen: it grows with its content
-   so the document scrolls and the browser can bring a focused input above the
-   on-screen keyboard. */
-/* Form pages: normal flow, so the document itself scrolls. The extra bottom
-   padding is the height of the on-screen keyboard (see useKeyboardInset); it is
-   what makes the page taller than the visible area on iOS and in the Capacitor
-   WebView, where the layout viewport does not shrink on its own. */
-/* Form pages: normal flow, so the DOCUMENT scrolls.
+/* Screens that scroll the DOCUMENT rather than an inner box.
+
    `.screen` is a pinned, viewport-tall scroll container (`overflow-y: auto`)
-   with `overscroll-behavior: contain`. Inheriting that was the real reason a
-   focused username field left the password unreachable: the page could never
-   grow, so the browser had nothing to scroll to lift the field above the
-   keyboard, and the contained overscroll stopped the gesture from chaining out.
-   Both are reset here, and the bottom padding is the keyboard's own height
-   (see useKeyboardInset) so the document is genuinely taller than the screen. */
+   with `overscroll-behavior: contain`. Two screens cannot live with that:
+
+   - Forms, because the page could never grow, so the browser had nothing to
+     scroll and a focused field stayed stuck behind the on-screen keyboard.
+   - The hub, because `overscroll-behavior: contain` switches off pull-to-
+     refresh, and an inner scroller never chains the gesture out to the viewport
+     in the first place.
+
+   Both are reset here. The bottom padding is the keyboard's own height (see
+   useKeyboardInset), which is what makes the page genuinely taller than the
+   visible area on iOS and in the Capacitor WebView, where the layout viewport
+   does not shrink by itself. */
 .screen--flow {
     position: static;
     /* The keyboard's height is ADDED to the minimum, not just padded inside it.
@@ -669,14 +669,19 @@ code, kbd, samp { font-family: var(--font-mono); }
 .game-stats__crest {
     display: inline-grid;
     place-items: center;
-    min-width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
+    /* A ring in the inherited colour: it gives the number the weight of a mark
+       rather than two loose digits, without breaking the match with Табла's
+       dice icon — same colour, just a drawn edge. */
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
     color: inherit;
     font-family: var(--font-display);
-    font-size: 14px;
+    font-size: 11px;
     font-weight: 700;
     line-height: 1;
-    letter-spacing: -.01em;
+    letter-spacing: -.02em;
 }
 .game-stats__row {
     display: flex;
@@ -999,6 +1004,11 @@ code, kbd, samp { font-family: var(--font-mono); }
     .pcard--playable:hover { transform: none; }
 }
 
+/* Both header buttons keep the 44px minimum. `btn--sm` is 39px, which is fine
+   inline but too small for a thumb; the profile button used to reach 44 on its
+   own and lost it when the two were unified on one component. */
+.hub-nav .btn { min-height: var(--tap); }
+
 /* Logout label collapses to its icon on very narrow phones, but the button
    keeps its 44px hit area and its accessible name. */
 @media (max-width: 420px) {
@@ -1241,29 +1251,6 @@ code, kbd, samp { font-family: var(--font-mono); }
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
-
-/* The username opens the profile, so it has to look like something you press.
-   As a bare label beside a bordered ИЗХОД button it read as static text. */
-.user-chip {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    min-height: var(--tap);
-    padding: 0 var(--sp-3);
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    background: transparent;
-    color: var(--text-1);
-    font-size: var(--fs-sm);
-    cursor: pointer;
-    transition: border-color var(--dur-fast) var(--ease-out),
-                background-color var(--dur-fast) var(--ease-out);
-}
-.user-chip:hover {
-    border-color: var(--line-gold);
-    background: var(--gold-wash);
-}
-.user-chip:active { transform: scale(.98); }
 
 /* Choosing which colour your own checkers are drawn in. */
 .color-choice {
