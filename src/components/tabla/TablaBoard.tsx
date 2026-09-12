@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { BAR, CheckerColor, ComboHop, Hop, OFF, Side, TablaState } from '../../types/tabla.types';
 import { FACE_PLACEMENT } from '../../hooks/useDiceRoll';
+import { useHopAnimation } from '../../hooks/useHopAnimation';
 
 interface Props {
     state: TablaState;
@@ -132,6 +133,13 @@ export const PipDie: React.FC<{ color: CheckerColor }> = ({ color }) => (
 
 const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onCombo, myColor }) => {
     const { points, mySide, legalHops } = state;
+    const boardRef = useRef<HTMLDivElement>(null);
+
+    // Hops arrive in the mover's own frame, and the mover is the opponent
+    // whenever it is not my turn.
+    const moverSide: Side = state.isOnTurn ? mySide : (mySide === 'WHITE' ? 'BLACK' : 'WHITE');
+    useHopAnimation(boardRef, state.pendingHops ?? [], moverSide);
+
     const comboHops = state.comboHops ?? [];
     const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
 
@@ -220,6 +228,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
             <button
                 key={canonicalPoint}
                 type="button"
+                data-point={canonicalPoint}
                 className={classes}
                 style={{ gridColumn: col, gridRow: row }}
                 onClick={() => handlePoint(canonicalPoint)}
@@ -253,6 +262,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
 
     return (
         <div
+            ref={boardRef}
             className="tabla-board"
             role="group"
             aria-label={`Дъска за табла, вашите пулове са ${myColor === 'white' ? 'бели' : 'черни'}`}

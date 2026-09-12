@@ -7,6 +7,7 @@ import { useGameSession } from '../hooks/useGameSession';
 import { CheckerColor, ComboHop, TablaState } from '../types/tabla.types';
 import { useCheckerColor } from '../hooks/useCheckerColor';
 import { useDiceRoll } from '../hooks/useDiceRoll';
+import { HOP_MS } from '../hooks/useHopAnimation';
 import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
@@ -114,6 +115,14 @@ const TablaGame: React.FC = () => {
     const handleCombo = useCallback((combo: ComboHop) => {
         void guard(async () => {
             await tablaService.move(combo.from, combo.firstDie);
+            // Let the first hop finish before asking for the second, with a
+            // little room over: the move call returns when the server answers,
+            // while the slide only starts when its push arrives, so the two are
+            // not the same moment. Sent back-to-back the pushes land together
+            // and the checker appears to make one long jump — exactly the move
+            // the player cannot read, when the whole point of playing both dice
+            // with one checker is seeing where it stopped on the way.
+            await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
             await tablaService.move(combo.via, combo.secondDie);
         });
     }, [guard]);
