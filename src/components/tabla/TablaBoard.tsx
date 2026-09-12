@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useLayoutEffect, useRef } from 'react';
 import { BAR, CheckerColor, ComboHop, Hop, OFF, Side, TablaState } from '../../types/tabla.types';
 import { FACE_PLACEMENT } from '../../hooks/useDiceRoll';
 import { useHopAnimation } from '../../hooks/useHopAnimation';
@@ -87,8 +87,28 @@ export const Die: React.FC<{
     used?: boolean;
     rx?: number;
     ry?: number;
+    fromRx?: number;
+    fromRy?: number;
     lift?: number;
-}> = ({ value, used, rx = 0, ry = 0, lift = 0 }) => {
+}> = ({ value, used, rx = 0, ry = 0, fromRx = rx, fromRy = ry, lift = 0 }) => {
+    const cube = useRef<HTMLSpanElement>(null);
+
+    // The turn is driven here rather than left to React's inline style, so it
+    // does not depend on the browser having painted between two renders. The
+    // cube is put back where the last throw left it, the layout is forced so
+    // that position is real, and only then does it turn — which behaves the
+    // same on a fast machine and a slow phone.
+    useLayoutEffect(() => {
+        const el = cube.current;
+        if (!el) return;
+
+        el.style.transition = 'none';
+        el.style.transform = `rotateX(${fromRx}deg) rotateY(${fromRy}deg)`;
+        void el.offsetWidth;
+        el.style.transition = '';
+        el.style.transform = `rotateX(${rx}deg) rotateY(${ry}deg)`;
+    }, [rx, ry, fromRx, fromRy]);
+
     // A value outside 1..6 has no face on the cube; show it flat rather than
     // turning a blank box to the front.
     if (!PIP_SLOTS[value]) {
@@ -107,8 +127,9 @@ export const Die: React.FC<{
             aria-label={`Зар ${value}`}
         >
             <span
+                ref={cube}
                 className="die__cube"
-                style={{ transform: `rotateX(${rx}deg) rotateY(${ry}deg)` }}
+                style={{ transform: `rotateX(${fromRx}deg) rotateY(${fromRy}deg)` }}
             >
                 {[1, 2, 3, 4, 5, 6].map((face) => <Face key={face} value={face} />)}
             </span>
@@ -135,13 +156,20 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
     const { points, mySide, legalHops } = state;
     const boardRef = useRef<HTMLDivElement>(null);
 
+    const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
+
     // Hops arrive in the mover's own frame, and the mover is the opponent
     // whenever it is not my turn.
     const moverSide: Side = state.isOnTurn ? mySide : (mySide === 'WHITE' ? 'BLACK' : 'WHITE');
-    useHopAnimation(boardRef, state.pendingHops ?? [], moverSide);
+    useHopAnimation(
+        boardRef,
+        state.pendingHops ?? [],
+        moverSide,
+        moverSide === mySide ? myColor : otherColor,
+        moverSide === mySide ? otherColor : myColor,
+    );
 
     const comboHops = state.comboHops ?? [];
-    const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
 
     /** How a canonical side is painted on this screen. */
     const colorOf = (side: Side): CheckerColor => (side === mySide ? myColor : otherColor);
