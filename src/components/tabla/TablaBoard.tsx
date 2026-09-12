@@ -156,13 +156,20 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
     const { points, mySide, legalHops } = state;
     const boardRef = useRef<HTMLDivElement>(null);
 
+    const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
+
     // Hops arrive in the mover's own frame, and the mover is the opponent
     // whenever it is not my turn.
     const moverSide: Side = state.isOnTurn ? mySide : (mySide === 'WHITE' ? 'BLACK' : 'WHITE');
-    useHopAnimation(boardRef, state.pendingHops ?? [], moverSide);
+    useHopAnimation(
+        boardRef,
+        state.pendingHops ?? [],
+        moverSide,
+        moverSide === mySide ? myColor : otherColor,
+        moverSide === mySide ? otherColor : myColor,
+    );
 
     const comboHops = state.comboHops ?? [];
-    const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
 
     /** How a canonical side is painted on this screen. */
     const colorOf = (side: Side): CheckerColor => (side === mySide ? myColor : otherColor);
