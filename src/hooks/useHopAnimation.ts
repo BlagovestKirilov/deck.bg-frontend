@@ -135,19 +135,32 @@ function prefersReducedMotion(): boolean {
  * every move, so the waiting player sees each hop arrive rather than finding
  * the position rearranged when the turn ends.
  *
- * Only hops added since the last render are animated. An undo shortens the
- * list and a new turn empties it; neither is a move to draw.
+ * Only what changed since the last render is drawn: hops added are played
+ * forwards, hops taken back are played in reverse.
+ *
+ * The mover is remembered with them. Committing a turn empties the pending
+ * list at the same moment as the turn changes hands, and an emptied list on its
+ * own is indistinguishable from taking the last hop back — so without the mover
+ * a confirmed turn was read as an undo. Worse, hops are expressed in the
+ * mover's own frame, and that frame had already flipped to the other player, so
+ * the coordinates were converted the wrong way round and some unrelated
+ * checker — usually one of the opponent's — slid across the board.
  */
 export function useHopAnimation(
     boardRef: React.RefObject<HTMLElement | null>,
     pendingHops: Hop[],
     moverSide: Side,
 ): void {
-    const seen = useRef<Hop[]>([]);
+    const seen = useRef<{ hops: Hop[]; mover: Side }>({ hops: [], mover: moverSide });
 
     useLayoutEffect(() => {
-        const previous = seen.current;
-        seen.current = pendingHops;
+        const previous = seen.current.hops;
+        const sameTurn = seen.current.mover === moverSide;
+        seen.current = { hops: pendingHops, mover: moverSide };
+
+        // The turn changed hands. Whatever the pending list did, it was not a
+        // move within a turn, and its hops no longer mean what they say.
+        if (!sameTurn) return;
 
         if (prefersReducedMotion()) return;
 
