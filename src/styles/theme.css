@@ -1327,41 +1327,81 @@ code, kbd, samp { font-family: var(--font-mono); }
     flex: 0 0 auto;
 }
 
-/* Dice: a 3x3 pip grid, never the unicode faces — those render wildly
-   differently across Android and iOS. */
+/* Dice: a real cube with six faces, turned in 3D. Never the unicode faces —
+   those render wildly differently across Android and iOS. */
 .die {
     /* One length drives the whole die. Percentage padding and gap would resolve
        against the *action bar's* width, not the die's: that inflated the die to
        ~400px with a zero-width content box, which is why the pips were invisible
        and the faces looked like blank cream squares. */
     --die: clamp(36px, 11vw, 52px);
+    --die-half: calc(var(--die) / 2);
+    --lift: 0;
     flex: 0 0 auto;
     width: var(--die);
     height: var(--die);
+    /* The cube is small, so the vanishing point has to be close or the
+       perspective reads as a flat rotation. */
+    perspective: calc(var(--die) * 4);
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+/* The throw: up off the table and back down, while the cube turns. Transform
+   only, and the action row reserves its height, so nothing around it moves. */
+.die__cube {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    /* Decelerating, with a touch of overshoot at the end — a die that settles
+       rather than one that stops dead. */
+    transition:
+        transform 650ms cubic-bezier(.17, .84, .27, 1.03),
+        translate 260ms var(--ease-out);
+    translate: 0 calc(var(--lift) * var(--die) * -0.55);
+}
+
+.die__face {
+    position: absolute;
+    inset: 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
     gap: calc(var(--die) * .08);
     padding: calc(var(--die) * .14);
-    border-radius: var(--r-sm);
+    border-radius: calc(var(--die) * .16);
     background: linear-gradient(160deg, #fdfaf1, #e3d9c2);
-    box-shadow: var(--sh-1);
-    transition: opacity var(--dur-fast) var(--ease-out);
+    /* The cube has no lighting of its own, so the edges do the work of telling
+       one face from the next as it turns. */
+    box-shadow: inset 0 0 0 1px rgba(90, 70, 30, .28);
+    backface-visibility: hidden;
 }
+
 .die__pip {
     border-radius: 50%;
     background: var(--text-on-light);
 }
+
 .die--used { opacity: .32; }
+
 /* Fallback face when a value is not 1..6, so a die is never blank. */
 .die--numeric {
     display: grid;
     place-items: center;
     padding: 0;
+    border-radius: var(--r-sm);
+    background: linear-gradient(160deg, #fdfaf1, #e3d9c2);
+    box-shadow: var(--sh-1);
     color: var(--text-on-light);
     font-family: var(--font-display);
     font-size: calc(var(--die) * .6);
     font-weight: 700;
+}
+
+/* The cube still turns to the right face; it simply gets there at once. */
+@media (prefers-reduced-motion: reduce) {
+    .die__cube { transition: none; translate: none; }
 }
 
 .tabla-hud {

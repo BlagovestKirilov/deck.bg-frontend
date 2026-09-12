@@ -6,6 +6,7 @@ import { isSessionExpired } from '../api/apiClient';
 import { useGameSession } from '../hooks/useGameSession';
 import { CheckerColor, ComboHop, TablaState } from '../types/tabla.types';
 import { useCheckerColor } from '../hooks/useCheckerColor';
+import { useDiceRoll } from '../hooks/useDiceRoll';
 import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
@@ -66,6 +67,12 @@ const TablaGame: React.FC = () => {
 
     const session = useGameSession<TablaState>({ gameKey: 'tabla', username, api, onState });
     const { state, isConnected, isSearching, startSearch, leaveGame, finishAndReturn } = session;
+
+    // How far each cube has turned, and whether it is still in the air. The
+    // landing rotation comes from the server's values, so the animation cannot
+    // present a face that was not rolled. Above the early returns, like every
+    // other hook.
+    const diceRoll = useDiceRoll(state?.die1, state?.die2);
 
     /* ---------------- actions ---------------- */
 
@@ -390,13 +397,21 @@ const TablaGame: React.FC = () => {
                 <div className="tabla-actions">
                     {state.die1 != null && state.die2 != null && (
                         <>
-                            <Die value={state.die1} used={!state.remainingDice.includes(state.die1)} />
+                            <Die
+                                value={state.die1}
+                                {...diceRoll.dice[0]}
+                                // A die still in the air has not been spent yet.
+                                used={!diceRoll.airborne && !state.remainingDice.includes(state.die1)}
+                            />
                             <Die
                                 value={state.die2}
+                                {...diceRoll.dice[1]}
                                 used={
-                                    state.die1 === state.die2
-                                        ? state.remainingDice.length === 0
-                                        : !state.remainingDice.includes(state.die2)
+                                    diceRoll.airborne
+                                        ? false
+                                        : state.die1 === state.die2
+                                            ? state.remainingDice.length === 0
+                                            : !state.remainingDice.includes(state.die2)
                                 }
                             />
                             {state.die1 === state.die2 && (

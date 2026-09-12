@@ -1,5 +1,6 @@
 import React from 'react';
 import { BAR, CheckerColor, ComboHop, Hop, OFF, Side, TablaState } from '../../types/tabla.types';
+import { FACE_PLACEMENT } from '../../hooks/useDiceRoll';
 
 interface Props {
     state: TablaState;
@@ -56,12 +57,40 @@ const PIP_SLOTS: Record<number, number[]> = {
     6: [0, 2, 3, 5, 6, 8],
 };
 
-export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }) => {
-    const slots = PIP_SLOTS[value];
+/** One face of the cube: the pip grid for a single value. */
+const Face: React.FC<{ value: number }> = ({ value }) => (
+    <span className="die__face" style={{ transform: FACE_PLACEMENT[value] }}>
+        {PIP_SLOTS[value].map((slot) => (
+            <span
+                key={slot}
+                className="die__pip"
+                style={{ gridArea: `${Math.floor(slot / 3) + 1} / ${(slot % 3) + 1}` }}
+            />
+        ))}
+    </span>
+);
 
-    // Never render a blank face: if the value is somehow outside 1..6, show it
-    // as a number rather than an empty square.
-    if (!slots) {
+/**
+ * A die, as an actual cube.
+ *
+ * All six faces exist and are placed in 3D; a throw only turns the cube. That
+ * is why the animation can never show a value that was not rolled — the face
+ * brought forward is computed from the server's number, not chosen.
+ *
+ * @param value  the rolled value; always what is announced
+ * @param rx/ry  cube rotation in degrees, growing with every throw
+ * @param lift   1 at the top of the arc, 0 once it has come to rest
+ */
+export const Die: React.FC<{
+    value: number;
+    used?: boolean;
+    rx?: number;
+    ry?: number;
+    lift?: number;
+}> = ({ value, used, rx = 0, ry = 0, lift = 0 }) => {
+    // A value outside 1..6 has no face on the cube; show it flat rather than
+    // turning a blank box to the front.
+    if (!PIP_SLOTS[value]) {
         return (
             <span className={`die die--numeric ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
                 {value}
@@ -70,10 +99,18 @@ export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }
     }
 
     return (
-        <span className={`die ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
-            {slots.map((slot) => (
-                <span key={slot} className="die__pip" style={{ gridArea: `${Math.floor(slot / 3) + 1} / ${(slot % 3) + 1}` }} />
-            ))}
+        <span
+            className={`die ${used ? 'die--used' : ''}`}
+            style={{ '--lift': lift } as React.CSSProperties}
+            role="img"
+            aria-label={`Зар ${value}`}
+        >
+            <span
+                className="die__cube"
+                style={{ transform: `rotateX(${rx}deg) rotateY(${ry}deg)` }}
+            >
+                {[1, 2, 3, 4, 5, 6].map((face) => <Face key={face} value={face} />)}
+            </span>
         </span>
     );
 };
