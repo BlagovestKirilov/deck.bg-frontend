@@ -253,10 +253,21 @@ export function useHopAnimation(
             // Without this a move glided out and snapped back, which read as two
             // different kinds of event rather than one being undone.
             const undone = previous[pendingHops.length];
-            // Taking a hit back would have to bring a checker off the bar as
-            // well; only the mover's own checker is retraced.
+
+            // The mover's own checker, back where it set off from. isHit is
+            // cleared so the taken checker is not flown to the bar a second
+            // time — this is the reverse of that, not a repeat.
             slide(board, { ...undone, from: undone.to, to: undone.from, isHit: false },
                 moverSide, moverColor, victimColor);
+
+            // Taking a hit back is two movements, not one: the checker that was
+            // taken comes off the bar and stands on its point again. It is
+            // already back in the DOM there, so it is drawn at the bar and let
+            // go — the same treatment its attacker gets, rather than a copy.
+            if (undone.isHit) {
+                slide(board, { ...undone, from: BAR, to: undone.to, isHit: false },
+                    moverSide, victimColor, moverColor);
+            }
         }
     }, [pendingHops, moverSide, moverColor, victimColor, boardRef]);
 }
