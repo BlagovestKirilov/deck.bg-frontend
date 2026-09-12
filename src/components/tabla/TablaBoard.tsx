@@ -152,8 +152,8 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
     const targets: Hop[] = selected === null ? [] : hopsFrom(selected);
     const targetPoints = new Set(targets.map((h) => h.to));
 
-    // Squares reachable only by spending both dice. Marked apart from ordinary
-    // targets, because playing one commits two dice rather than one.
+    // Squares reachable only by spending several dice. Marked apart from
+    // ordinary targets, because playing one commits every die of the run.
     const comboTargets: ComboHop[] = selected === null ? [] : combosFrom(selected);
     const comboByPoint = new Map(comboTargets.map((c) => [c.to, c]));
 
@@ -221,7 +221,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
         const label = occ
             ? `Поле ${canonicalPoint}: ${occ.count} ${occ.side === mySide ? 'ваши' : 'на опонента'}`
             : isComboTarget
-              ? `Поле ${canonicalPoint}: празно, достижимо с двата зара (${combo!.firstDie} и ${combo!.secondDie})`
+              ? `Поле ${canonicalPoint}: празно, достижимо с ${combo!.dice.length} зара (${combo!.dice.join(', ')})`
               : `Поле ${canonicalPoint}: празно`;
 
         return (
@@ -229,6 +229,9 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
                 key={canonicalPoint}
                 type="button"
                 data-point={canonicalPoint}
+                // Read by the marker's ::after, so the cost is a number on the
+                // board and not only a colour the player has to learn.
+                data-combo={isComboTarget ? combo!.dice.length : undefined}
                 className={classes}
                 style={{ gridColumn: col, gridRow: row }}
                 onClick={() => handlePoint(canonicalPoint)}
@@ -296,10 +299,11 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
                 className={[
                     'tabla-off',
                     offLegal ? 'tabla-off--legal' : '',
-                    // Two dice to get out, marked like a two-dice square on the
-                    // board, so the cost is visible before the tap.
+                    // More than one die to get out, marked like a multi-dice
+                    // square on the board, so the cost is visible before the tap.
                     !offHop && offCombo ? 'tabla-off--combo' : '',
                 ].filter(Boolean).join(' ')}
+                data-combo={!offHop && offCombo ? offCombo.dice.length : undefined}
                 onClick={() => {
                     // One die where one will do; it is the smaller commitment.
                     if (offHop) {
@@ -317,7 +321,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
                     `Изведени пулове: ваши ${state.myOff} от 15, на опонента ${state.opponentOff} от 15`
                     + (offHop ? '. Може да изведете пул.' : '')
                     + (!offHop && offCombo
-                        ? `. Може да изведете пул с двата зара (${offCombo.firstDie} и ${offCombo.secondDie}).`
+                        ? `. Може да изведете пул с ${offCombo.dice.length} зара (${offCombo.dice.join(', ')}).`
                         : '')
                 }
             >

@@ -16,14 +16,19 @@ export const OFF = 0;
  */
 export type CheckerColor = 'white' | 'black';
 
-/** One checker playing both dice, offered as a single destination. */
+/**
+ * One checker playing several dice, offered as a single destination.
+ *
+ * Two is the common case; doubles give four, so a checker may spend three or
+ * all four in one tap.
+ */
 export interface ComboHop {
     from: number;
-    /** The intermediate point — itself a legal landing square. */
-    via: number;
     to: number;
-    firstDie: number;
-    secondDie: number;
+    /** The intermediate points, in order — each a legal landing square. */
+    vias: number[];
+    /** The dice spent, in the order they are played. One more than `vias`. */
+    dice: number[];
 }
 
 export interface Hop {

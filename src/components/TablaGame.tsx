@@ -124,23 +124,39 @@ const TablaGame: React.FC = () => {
         });
     }, [guard]);
 
-    // Both dice with one checker. Sent as the two hops it really is, in order,
+    // Several dice with one checker. Sent as the hops it really is, in order,
     // so the server needs no new endpoint and no new shape for a pending hop.
-    // The second hop is only sent once the first has been accepted, and the
-    // pair is recorded as one press so Върни takes them back together.
+    // Two is the common case; doubles give four, and a checker may spend three
+    // or all four. The run is recorded as one press so Върни takes it all back
+    // together.
     const handleCombo = useCallback((combo: ComboHop) => {
         void guard(async () => {
-            await tablaService.move(combo.from, combo.firstDie);
-            // Let the first hop finish before asking for the second, with a
-            // little room over: the move call returns when the server answers,
-            // while the slide only starts when its push arrives, so the two are
-            // not the same moment. Sent back-to-back the pushes land together
-            // and the checker appears to make one long jump — exactly the move
-            // the player cannot read, when the whole point of playing both dice
+            // from -> vias[0] -> ... -> to, one die at each step.
+            const stops = [combo.from, ...combo.vias];
+
+            // Each hop waits for the one before it to finish, with a little
+            // room over: the move call returns when the server answers, while
+            // the slide only starts when its push arrives, so the two are not
+            // the same moment. Sent back-to-back the pushes land together and
+            // the checker appears to make one long jump — exactly the move the
+            // player cannot read, when the whole point of spending several dice
             // with one checker is seeing where it stopped on the way.
-            await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
-            await tablaService.move(combo.via, combo.secondDie);
-            pressSizes.current.push(2);
+            let landed = 0;
+            try {
+                for (let i = 0; i < combo.dice.length; i += 1) {
+                    if (i > 0) {
+                        await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
+                    }
+                    // Each hop is only sent once the one before it was accepted.
+                    await tablaService.move(stops[i], combo.dice[i]);
+                    landed += 1;
+                }
+            } finally {
+                // What is on the board, not what was asked for. If a hop is
+                // refused part way the earlier ones are still played, and Върни
+                // has to take back exactly those.
+                if (landed > 0) pressSizes.current.push(landed);
+            }
         });
     }, [guard]);
 
@@ -155,18 +171,27 @@ const TablaGame: React.FC = () => {
         if (pendingCount.current === 0) pressSizes.current = [];
     }, [state?.pendingHops]);
 
-    /** Takes back the last press: one hop, or both of a combo. */
+    /** Takes back the last press: one hop, or every hop of a run. */
     const handleUndo = useCallback(async () => {
         // Never ask for more than is there, whatever the stack claims.
         const hops = Math.min(pressSizes.current.pop() ?? 1, pendingCount.current);
 
-        for (let i = 0; i < hops; i += 1) {
-            if (i > 0) {
-                // Space them so the checker is seen retracing both legs rather
-                // than reappearing at the start.
-                await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
+        let taken = 0;
+        try {
+            for (let i = 0; i < hops; i += 1) {
+                if (i > 0) {
+                    // Space them so the checker is seen retracing every leg
+                    // rather than reappearing at the start.
+                    await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
+                }
+                await tablaService.undo();
+                taken += 1;
             }
-            await tablaService.undo();
+        } finally {
+            // If it stopped part way, the rest of the press is still on the
+            // board. Put the remainder back so the next Върни finishes the job
+            // instead of taking back one hop of a run and leaving the others.
+            if (taken < hops) pressSizes.current.push(hops - taken);
         }
     }, []);
 
