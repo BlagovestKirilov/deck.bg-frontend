@@ -515,7 +515,11 @@ const TablaGame: React.FC = () => {
 
             {showResult && state.winnerUsername && (
                 <Modal
-                    title="Играта приключи"
+                    // The outcome belongs in the largest text on the dialog.
+                    // "Играта приключи" was identical whether you had won or
+                    // lost, leaving a single body line to carry the result.
+                    title={iWon ? 'Победа!' : 'Загуба'}
+                    className={iWon ? '' : 'modal--loss'}
                     width="narrow"
                     dismissOnScrim={false}
                     actions={
@@ -534,13 +538,23 @@ const TablaGame: React.FC = () => {
                             <Icon name={iWon ? 'trophy' : 'flag'} size="50%" />
                         </span>
 
-                        <p style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)' }}>
-                            {state.surrenderPlayerUsername
+                        {/* The title says whether you won; this line only
+                            adds what the title cannot — who, or how. A plain
+                            win has nothing left to add, so it says nothing
+                            rather than repeating «Победа!» twice over. */}
+                        {(() => {
+                            const detail = state.surrenderPlayerUsername
                                 ? (state.surrenderPlayerUsername === username
                                     ? 'Вие се предадохте.'
                                     : `${state.surrenderPlayerUsername} се предаде!`)
-                                : (iWon ? 'Победа!' : `${state.winnerUsername} спечели.`)}
-                        </p>
+                                : (iWon ? null : `${state.winnerUsername} спечели.`);
+
+                            return detail && (
+                                <p style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)' }}>
+                                    {detail}
+                                </p>
+                            );
+                        })()}
 
                     </div>
                 </Modal>
