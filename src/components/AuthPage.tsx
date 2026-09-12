@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { rememberedUsername } from '../context/AuthContext';
 import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import { authService } from '../api/authService';
 import Button from './ui/Button';
@@ -18,7 +19,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const AuthPage: React.FC = () => {
     const [mode, setMode] = useState<Mode>('login');
-    const [form, setForm] = useState({ username: '', password: '', confirmPassword: '', email: '' });
+    // Signing in starts with the last name used on this device already filled,
+    // so it pairs with the password the browser offers. Registration starts
+    // blank — that is a new account, not the old one.
+    const [form, setForm] = useState({
+        username: rememberedUsername(), password: '', confirmPassword: '', email: '',
+    });
     const [forgotEmail, setForgotEmail] = useState('');
     const [errors, setErrors] = useState<Errors>({});
     const [formMessage, setFormMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
@@ -42,7 +48,10 @@ const AuthPage: React.FC = () => {
 
     // Switching mode is a fresh start: no stale values, errors or banners.
     useEffect(() => {
-        setForm({ username: '', password: '', confirmPassword: '', email: '' });
+        setForm({
+            username: mode === 'login' ? rememberedUsername() : '',
+            password: '', confirmPassword: '', email: '',
+        });
         setForgotEmail('');
         setErrors({});
         setFormMessage(null);
@@ -307,6 +316,7 @@ const AuthPage: React.FC = () => {
                             autoCapitalize="none"
                             autoCorrect="off"
                             spellCheck={false}
+                            placeholder="Потребителско име"
                             enterKeyHint={enterHint(0)}
                             onKeyDown={onFieldKeyDown(0)}
                             hint={isRegister ? '4–20 символа, латински букви и цифри.' : undefined}
