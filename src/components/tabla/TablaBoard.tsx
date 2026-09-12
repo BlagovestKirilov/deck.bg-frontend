@@ -78,6 +78,21 @@ export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }
     );
 };
 
+/**
+ * The marker beside a pip count: a die face showing a single pip, painted like
+ * that player's checkers.
+ *
+ * It replaces the word «Пипове», which had to be repeated on both rows and said
+ * nothing about whose count it was. Fill carries the distinction as well as
+ * colour does — solid for the dark side, pale for the light one — so the two
+ * rows stay apart without relying on colour alone.
+ */
+export const PipDie: React.FC<{ color: CheckerColor }> = ({ color }) => (
+    <span className={`pip-die pip-die--${color}`} aria-hidden="true">
+        <span className="pip-die__pip" />
+    </span>
+);
+
 const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onCombo, myColor }) => {
     const { points, mySide, legalHops } = state;
     const comboHops = state.comboHops ?? [];

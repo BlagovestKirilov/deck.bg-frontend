@@ -1380,6 +1380,50 @@ code, kbd, samp { font-family: var(--font-mono); }
     font-variant-numeric: tabular-nums;
 }
 
+/* Pip count: a one-pip die in that player's checker colour, then the number.
+   The die is square with a small radius so it reads as a die and not as a
+   checker, which is round and lives on the board. */
+.pip-count {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
+}
+.pip-die {
+    /* Sized off the number it labels, so the pair scales as one. A fixed clamp
+       bottomed out at 12.75px on a 375px screen, where the pip inside came to
+       under 3px and read as a speck rather than a die face. */
+    --pip-die: calc(var(--fs-md) * .95);
+    flex: 0 0 auto;
+    width: var(--pip-die);
+    height: var(--pip-die);
+    display: grid;
+    place-items: center;
+    border-radius: calc(var(--pip-die) * .24);
+    border: 1px solid;
+}
+.pip-die__pip {
+    /* Larger than a real die's pip: at this size the honest proportion lands
+       on a sub-3px dot that disappears on a low-density screen. */
+    width: 30%;
+    height: 30%;
+    border-radius: 50%;
+    background: currentColor;
+}
+/* The same paint as the checkers, so the badge is read as those pieces. */
+.pip-die--white {
+    background: linear-gradient(160deg, #f7ead2, #d9bd93);
+    border-color: #a8875c;
+    color: #3a2a12;
+}
+.pip-die--black {
+    background: linear-gradient(160deg, #4a2f1b, #1d1109);
+    /* A pale hairline where the checker has a near-black one: the checker sits
+       on the lit board, this sits on the dark HUD and would lose its edge. */
+    border-color: rgba(242, 228, 204, .5);
+    color: #f2e4cc;
+}
+
 .tabla-actions {
     display: flex;
     align-items: center;

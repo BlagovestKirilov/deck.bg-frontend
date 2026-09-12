@@ -6,10 +6,13 @@ import { isSessionExpired } from '../api/apiClient';
 import { useGameSession } from '../hooks/useGameSession';
 import { CheckerColor, ComboHop, TablaState } from '../types/tabla.types';
 import { useCheckerColor } from '../hooks/useCheckerColor';
-import TablaBoard, { Die } from './tabla/TablaBoard';
+import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+
+/** What the badge's colour is called aloud; the badge itself is decoration. */
+const COLOR_LABEL: Record<CheckerColor, string> = { white: 'белите', black: 'черните' };
 
 /**
  * Turn budget, matching the server's TABLA_TURN_SECONDS (45 + 10 + 3 slack).
@@ -304,6 +307,10 @@ const TablaGame: React.FC = () => {
     const canUndo = state.isOnTurn && state.pendingHops.length > 0;
     const canRoll = state.isOnTurn && state.die1 == null;
     const iWon = state.winnerUsername === username;
+    // The badges follow how the checkers are painted on *this* screen, not the
+    // canonical sides: both players may have chosen white for themselves, and a
+    // badge that disagreed with the board would be worse than no badge.
+    const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
 
     return (
         <main style={tableStyle}>
@@ -322,7 +329,11 @@ const TablaGame: React.FC = () => {
                     <span className="truncate" style={{ color: 'var(--text-1)', fontWeight: 700 }}>
                         {opponentName}
                     </span>
-                    <span>Пипове: <span className="tabla-hud__pip tabular">{state.opponentPipCount}</span></span>
+                    <span className="pip-count">
+                        <PipDie color={otherColor} />
+                        <span className="sr-only">Пипове с {COLOR_LABEL[otherColor]}: </span>
+                        <span className="tabla-hud__pip tabular">{state.opponentPipCount}</span>
+                    </span>
                 </span>
 
                 <button
@@ -353,7 +364,11 @@ const TablaGame: React.FC = () => {
                         <span className="truncate" style={{ color: 'var(--gold)', fontWeight: 700 }}>
                             {username}
                         </span>
-                        <span>Пипове: <span className="tabla-hud__pip tabular">{state.myPipCount}</span></span>
+                        <span className="pip-count">
+                            <PipDie color={myColor} />
+                            <span className="sr-only">Пипове с {COLOR_LABEL[myColor]}: </span>
+                            <span className="tabla-hud__pip tabular">{state.myPipCount}</span>
+                        </span>
                     </span>
 
                     <span className={`turn-pill ${urgent ? 'turn-pill--urgent' : ''}`} role="status" aria-live="polite">
