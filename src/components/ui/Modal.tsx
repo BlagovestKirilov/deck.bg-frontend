@@ -9,7 +9,7 @@ interface ModalProps {
     /** Buttons rendered in the footer row. */
     actions?: React.ReactNode;
     tone?: 'default' | 'danger';
-    width?: 'narrow' | 'default';
+    width?: 'narrow' | 'default' | 'wide';
     /** Close when the scrim behind the dialog is clicked. Default true. */
     dismissOnScrim?: boolean;
     className?: string;
@@ -102,6 +102,7 @@ const Modal: React.FC<ModalProps> = ({
                     'modal',
                     tone === 'danger' ? 'modal--danger' : '',
                     width === 'narrow' ? 'modal--narrow' : '',
+                    width === 'wide' ? 'modal--wide' : '',
                     className,
                 ]
                     .filter(Boolean)
