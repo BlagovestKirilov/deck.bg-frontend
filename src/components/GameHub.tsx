@@ -98,7 +98,7 @@ const GameHub: React.FC = () => {
                             onClick={() => setConfirmLogout(true)}
                             aria-label="Изход от профила"
                         >
-                            <span className="nav-label">ИЗХОД</span>
+                            ИЗХОД
                         </Button>
                     </div>
                 </nav>

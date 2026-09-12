@@ -1009,10 +1009,20 @@ code, kbd, samp { font-family: var(--font-mono); }
    own and lost it when the two were unified on one component. */
 .hub-nav .btn { min-height: var(--tap); }
 
-/* Logout label collapses to its icon on very narrow phones, but the button
-   keeps its 44px hit area and its accessible name. */
-@media (max-width: 420px) {
-    .nav-label { display: none; }
+/* Both header buttons keep icon and label at every width.
+   Collapsing only the logout one left the pair mismatched, and put its icon
+   visibly off-centre: the hidden label was still a flex item, so the gap
+   between icon and label survived and pushed the icon half a gap left.
+   With both labels staying, the username is what gives when room runs out —
+   it shrinks and ellipsises while ИЗХОД holds its natural width, so neither
+   button is ever clipped. */
+.hub-nav > :last-child { min-width: 0; }
+.hub-nav .btn { flex: 0 0 auto; }
+.hub-nav .btn:first-of-type { flex: 0 1 auto; min-width: 0; }
+.hub-nav .btn:first-of-type .btn__label { min-width: 0; overflow: hidden; }
+
+@media (max-width: 400px) {
+    .hub-nav .truncate { max-width: 7ch; }
 }
 
 /* Time-critical dialog: a slow red breathing glow, no layout movement. */
