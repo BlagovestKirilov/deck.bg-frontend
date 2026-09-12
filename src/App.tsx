@@ -10,6 +10,7 @@ import ConfirmationInvalid from './components/ConfirmationInvalid';
 import ResetPassword from './components/ResetPassword';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import AccountDeletionInfo from './components/AccountDeletionInfo';
+import ConfirmDeletion from './components/ConfirmDeletion';
 import DeletionSuccess from './components/DeletionSuccess';
 import NotFound from './components/NotFound';
 import './index.css';
@@ -30,6 +31,7 @@ const App: React.FC = () => {
                 <Route path="/confirmation-success" element={<ConfirmationSuccess />} />
                 <Route path="/invalid" element={<ConfirmationInvalid />} />
                 <Route path="/reset-password" element={<ResetPassword />} />
+                <Route path="/confirm-deletion" element={<ConfirmDeletion />} />
                 <Route path="/deletion-success" element={<DeletionSuccess />} />
                 <Route path="/" element={isAuthenticated ? <GameHub /> : <AuthPage />} />
                 <Route path="/play/santase" element={isAuthenticated ? <SantaseGame /> : <AuthPage />} />
