@@ -13,7 +13,6 @@ import ProfilePage from './ProfilePage';
 interface GameCard {
     key: GameKey;
     title: string;
-    tagline: string;
     icon: IconName;
     crest: string;
     path: string;
@@ -23,7 +22,6 @@ const GAMES: GameCard[] = [
     {
         key: 'SANTASE',
         title: 'Сантасе 66',
-        tagline: 'Класическо Сантасе срещу реални опоненти',
         icon: 'cards',
         crest: '66',
         path: '/play/santase',
@@ -31,7 +29,6 @@ const GAMES: GameCard[] = [
     {
         key: 'TABLA',
         title: 'Табла',
-        tagline: 'Класическа табла срещу реални опоненти',
         icon: 'dice',
         crest: '',
         path: '/play/tabla',
@@ -76,7 +73,7 @@ const GameHub: React.FC = () => {
                         <button
                             type="button"
                             onClick={() => setShowProfile(true)}
-                            style={userButton}
+                            className="user-chip"
                             aria-label={`Отвори профила на ${username}`}
                         >
                             <Icon name="user" size={20} />
@@ -101,9 +98,6 @@ const GameHub: React.FC = () => {
                     <h1 style={{ fontSize: 'var(--fs-2xl)', color: 'var(--text-1)' }}>
                         Здравей, <span style={{ color: 'var(--gold)' }}>{username}</span>
                     </h1>
-                    <p style={{ marginTop: 'var(--sp-2)', color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
-                        Избери игра
-                    </p>
                 </header>
 
                 <div style={grid}>
@@ -123,10 +117,6 @@ const GameHub: React.FC = () => {
                             <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
                                 {game.title}
                             </span>
-                            <span style={{ color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
-                                {game.tagline}
-                            </span>
-
                             {stats?.[game.key] && <GameRecord stats={stats[game.key]!} />}
                         </button>
                     ))}
@@ -189,17 +179,6 @@ const navStyle: React.CSSProperties = {
     gap: 'var(--sp-3)',
     width: '100%',
     minHeight: 'clamp(56px, 12vw, 68px)',
-};
-
-const userButton: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 'var(--sp-2)',
-    minHeight: 'var(--tap)',
-    padding: '0 var(--sp-3)',
-    borderRadius: 'var(--r-md)',
-    color: 'var(--text-1)',
-    fontSize: 'var(--fs-sm)',
 };
 
 const grid: React.CSSProperties = {

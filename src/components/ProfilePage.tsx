@@ -252,7 +252,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
 
     return (
         <>
-            <Modal title="Профил" onClose={onClose}>
+            <Modal title="Профил" width="wide" onClose={onClose}>
                 {isLoading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
                         {/* Skeletons reserve the real layout so nothing jumps when data lands */}
@@ -268,7 +268,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                 ) : error ? (
                     <Note tone="error">{error}</Note>
                 ) : profile ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-5)' }}>
+                    <div className="profile-body">
                         {/* identity */}
                         <div style={identityStyle}>
                             <h3 style={usernameStyle}>{username}</h3>
@@ -296,8 +296,10 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                             {resendMessage && <Note tone={resendMessage.tone}>{resendMessage.text}</Note>}
                         </div>
 
-                        {/* stats — one card per game, each with its own rank */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                        {/* stats — one card per game, each with its own rank.
+                            Side by side once there is room, so a desktop does not
+                            scroll for two short cards. */}
+                        <div className="profile-games">
                             {gameCards.map((game) => (
                                 <GameStatsCard
                                     key={game.key}
@@ -309,14 +311,14 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                             ))}
                         </div>
 
-                        {/* account actions — same size; the rule above the
-                            destructive one keeps it visually separated */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+                        {/* account actions. The divider keeps the destructive one
+                            apart when they stack; side by side the gap does it. */}
+                        <div className="profile-actions">
                             <Button variant="secondary" icon="lock" block onClick={openPasswordChange}>
                                 Промени парола
                             </Button>
 
-                            <hr style={dividerStyle} />
+                            <hr className="profile-actions__rule" style={dividerStyle} />
 
                             <Button
                                 variant="danger"

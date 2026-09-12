@@ -497,6 +497,38 @@ code, kbd, samp { font-family: var(--font-mono); }
 
 .modal--danger { border-color: rgba(255,111,111,.45); }
 .modal--narrow { max-width: 380px; }
+/* The profile is the only dialog with enough content to be worth the room; a
+   desktop had to scroll two short cards that fit side by side. */
+.modal--wide { max-width: 860px; }
+
+/* Profile layout. One column by default, two once there is room for them. */
+.profile-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-5);
+}
+.profile-games {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--sp-4);
+}
+.profile-actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+}
+
+@media (min-width: 760px) {
+    .profile-games { grid-template-columns: 1fr 1fr; }
+    .profile-actions {
+        flex-direction: row;
+        align-items: center;
+        gap: var(--sp-4);
+    }
+    /* Stacked, a rule separates the destructive action; in a row the gap
+       already does, and a horizontal rule between two buttons reads as noise. */
+    .profile-actions__rule { display: none; }
+}
 
 .modal__body { min-height: 0; }
 
@@ -1209,6 +1241,29 @@ code, kbd, samp { font-family: var(--font-mono); }
     font-weight: 700;
     font-variant-numeric: tabular-nums;
 }
+
+/* The username opens the profile, so it has to look like something you press.
+   As a bare label beside a bordered ИЗХОД button it read as static text. */
+.user-chip {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: var(--tap);
+    padding: 0 var(--sp-3);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-1);
+    font-size: var(--fs-sm);
+    cursor: pointer;
+    transition: border-color var(--dur-fast) var(--ease-out),
+                background-color var(--dur-fast) var(--ease-out);
+}
+.user-chip:hover {
+    border-color: var(--line-gold);
+    background: var(--gold-wash);
+}
+.user-chip:active { transform: scale(.98); }
 
 /* Choosing which colour your own checkers are drawn in. */
 .color-choice {
