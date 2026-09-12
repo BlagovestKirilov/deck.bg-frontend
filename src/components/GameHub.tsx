@@ -13,6 +13,9 @@ import ProfilePage from './ProfilePage';
 interface GameCard {
     key: GameKey;
     title: string;
+    /** How the game is won. The title says which game it is; this says what
+     *  you are trying to do, which is the part a newcomer does not know. */
+    tagline: string;
     icon: IconName;
     crest: string;
     path: string;
@@ -22,6 +25,7 @@ const GAMES: GameCard[] = [
     {
         key: 'SANTASE',
         title: 'Сантасе 66',
+        tagline: 'Първият до 66 точки печели',
         icon: 'cards',
         crest: '66',
         path: '/play/santase',
@@ -29,6 +33,7 @@ const GAMES: GameCard[] = [
     {
         key: 'TABLA',
         title: 'Табла',
+        tagline: 'Изведи всички пулове пръв',
         icon: 'dice',
         crest: '',
         path: '/play/tabla',
@@ -64,23 +69,27 @@ const GameHub: React.FC = () => {
         return () => controller.abort();
     }, []);
 
+    // screen--flow, not the pinned .screen: the hub scrolls the document, which
+    // is what lets a phone pull down to refresh.
     return (
-        <main className="screen" style={{ alignItems: 'flex-start' }}>
+        <main className="screen screen--flow" style={{ alignItems: 'flex-start' }}>
             <div style={shell}>
-                <nav style={navStyle}>
+                <nav className="hub-nav" style={navStyle}>
                     <Brand />
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--sp-2)' }}>
-                        <button
-                            type="button"
+                        {/* The same component as ИЗХОД, so the two cannot drift
+                            apart: one border, one height, one hover. */}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            icon="user"
                             onClick={() => setShowProfile(true)}
-                            className="user-chip"
                             aria-label={`Отвори профила на ${username}`}
                         >
-                            <Icon name="user" size={20} />
                             <span className="truncate" style={{ maxWidth: '12ch', fontWeight: 700 }}>
                                 {username}
                             </span>
-                        </button>
+                        </Button>
 
                         <Button
                             variant="ghost"
@@ -98,6 +107,9 @@ const GameHub: React.FC = () => {
                     <h1 style={{ fontSize: 'var(--fs-2xl)', color: 'var(--text-1)' }}>
                         Здравей, <span style={{ color: 'var(--gold)' }}>{username}</span>
                     </h1>
+                    <p style={{ marginTop: 'var(--sp-2)', color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
+                        Избери игра
+                    </p>
                 </header>
 
                 <div style={grid}>
@@ -116,6 +128,9 @@ const GameHub: React.FC = () => {
                             </span>
                             <span style={{ fontFamily: 'var(--font-display)', fontSize: 'var(--fs-lg)', fontWeight: 600 }}>
                                 {game.title}
+                            </span>
+                            <span style={{ color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
+                                {game.tagline}
                             </span>
                             {stats?.[game.key] && <GameRecord stats={stats[game.key]!} />}
                         </button>
