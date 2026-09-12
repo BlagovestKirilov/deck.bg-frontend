@@ -25,6 +25,10 @@ interface StatusScreenProps {
     message: React.ReactNode;
     actionLabel?: string;
     onAction?: () => void;
+    /** Destructive outcomes need a red primary action, not the gold one. */
+    actionVariant?: 'primary' | 'danger';
+    /** Spinner on the primary action; also blocks a second press. */
+    actionLoading?: boolean;
     secondaryLabel?: string;
     onSecondary?: () => void;
 }
@@ -41,6 +45,8 @@ const StatusScreen: React.FC<StatusScreenProps> = ({
     message,
     actionLabel,
     onAction,
+    actionVariant = 'primary',
+    actionLoading = false,
     secondaryLabel,
     onSecondary,
 }) => (
@@ -64,7 +70,7 @@ const StatusScreen: React.FC<StatusScreenProps> = ({
             {(actionLabel || secondaryLabel) && (
                 <div style={actionsStyle}>
                     {actionLabel && onAction && (
-                        <Button variant="primary" size="lg" block onClick={onAction}>
+                        <Button variant={actionVariant} size="lg" block loading={actionLoading} onClick={onAction}>
                             {actionLabel}
                         </Button>
                     )}

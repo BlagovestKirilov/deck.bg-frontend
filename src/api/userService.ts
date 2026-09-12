@@ -35,6 +35,20 @@ export const userService = {
             throw error;
         }
     },
+    /**
+     * Confirms the deletion with the token from the email. Unauthenticated —
+     * the person following the link is usually logged out. The token goes in
+     * the body, not the query string, so it stays out of access logs.
+     */
+    confirmDeletion: async (token: string): Promise<boolean> => {
+        try {
+            await apiClient.post('/user/confirm-deletion', { token });
+            return true;
+        } catch (error: any) {
+            if (error.response?.status === 400) return false;
+            throw error;
+        }
+    },
     sendUserDeletionEmail: async (password: string): Promise<{ success: boolean; message: string }> => {
         try {
             await apiClient.post('/user/delete-user', { password });
