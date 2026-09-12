@@ -1141,8 +1141,8 @@ code, kbd, samp { font-family: var(--font-mono); }
    the playable checkers are visible without hunting for them. */
 .tabla-point--playable { --point-fill: rgba(240, 196, 32, 0.62); cursor: pointer; }
 
-/* Reachable only by spending both dice. Marked apart from a single-die target
-   so the bigger commitment is never played by accident. */
+/* Reachable only by spending more than one die. Marked apart from a single-die
+   target so the bigger commitment is never played by accident. */
 .tabla-point--combo { --point-fill: rgba(56, 182, 255, 0.42); cursor: pointer; }
 .tabla-point--legal::after,
 .tabla-point--combo::after,
@@ -1161,10 +1161,28 @@ code, kbd, samp { font-family: var(--font-mono); }
 .tabla-point--bottom.tabla-point--legal::after,
 .tabla-point--bottom.tabla-point--combo::after { bottom: auto; top: 6%; }
 .tabla-point--source::after { border-color: var(--gold); }
-/* Two rings: this square costs two dice. */
+/* How many dice this square costs, written on the marker. Doubles let a
+   checker spend two, three or four, and those squares sit along one line —
+   without the number they differ only by how far away they are, which is
+   exactly the thing a player would have to count. A filled disc rather than
+   the hollow ring of a single-die target: it carries a digit legibly, and the
+   two kinds of move stay apart at a glance. */
 .tabla-point--combo::after {
+    content: attr(data-combo);
+    /* Wider than the hollow ring of a single-die target, because it has to hold
+       a digit: a point is only about a fourteenth of the board, so at the ring's
+       old width the numeral was larger than the disc it sat in. */
+    width: 56%;
+    display: grid;
+    place-items: center;
     border-color: #38b6ff;
+    background: #38b6ff;
     box-shadow: 0 0 0 3px rgba(56, 182, 255, .28);
+    color: #06263a;
+    font-family: var(--font-display);
+    font-size: 2.5cqw;
+    font-weight: 800;
+    line-height: 1;
 }
 
 /* Checkers stack from the outer edge inward. */
@@ -1244,10 +1262,31 @@ code, kbd, samp { font-family: var(--font-mono); }
 .tabla-bar--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
 .tabla-bar--source { background: rgba(227, 191, 93, 0.32); cursor: pointer; }
 .tabla-off--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
-/* Costs both dice, in the same blue the board uses for a two-dice square. */
+/* Costs more than one die, in the same blue the board uses for such a square.
+   The tray holds counts rather than points, so the number sits in a badge
+   across the top of it instead of on a marker. */
 .tabla-off--combo {
+    position: relative;
     background: rgba(56, 182, 255, 0.30);
     box-shadow: inset 0 0 0 2px #38b6ff;
+}
+.tabla-off--combo::after {
+    content: attr(data-combo);
+    position: absolute;
+    top: 4%;
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: 3.6cqw;
+    padding: 0 .6cqw;
+    display: grid;
+    place-items: center;
+    border-radius: var(--r-pill);
+    background: #38b6ff;
+    color: #06263a;
+    font-family: var(--font-display);
+    font-size: 3cqw;
+    font-weight: 800;
+    line-height: 1.5;
 }
 
 /* One tray row: whose checkers, and how many of the fifteen are off. The words

@@ -229,6 +229,9 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
                 key={canonicalPoint}
                 type="button"
                 data-point={canonicalPoint}
+                // Read by the marker's ::after, so the cost is a number on the
+                // board and not only a colour the player has to learn.
+                data-combo={isComboTarget ? combo!.dice.length : undefined}
                 className={classes}
                 style={{ gridColumn: col, gridRow: row }}
                 onClick={() => handlePoint(canonicalPoint)}
@@ -300,6 +303,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
                     // square on the board, so the cost is visible before the tap.
                     !offHop && offCombo ? 'tabla-off--combo' : '',
                 ].filter(Boolean).join(' ')}
+                data-combo={!offHop && offCombo ? offCombo.dice.length : undefined}
                 onClick={() => {
                     // One die where one will do; it is the smaller commitment.
                     if (offHop) {
