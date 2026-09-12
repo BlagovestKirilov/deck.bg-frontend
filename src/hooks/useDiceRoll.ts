@@ -45,6 +45,17 @@ export interface DieThrow {
     /** Cube rotation in degrees; keeps growing so every throw turns forward. */
     rx: number;
     ry: number;
+    /**
+     * Where the turn starts from — the rotation the previous throw ended on.
+     *
+     * Carried explicitly rather than left to the browser to remember. A turn
+     * begins with no dice, so the cubes are unmounted and mount again when the
+     * roll arrives; whether the browser painted the old rotation before the new
+     * one was applied was a race, and a slower phone lost it. The cube then had
+     * nothing to animate from and snapped straight to the result.
+     */
+    fromRx: number;
+    fromRy: number;
     /** 1 while the die is at the top of its arc, 0 once it has come to rest. */
     lift: number;
 }
@@ -74,8 +85,8 @@ export interface DiceThrow {
  */
 export function useDiceRoll(die1?: number, die2?: number): DiceThrow {
     const [dice, setDice] = useState<[DieThrow, DieThrow]>([
-        { rx: 0, ry: 0, lift: 0 },
-        { rx: 0, ry: 0, lift: 0 },
+        { rx: 0, ry: 0, fromRx: 0, fromRy: 0, lift: 0 },
+        { rx: 0, ry: 0, fromRx: 0, fromRy: 0, lift: 0 },
     ]);
     const [airborne, setAirborne] = useState(false);
 
@@ -100,19 +111,25 @@ export function useDiceRoll(die1?: number, die2?: number): DiceThrow {
         }
 
         /** The pair of cube rotations that show these two values, face forward. */
-        const landing = (lift: number): [DieThrow, DieThrow] => ([0, 1] as const).map((i) => {
-            const land = LANDING[i === 0 ? die1 : die2] ?? LANDING[1];
-            return {
-                rx: turns.current * 360 * SPINS[i].x + land.rx,
-                ry: turns.current * 360 * SPINS[i].y + land.ry,
-                lift,
-            };
-        }) as [DieThrow, DieThrow];
+        const landing = (lift: number, from: [DieThrow, DieThrow]): [DieThrow, DieThrow] =>
+            ([0, 1] as const).map((i) => {
+                const land = LANDING[i === 0 ? die1 : die2] ?? LANDING[1];
+                return {
+                    rx: turns.current * 360 * SPINS[i].x + land.rx,
+                    ry: turns.current * 360 * SPINS[i].y + land.ry,
+                    fromRx: from[i].rx,
+                    fromRy: from[i].ry,
+                    lift,
+                };
+            }) as [DieThrow, DieThrow];
 
         if (prefersReducedMotion()) {
             // Straight to the landing rotation, no extra turns and no arc. The
             // cube still shows the face that was actually rolled.
-            setDice(landing(0));
+            // No turn to make: it starts where it ends.
+            setDice((current) => landing(0, current).map((d) => ({
+                ...d, fromRx: d.rx, fromRy: d.ry,
+            })) as [DieThrow, DieThrow]);
             setAirborne(false);
             return;
         }
@@ -122,8 +139,8 @@ export function useDiceRoll(die1?: number, die2?: number): DiceThrow {
         turns.current += 1;
         setAirborne(true);
 
-        // Up and turning...
-        setDice(landing(1));
+        // Up and turning, from wherever the last throw left the cubes.
+        setDice((current) => landing(1, current));
 
         // ...then down onto the table, keeping the rotation it has reached.
         const down = window.setTimeout(() => {
