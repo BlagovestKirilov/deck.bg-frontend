@@ -36,6 +36,18 @@ const TablaGame: React.FC = () => {
     const username = user?.username ?? '';
 
     const [selected, setSelected] = useState<number | null>(null);
+    /**
+     * How many hops each press of this turn put on the board — 1 for a single
+     * die, 2 for a combo.
+     *
+     * Върни takes back a press, not a hop. A combo is one tap, so it has to come
+     * off in one tap; popping a single hop left the checker stranded on the
+     * midpoint, half way through a move the player never chose to make.
+     *
+     * Held only for this session. If it is ever lost — a reload mid-turn —
+     * Върни falls back to one hop at a time, which is what it did before.
+     */
+    const pressSizes = useRef<number[]>([]);
     const [myColor, setMyColor] = useCheckerColor();
     /** Up while a blocked roll is being acknowledged. */
     const [showPass, setShowPass] = useState(false);
@@ -106,12 +118,16 @@ const TablaGame: React.FC = () => {
     }, [toast]);
 
     const handleMove = useCallback((from: number, die: number) => {
-        void guard(() => tablaService.move(from, die));
+        void guard(async () => {
+            await tablaService.move(from, die);
+            pressSizes.current.push(1);
+        });
     }, [guard]);
 
     // Both dice with one checker. Sent as the two hops it really is, in order,
-    // so the server needs no new endpoint and Върни still steps back one die at
-    // a time. The second hop is only sent once the first has been accepted.
+    // so the server needs no new endpoint and no new shape for a pending hop.
+    // The second hop is only sent once the first has been accepted, and the
+    // pair is recorded as one press so Върни takes them back together.
     const handleCombo = useCallback((combo: ComboHop) => {
         void guard(async () => {
             await tablaService.move(combo.from, combo.firstDie);
@@ -124,8 +140,35 @@ const TablaGame: React.FC = () => {
             // with one checker is seeing where it stopped on the way.
             await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
             await tablaService.move(combo.via, combo.secondDie);
+            pressSizes.current.push(2);
         });
     }, [guard]);
+
+    /** How many hops are on the board right now, readable from a callback. */
+    const pendingCount = useRef(0);
+    useEffect(() => {
+        pendingCount.current = state?.pendingHops.length ?? 0;
+        // A turn with nothing on the board has no presses to take back. Clearing
+        // here covers every way a turn can end — confirmed, timed out, the
+        // opponent's move, a reconnect — so a count can never outlive its turn
+        // and make Върни reach into the one before.
+        if (pendingCount.current === 0) pressSizes.current = [];
+    }, [state?.pendingHops]);
+
+    /** Takes back the last press: one hop, or both of a combo. */
+    const handleUndo = useCallback(async () => {
+        // Never ask for more than is there, whatever the stack claims.
+        const hops = Math.min(pressSizes.current.pop() ?? 1, pendingCount.current);
+
+        for (let i = 0; i < hops; i += 1) {
+            if (i > 0) {
+                // Space them so the checker is seen retracing both legs rather
+                // than reappearing at the start.
+                await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
+            }
+            await tablaService.undo();
+        }
+    }, []);
 
     /* ---------------- turn clock ---------------- */
 
@@ -454,7 +497,7 @@ const TablaGame: React.FC = () => {
                     {canUndo && (
                         <Button variant="ghost" icon="arrowLeft" disabled={busy}
                                 aria-label="Върни последния ход"
-                                onClick={() => void guard(tablaService.undo)}>
+                                onClick={() => void guard(handleUndo)}>
                             Върни
                         </Button>
                     )}
