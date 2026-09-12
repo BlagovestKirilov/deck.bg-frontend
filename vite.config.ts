@@ -8,13 +8,8 @@ export default defineConfig({
         global: 'window',
     },
     server: {
+        // Pinned: the backend's dev profile allows exactly http://localhost:3000
+        // for the WebSocket handshake, so another port breaks the socket.
         port: 3000,
-        proxy: {
-            '/api': {
-                target: 'https://localhost',
-                changeOrigin: true,
-                secure: false,
-            },
-        },
     },
 })

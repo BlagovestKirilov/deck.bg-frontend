@@ -1009,20 +1009,27 @@ code, kbd, samp { font-family: var(--font-mono); }
    own and lost it when the two were unified on one component. */
 .hub-nav .btn { min-height: var(--tap); }
 
-/* Both header buttons keep icon and label at every width.
-   Collapsing only the logout one left the pair mismatched, and put its icon
-   visibly off-centre: the hidden label was still a flex item, so the gap
-   between icon and label survived and pushed the icon half a gap left.
-   With both labels staying, the username is what gives when room runs out —
-   it shrinks and ellipsises while ИЗХОД holds its natural width, so neither
-   button is ever clipped. */
+/* The username is what gives when the header runs out of room: it shrinks and
+   ellipsises while ИЗХОД holds its width, so neither button is ever clipped. */
 .hub-nav > :last-child { min-width: 0; }
 .hub-nav .btn { flex: 0 0 auto; }
 .hub-nav .btn:first-of-type { flex: 0 1 auto; min-width: 0; }
 .hub-nav .btn:first-of-type .btn__label { min-width: 0; overflow: hidden; }
 
-@media (max-width: 400px) {
+/* Phones: ИЗХОД drops to its icon in a square button.
+   The whole label element goes, not the text inside it — hiding only the text
+   left the label wrapper as a flex item, so `.btn`'s gap between icon and label
+   survived and pushed the icon half a gap off centre. With the wrapper gone the
+   icon is the only child and centres exactly. */
+@media (max-width: 420px) {
     .hub-nav .truncate { max-width: 7ch; }
+
+    .hub-nav .btn--icon-on-phone .btn__label { display: none; }
+    .hub-nav .btn--icon-on-phone {
+        width: var(--tap);
+        min-width: var(--tap);
+        padding-inline: 0;
+    }
 }
 
 /* Time-critical dialog: a slow red breathing glow, no layout movement. */

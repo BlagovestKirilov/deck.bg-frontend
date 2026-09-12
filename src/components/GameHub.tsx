@@ -95,6 +95,7 @@ const GameHub: React.FC = () => {
                             variant="ghost"
                             size="sm"
                             icon="logout"
+                            className="btn--icon-on-phone"
                             onClick={() => setConfirmLogout(true)}
                             aria-label="Изход от профила"
                         >
