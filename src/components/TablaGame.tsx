@@ -6,6 +6,7 @@ import { isSessionExpired } from '../api/apiClient';
 import { useGameSession } from '../hooks/useGameSession';
 import { CheckerColor, ComboHop, TablaState } from '../types/tabla.types';
 import { useCheckerColor } from '../hooks/useCheckerColor';
+import { soleOrigin, stillPlayable } from '../utils/tablaSelection';
 import { useDiceRoll } from '../hooks/useDiceRoll';
 import { HOP_MS } from '../hooks/useHopAnimation';
 import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
@@ -159,6 +160,34 @@ const TablaGame: React.FC = () => {
             }
         });
     }, [guard]);
+
+    /**
+     * Picks the origin up for you when there is only one it could be.
+     *
+     * A checker on the bar has to come in before anything else moves, so every
+     * legal hop starts there and tapping the bar first decides nothing — and the
+     * bar sits in the middle of the board, the furthest reach on a phone. The
+     * same holds whenever one point is the only one with a move left.
+     *
+     * It still only *selects*: the destinations light up and the player aims.
+     * Playing the move outright would move a checker before it was aimed.
+     *
+     * Keyed on the hops themselves, so it runs when the server sends a new
+     * position rather than on every render — deselecting by tapping the origin
+     * again therefore sticks until the position actually changes.
+     */
+    useEffect(() => {
+        if (!state?.isOnTurn) return;
+
+        const only = soleOrigin(state.legalHops);
+        if (only !== null) {
+            setSelected(only);
+            return;
+        }
+        // Whatever was held is no longer a place to move from; drop it rather
+        // than leaving a highlight on a point with nothing to play.
+        setSelected((current) => (stillPlayable(current, state.legalHops) ? current : null));
+    }, [state?.legalHops, state?.isOnTurn]);
 
     /** How many hops are on the board right now, readable from a callback. */
     const pendingCount = useRef(0);
