@@ -206,7 +206,13 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
     };
 
     const barLegal = legalHops.some((h) => h.from === BAR);
-    const offLegal = targets.some((h) => h.to === OFF);
+
+    // Bearing off can need both dice — a checker six away goes out as 2 then 4,
+    // never in one hop. Only single-die hops were consulted here, so that
+    // checker had no way out on screen even though the server allowed it.
+    const offHop = targets.find((h) => h.to === OFF);
+    const offCombo = comboTargets.find((c) => c.to === OFF);
+    const offLegal = offHop !== undefined || offCombo !== undefined;
 
     return (
         <div
@@ -240,16 +246,33 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
 
             <button
                 type="button"
-                className={`tabla-off ${offLegal ? 'tabla-off--legal' : ''}`}
+                className={[
+                    'tabla-off',
+                    offLegal ? 'tabla-off--legal' : '',
+                    // Two dice to get out, marked like a two-dice square on the
+                    // board, so the cost is visible before the tap.
+                    !offHop && offCombo ? 'tabla-off--combo' : '',
+                ].filter(Boolean).join(' ')}
                 onClick={() => {
-                    const hop = targets.find((h) => h.to === OFF);
-                    if (hop) {
-                        onMove(hop.from, hop.die);
+                    // One die where one will do; it is the smaller commitment.
+                    if (offHop) {
+                        onMove(offHop.from, offHop.die);
+                        onSelect(null);
+                        return;
+                    }
+                    if (offCombo) {
+                        onCombo(offCombo);
                         onSelect(null);
                     }
                 }}
                 disabled={!offLegal}
-                aria-label={`Изведени пулове: ваши ${state.myOff} от 15, на опонента ${state.opponentOff} от 15`}
+                aria-label={
+                    `Изведени пулове: ваши ${state.myOff} от 15, на опонента ${state.opponentOff} от 15`
+                    + (offHop ? '. Може да изведете пул.' : '')
+                    + (!offHop && offCombo
+                        ? `. Може да изведете пул с двата зара (${offCombo.firstDie} и ${offCombo.secondDie}).`
+                        : '')
+                }
             >
                 <span className="tabla-off__side">
                     <Checker color={otherColor} />

@@ -1241,6 +1241,11 @@ code, kbd, samp { font-family: var(--font-mono); }
 .tabla-bar--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
 .tabla-bar--source { background: rgba(227, 191, 93, 0.32); cursor: pointer; }
 .tabla-off--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
+/* Costs both dice, in the same blue the board uses for a two-dice square. */
+.tabla-off--combo {
+    background: rgba(56, 182, 255, 0.30);
+    box-shadow: inset 0 0 0 2px #38b6ff;
+}
 
 /* One tray row: whose checkers, and how many of the fifteen are off. The words
    ОПОНЕНТ / ВИЕ used to sit here; they read as a match score and outgrew the
