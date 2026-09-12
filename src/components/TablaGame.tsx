@@ -6,10 +6,15 @@ import { isSessionExpired } from '../api/apiClient';
 import { useGameSession } from '../hooks/useGameSession';
 import { CheckerColor, ComboHop, TablaState } from '../types/tabla.types';
 import { useCheckerColor } from '../hooks/useCheckerColor';
-import TablaBoard, { Die } from './tabla/TablaBoard';
+import { useDiceRoll } from '../hooks/useDiceRoll';
+import { HOP_MS } from '../hooks/useHopAnimation';
+import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+
+/** What the badge's colour is called aloud; the badge itself is decoration. */
+const COLOR_LABEL: Record<CheckerColor, string> = { white: 'белите', black: 'черните' };
 
 /**
  * Turn budget, matching the server's TABLA_TURN_SECONDS (45 + 10 + 3 slack).
@@ -31,6 +36,18 @@ const TablaGame: React.FC = () => {
     const username = user?.username ?? '';
 
     const [selected, setSelected] = useState<number | null>(null);
+    /**
+     * How many hops each press of this turn put on the board — 1 for a single
+     * die, 2 for a combo.
+     *
+     * Върни takes back a press, not a hop. A combo is one tap, so it has to come
+     * off in one tap; popping a single hop left the checker stranded on the
+     * midpoint, half way through a move the player never chose to make.
+     *
+     * Held only for this session. If it is ever lost — a reload mid-turn —
+     * Върни falls back to one hop at a time, which is what it did before.
+     */
+    const pressSizes = useRef<number[]>([]);
     const [myColor, setMyColor] = useCheckerColor();
     /** Up while a blocked roll is being acknowledged. */
     const [showPass, setShowPass] = useState(false);
@@ -64,6 +81,12 @@ const TablaGame: React.FC = () => {
     const session = useGameSession<TablaState>({ gameKey: 'tabla', username, api, onState });
     const { state, isConnected, isSearching, startSearch, leaveGame, finishAndReturn } = session;
 
+    // How far each cube has turned, and whether it is still in the air. The
+    // landing rotation comes from the server's values, so the animation cannot
+    // present a face that was not rolled. Above the early returns, like every
+    // other hook.
+    const diceRoll = useDiceRoll(state?.die1, state?.die2);
+
     /* ---------------- actions ---------------- */
 
     /** Runs a table action. Returns false when it did not go through. */
@@ -95,18 +118,57 @@ const TablaGame: React.FC = () => {
     }, [toast]);
 
     const handleMove = useCallback((from: number, die: number) => {
-        void guard(() => tablaService.move(from, die));
+        void guard(async () => {
+            await tablaService.move(from, die);
+            pressSizes.current.push(1);
+        });
     }, [guard]);
 
     // Both dice with one checker. Sent as the two hops it really is, in order,
-    // so the server needs no new endpoint and Върни still steps back one die at
-    // a time. The second hop is only sent once the first has been accepted.
+    // so the server needs no new endpoint and no new shape for a pending hop.
+    // The second hop is only sent once the first has been accepted, and the
+    // pair is recorded as one press so Върни takes them back together.
     const handleCombo = useCallback((combo: ComboHop) => {
         void guard(async () => {
             await tablaService.move(combo.from, combo.firstDie);
+            // Let the first hop finish before asking for the second, with a
+            // little room over: the move call returns when the server answers,
+            // while the slide only starts when its push arrives, so the two are
+            // not the same moment. Sent back-to-back the pushes land together
+            // and the checker appears to make one long jump — exactly the move
+            // the player cannot read, when the whole point of playing both dice
+            // with one checker is seeing where it stopped on the way.
+            await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
             await tablaService.move(combo.via, combo.secondDie);
+            pressSizes.current.push(2);
         });
     }, [guard]);
+
+    /** How many hops are on the board right now, readable from a callback. */
+    const pendingCount = useRef(0);
+    useEffect(() => {
+        pendingCount.current = state?.pendingHops.length ?? 0;
+        // A turn with nothing on the board has no presses to take back. Clearing
+        // here covers every way a turn can end — confirmed, timed out, the
+        // opponent's move, a reconnect — so a count can never outlive its turn
+        // and make Върни reach into the one before.
+        if (pendingCount.current === 0) pressSizes.current = [];
+    }, [state?.pendingHops]);
+
+    /** Takes back the last press: one hop, or both of a combo. */
+    const handleUndo = useCallback(async () => {
+        // Never ask for more than is there, whatever the stack claims.
+        const hops = Math.min(pressSizes.current.pop() ?? 1, pendingCount.current);
+
+        for (let i = 0; i < hops; i += 1) {
+            if (i > 0) {
+                // Space them so the checker is seen retracing both legs rather
+                // than reappearing at the start.
+                await new Promise((resolve) => window.setTimeout(resolve, HOP_MS + 120));
+            }
+            await tablaService.undo();
+        }
+    }, []);
 
     /* ---------------- turn clock ---------------- */
 
@@ -304,6 +366,10 @@ const TablaGame: React.FC = () => {
     const canUndo = state.isOnTurn && state.pendingHops.length > 0;
     const canRoll = state.isOnTurn && state.die1 == null;
     const iWon = state.winnerUsername === username;
+    // The badges follow how the checkers are painted on *this* screen, not the
+    // canonical sides: both players may have chosen white for themselves, and a
+    // badge that disagreed with the board would be worse than no badge.
+    const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
 
     return (
         <main style={tableStyle}>
@@ -322,7 +388,11 @@ const TablaGame: React.FC = () => {
                     <span className="truncate" style={{ color: 'var(--text-1)', fontWeight: 700 }}>
                         {opponentName}
                     </span>
-                    <span>Пипове: <span className="tabla-hud__pip tabular">{state.opponentPipCount}</span></span>
+                    <span className="pip-count">
+                        <PipDie color={otherColor} />
+                        <span className="sr-only">Пипове с {COLOR_LABEL[otherColor]}: </span>
+                        <span className="tabla-hud__pip tabular">{state.opponentPipCount}</span>
+                    </span>
                 </span>
 
                 <button
@@ -353,7 +423,11 @@ const TablaGame: React.FC = () => {
                         <span className="truncate" style={{ color: 'var(--gold)', fontWeight: 700 }}>
                             {username}
                         </span>
-                        <span>Пипове: <span className="tabla-hud__pip tabular">{state.myPipCount}</span></span>
+                        <span className="pip-count">
+                            <PipDie color={myColor} />
+                            <span className="sr-only">Пипове с {COLOR_LABEL[myColor]}: </span>
+                            <span className="tabla-hud__pip tabular">{state.myPipCount}</span>
+                        </span>
                     </span>
 
                     <span className={`turn-pill ${urgent ? 'turn-pill--urgent' : ''}`} role="status" aria-live="polite">
@@ -375,13 +449,21 @@ const TablaGame: React.FC = () => {
                 <div className="tabla-actions">
                     {state.die1 != null && state.die2 != null && (
                         <>
-                            <Die value={state.die1} used={!state.remainingDice.includes(state.die1)} />
+                            <Die
+                                value={state.die1}
+                                {...diceRoll.dice[0]}
+                                // A die still in the air has not been spent yet.
+                                used={!diceRoll.airborne && !state.remainingDice.includes(state.die1)}
+                            />
                             <Die
                                 value={state.die2}
+                                {...diceRoll.dice[1]}
                                 used={
-                                    state.die1 === state.die2
-                                        ? state.remainingDice.length === 0
-                                        : !state.remainingDice.includes(state.die2)
+                                    diceRoll.airborne
+                                        ? false
+                                        : state.die1 === state.die2
+                                            ? state.remainingDice.length === 0
+                                            : !state.remainingDice.includes(state.die2)
                                 }
                             />
                             {state.die1 === state.die2 && (
@@ -415,7 +497,7 @@ const TablaGame: React.FC = () => {
                     {canUndo && (
                         <Button variant="ghost" icon="arrowLeft" disabled={busy}
                                 aria-label="Върни последния ход"
-                                onClick={() => void guard(tablaService.undo)}>
+                                onClick={() => void guard(handleUndo)}>
                             Върни
                         </Button>
                     )}
@@ -500,7 +582,11 @@ const TablaGame: React.FC = () => {
 
             {showResult && state.winnerUsername && (
                 <Modal
-                    title="Играта приключи"
+                    // The outcome belongs in the largest text on the dialog.
+                    // "Играта приключи" was identical whether you had won or
+                    // lost, leaving a single body line to carry the result.
+                    title={iWon ? 'Победа!' : 'Загуба'}
+                    className={iWon ? '' : 'modal--loss'}
                     width="narrow"
                     dismissOnScrim={false}
                     actions={
@@ -519,13 +605,23 @@ const TablaGame: React.FC = () => {
                             <Icon name={iWon ? 'trophy' : 'flag'} size="50%" />
                         </span>
 
-                        <p style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)' }}>
-                            {state.surrenderPlayerUsername
+                        {/* The title says whether you won; this line only
+                            adds what the title cannot — who, or how. A plain
+                            win has nothing left to add, so it says nothing
+                            rather than repeating «Победа!» twice over. */}
+                        {(() => {
+                            const detail = state.surrenderPlayerUsername
                                 ? (state.surrenderPlayerUsername === username
                                     ? 'Вие се предадохте.'
                                     : `${state.surrenderPlayerUsername} се предаде!`)
-                                : (iWon ? 'Победа!' : `${state.winnerUsername} спечели.`)}
-                        </p>
+                                : (iWon ? null : `${state.winnerUsername} спечели.`);
+
+                            return detail && (
+                                <p style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)' }}>
+                                    {detail}
+                                </p>
+                            );
+                        })()}
 
                     </div>
                 </Modal>

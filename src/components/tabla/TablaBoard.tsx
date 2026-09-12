@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { BAR, CheckerColor, ComboHop, Hop, OFF, Side, TablaState } from '../../types/tabla.types';
+import { FACE_PLACEMENT } from '../../hooks/useDiceRoll';
+import { useHopAnimation } from '../../hooks/useHopAnimation';
 
 interface Props {
     state: TablaState;
@@ -56,12 +58,40 @@ const PIP_SLOTS: Record<number, number[]> = {
     6: [0, 2, 3, 5, 6, 8],
 };
 
-export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }) => {
-    const slots = PIP_SLOTS[value];
+/** One face of the cube: the pip grid for a single value. */
+const Face: React.FC<{ value: number }> = ({ value }) => (
+    <span className="die__face" style={{ transform: FACE_PLACEMENT[value] }}>
+        {PIP_SLOTS[value].map((slot) => (
+            <span
+                key={slot}
+                className="die__pip"
+                style={{ gridArea: `${Math.floor(slot / 3) + 1} / ${(slot % 3) + 1}` }}
+            />
+        ))}
+    </span>
+);
 
-    // Never render a blank face: if the value is somehow outside 1..6, show it
-    // as a number rather than an empty square.
-    if (!slots) {
+/**
+ * A die, as an actual cube.
+ *
+ * All six faces exist and are placed in 3D; a throw only turns the cube. That
+ * is why the animation can never show a value that was not rolled — the face
+ * brought forward is computed from the server's number, not chosen.
+ *
+ * @param value  the rolled value; always what is announced
+ * @param rx/ry  cube rotation in degrees, growing with every throw
+ * @param lift   1 at the top of the arc, 0 once it has come to rest
+ */
+export const Die: React.FC<{
+    value: number;
+    used?: boolean;
+    rx?: number;
+    ry?: number;
+    lift?: number;
+}> = ({ value, used, rx = 0, ry = 0, lift = 0 }) => {
+    // A value outside 1..6 has no face on the cube; show it flat rather than
+    // turning a blank box to the front.
+    if (!PIP_SLOTS[value]) {
         return (
             <span className={`die die--numeric ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
                 {value}
@@ -70,16 +100,46 @@ export const Die: React.FC<{ value: number; used?: boolean }> = ({ value, used }
     }
 
     return (
-        <span className={`die ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
-            {slots.map((slot) => (
-                <span key={slot} className="die__pip" style={{ gridArea: `${Math.floor(slot / 3) + 1} / ${(slot % 3) + 1}` }} />
-            ))}
+        <span
+            className={`die ${used ? 'die--used' : ''}`}
+            style={{ '--lift': lift } as React.CSSProperties}
+            role="img"
+            aria-label={`Зар ${value}`}
+        >
+            <span
+                className="die__cube"
+                style={{ transform: `rotateX(${rx}deg) rotateY(${ry}deg)` }}
+            >
+                {[1, 2, 3, 4, 5, 6].map((face) => <Face key={face} value={face} />)}
+            </span>
         </span>
     );
 };
 
+/**
+ * The marker beside a pip count: a die face showing a single pip, painted like
+ * that player's checkers.
+ *
+ * It replaces the word «Пипове», which had to be repeated on both rows and said
+ * nothing about whose count it was. Fill carries the distinction as well as
+ * colour does — solid for the dark side, pale for the light one — so the two
+ * rows stay apart without relying on colour alone.
+ */
+export const PipDie: React.FC<{ color: CheckerColor }> = ({ color }) => (
+    <span className={`pip-die pip-die--${color}`} aria-hidden="true">
+        <span className="pip-die__pip" />
+    </span>
+);
+
 const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onCombo, myColor }) => {
     const { points, mySide, legalHops } = state;
+    const boardRef = useRef<HTMLDivElement>(null);
+
+    // Hops arrive in the mover's own frame, and the mover is the opponent
+    // whenever it is not my turn.
+    const moverSide: Side = state.isOnTurn ? mySide : (mySide === 'WHITE' ? 'BLACK' : 'WHITE');
+    useHopAnimation(boardRef, state.pendingHops ?? [], moverSide);
+
     const comboHops = state.comboHops ?? [];
     const otherColor: CheckerColor = myColor === 'white' ? 'black' : 'white';
 
@@ -168,6 +228,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
             <button
                 key={canonicalPoint}
                 type="button"
+                data-point={canonicalPoint}
                 className={classes}
                 style={{ gridColumn: col, gridRow: row }}
                 onClick={() => handlePoint(canonicalPoint)}
@@ -191,10 +252,17 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
     };
 
     const barLegal = legalHops.some((h) => h.from === BAR);
-    const offLegal = targets.some((h) => h.to === OFF);
+
+    // Bearing off can need both dice — a checker six away goes out as 2 then 4,
+    // never in one hop. Only single-die hops were consulted here, so that
+    // checker had no way out on screen even though the server allowed it.
+    const offHop = targets.find((h) => h.to === OFF);
+    const offCombo = comboTargets.find((c) => c.to === OFF);
+    const offLegal = offHop !== undefined || offCombo !== undefined;
 
     return (
         <div
+            ref={boardRef}
             className="tabla-board"
             role="group"
             aria-label={`Дъска за табла, вашите пулове са ${myColor === 'white' ? 'бели' : 'черни'}`}
@@ -225,16 +293,33 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
 
             <button
                 type="button"
-                className={`tabla-off ${offLegal ? 'tabla-off--legal' : ''}`}
+                className={[
+                    'tabla-off',
+                    offLegal ? 'tabla-off--legal' : '',
+                    // Two dice to get out, marked like a two-dice square on the
+                    // board, so the cost is visible before the tap.
+                    !offHop && offCombo ? 'tabla-off--combo' : '',
+                ].filter(Boolean).join(' ')}
                 onClick={() => {
-                    const hop = targets.find((h) => h.to === OFF);
-                    if (hop) {
-                        onMove(hop.from, hop.die);
+                    // One die where one will do; it is the smaller commitment.
+                    if (offHop) {
+                        onMove(offHop.from, offHop.die);
+                        onSelect(null);
+                        return;
+                    }
+                    if (offCombo) {
+                        onCombo(offCombo);
                         onSelect(null);
                     }
                 }}
                 disabled={!offLegal}
-                aria-label={`Изведени пулове: ваши ${state.myOff} от 15, на опонента ${state.opponentOff} от 15`}
+                aria-label={
+                    `Изведени пулове: ваши ${state.myOff} от 15, на опонента ${state.opponentOff} от 15`
+                    + (offHop ? '. Може да изведете пул.' : '')
+                    + (!offHop && offCombo
+                        ? `. Може да изведете пул с двата зара (${offCombo.firstDie} и ${offCombo.secondDie}).`
+                        : '')
+                }
             >
                 <span className="tabla-off__side">
                     <Checker color={otherColor} />

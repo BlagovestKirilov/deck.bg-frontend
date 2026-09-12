@@ -1805,7 +1805,10 @@ const SantaseGame: React.FC = () => {
 
                         return (
                             <Modal
-                                title="ИГРАТА ПРИКЛЮЧИ"
+                                // Same wording as табла, and in the same case:
+                                // the two result dialogs disagreed on both.
+                                title={iWon ? 'Победа!' : 'Загуба'}
+                                className={iWon ? '' : 'modal--loss'}
                                 width="narrow"
                                 dismissOnScrim={false}
                                 actions={
@@ -1828,15 +1831,22 @@ const SantaseGame: React.FC = () => {
                                         <Icon name={iWon ? 'trophy' : 'flag'} size="50%"/>
                                     </span>
 
-                                    <p style={{fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)'}}>
-                                        {isSurrender
+                                    {/* The title carries the outcome now, so this
+                                        line only adds who or how. A plain win has
+                                        nothing to add beyond the score below. */}
+                                    {(() => {
+                                        const detail = isSurrender
                                             ? (opponentSurrendered
                                                 ? `${surrenderedPlayer} се предаде!`
                                                 : 'Вие се предадохте.')
-                                            : (iWon
-                                                ? 'Брилянтна победа!'
-                                                : `${finalWinner} спечели тази игра.`)}
-                                    </p>
+                                            : (iWon ? null : `${finalWinner} спечели тази игра.`);
+
+                                        return detail && (
+                                            <p style={{fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)'}}>
+                                                {detail}
+                                            </p>
+                                        );
+                                    })()}
 
                                     <div style={finalScoreStyle}>
                                         <div style={{textAlign: 'center', minWidth: 0}}>

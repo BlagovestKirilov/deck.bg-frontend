@@ -496,6 +496,9 @@ code, kbd, samp { font-family: var(--font-mono); }
 }
 
 .modal--danger { border-color: rgba(255,111,111,.45); }
+/* A loss is not an error: it drops the celebratory gold without borrowing the
+   danger red, which would read as something having gone wrong. */
+.modal--loss .panel__title { color: var(--text-2); }
 .modal--narrow { max-width: 380px; }
 /* The profile is the only dialog with enough content to be worth the room; a
    desktop had to scroll two short cards that fit side by side. */
@@ -1241,6 +1244,11 @@ code, kbd, samp { font-family: var(--font-mono); }
 .tabla-bar--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
 .tabla-bar--source { background: rgba(227, 191, 93, 0.32); cursor: pointer; }
 .tabla-off--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
+/* Costs both dice, in the same blue the board uses for a two-dice square. */
+.tabla-off--combo {
+    background: rgba(56, 182, 255, 0.30);
+    box-shadow: inset 0 0 0 2px #38b6ff;
+}
 
 /* One tray row: whose checkers, and how many of the fifteen are off. The words
    ОПОНЕНТ / ВИЕ used to sit here; they read as a match score and outgrew the
@@ -1319,41 +1327,81 @@ code, kbd, samp { font-family: var(--font-mono); }
     flex: 0 0 auto;
 }
 
-/* Dice: a 3x3 pip grid, never the unicode faces — those render wildly
-   differently across Android and iOS. */
+/* Dice: a real cube with six faces, turned in 3D. Never the unicode faces —
+   those render wildly differently across Android and iOS. */
 .die {
     /* One length drives the whole die. Percentage padding and gap would resolve
        against the *action bar's* width, not the die's: that inflated the die to
        ~400px with a zero-width content box, which is why the pips were invisible
        and the faces looked like blank cream squares. */
     --die: clamp(36px, 11vw, 52px);
+    --die-half: calc(var(--die) / 2);
+    --lift: 0;
     flex: 0 0 auto;
     width: var(--die);
     height: var(--die);
+    /* The cube is small, so the vanishing point has to be close or the
+       perspective reads as a flat rotation. */
+    perspective: calc(var(--die) * 4);
+    transition: opacity var(--dur-fast) var(--ease-out);
+}
+
+/* The throw: up off the table and back down, while the cube turns. Transform
+   only, and the action row reserves its height, so nothing around it moves. */
+.die__cube {
+    display: block;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    transform-style: preserve-3d;
+    /* Decelerating, with a touch of overshoot at the end — a die that settles
+       rather than one that stops dead. */
+    transition:
+        transform 650ms cubic-bezier(.17, .84, .27, 1.03),
+        translate 260ms var(--ease-out);
+    translate: 0 calc(var(--lift) * var(--die) * -0.55);
+}
+
+.die__face {
+    position: absolute;
+    inset: 0;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     grid-template-rows: repeat(3, 1fr);
     gap: calc(var(--die) * .08);
     padding: calc(var(--die) * .14);
-    border-radius: var(--r-sm);
+    border-radius: calc(var(--die) * .16);
     background: linear-gradient(160deg, #fdfaf1, #e3d9c2);
-    box-shadow: var(--sh-1);
-    transition: opacity var(--dur-fast) var(--ease-out);
+    /* The cube has no lighting of its own, so the edges do the work of telling
+       one face from the next as it turns. */
+    box-shadow: inset 0 0 0 1px rgba(90, 70, 30, .28);
+    backface-visibility: hidden;
 }
+
 .die__pip {
     border-radius: 50%;
     background: var(--text-on-light);
 }
+
 .die--used { opacity: .32; }
+
 /* Fallback face when a value is not 1..6, so a die is never blank. */
 .die--numeric {
     display: grid;
     place-items: center;
     padding: 0;
+    border-radius: var(--r-sm);
+    background: linear-gradient(160deg, #fdfaf1, #e3d9c2);
+    box-shadow: var(--sh-1);
     color: var(--text-on-light);
     font-family: var(--font-display);
     font-size: calc(var(--die) * .6);
     font-weight: 700;
+}
+
+/* The cube still turns to the right face; it simply gets there at once. */
+@media (prefers-reduced-motion: reduce) {
+    .die__cube { transition: none; translate: none; }
 }
 
 .tabla-hud {
@@ -1378,6 +1426,50 @@ code, kbd, samp { font-family: var(--font-mono); }
     font-weight: 700;
     color: var(--text-1);
     font-variant-numeric: tabular-nums;
+}
+
+/* Pip count: a one-pip die in that player's checker colour, then the number.
+   The die is square with a small radius so it reads as a die and not as a
+   checker, which is round and lives on the board. */
+.pip-count {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    min-width: 0;
+}
+.pip-die {
+    /* Sized off the number it labels, so the pair scales as one. A fixed clamp
+       bottomed out at 12.75px on a 375px screen, where the pip inside came to
+       under 3px and read as a speck rather than a die face. */
+    --pip-die: calc(var(--fs-md) * .95);
+    flex: 0 0 auto;
+    width: var(--pip-die);
+    height: var(--pip-die);
+    display: grid;
+    place-items: center;
+    border-radius: calc(var(--pip-die) * .24);
+    border: 1px solid;
+}
+.pip-die__pip {
+    /* Larger than a real die's pip: at this size the honest proportion lands
+       on a sub-3px dot that disappears on a low-density screen. */
+    width: 30%;
+    height: 30%;
+    border-radius: 50%;
+    background: currentColor;
+}
+/* The same paint as the checkers, so the badge is read as those pieces. */
+.pip-die--white {
+    background: linear-gradient(160deg, #f7ead2, #d9bd93);
+    border-color: #a8875c;
+    color: #3a2a12;
+}
+.pip-die--black {
+    background: linear-gradient(160deg, #4a2f1b, #1d1109);
+    /* A pale hairline where the checker has a near-black one: the checker sits
+       on the lit board, this sits on the dark HUD and would lose its edge. */
+    border-color: rgba(242, 228, 204, .5);
+    color: #f2e4cc;
 }
 
 .tabla-actions {
