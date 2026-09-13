@@ -1808,7 +1808,7 @@ const SantaseGame: React.FC = () => {
                                 // Same wording as табла, and in the same case:
                                 // the two result dialogs disagreed on both.
                                 title={iWon ? 'Победа!' : 'Загуба'}
-                                className={iWon ? '' : 'modal--loss'}
+                                className={`modal--result ${iWon ? '' : 'modal--loss'}`}
                                 width="narrow"
                                 dismissOnScrim={false}
                                 actions={
@@ -1831,22 +1831,18 @@ const SantaseGame: React.FC = () => {
                                         <Icon name={iWon ? 'trophy' : 'flag'} size="50%"/>
                                     </span>
 
-                                    {/* The title carries the outcome now, so this
-                                        line only adds who or how. A plain win has
-                                        nothing to add beyond the score below. */}
-                                    {(() => {
-                                        const detail = isSurrender
+                                    {/* The title carries the outcome; this line
+                                        says against whom, or how it ended. Same
+                                        wording as табла. */}
+                                    <p style={{fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)'}}>
+                                        {isSurrender
                                             ? (opponentSurrendered
                                                 ? `${surrenderedPlayer} се предаде!`
-                                                : 'Вие се предадохте.')
-                                            : (iWon ? null : `${finalWinner} спечели тази игра.`);
-
-                                        return detail && (
-                                            <p style={{fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)'}}>
-                                                {detail}
-                                            </p>
-                                        );
-                                    })()}
+                                                : `Предадохте се на ${opponentName}`)
+                                            : (iWon
+                                                ? `Победихте ${opponentName}`
+                                                : `Загубихте от ${opponentName}`)}
+                                    </p>
 
                                     <div style={finalScoreStyle}>
                                         <div style={{textAlign: 'center', minWidth: 0}}>

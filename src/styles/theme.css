@@ -499,6 +499,19 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* A loss is not an error: it drops the celebratory gold without borrowing the
    danger red, which would read as something having gone wrong. */
 .modal--loss .panel__title { color: var(--text-2); }
+
+/* The result dialog announces an outcome rather than labelling a form, so the
+   title sits over the middle of what it describes — the mark and the line
+   naming the opponent are both centred, and a left-aligned heading above them
+   read as a stray label. */
+.modal--result .panel__header {
+    justify-content: center;
+    /* The header keeps an empty span where the close button would go. It has no
+       width, but the row's gap still counts either side of it and pushed the
+       title half a gap off centre. */
+    gap: 0;
+}
+.modal--result .panel__title { text-align: center; }
 .modal--narrow { max-width: 380px; }
 /* The profile is the only dialog with enough content to be worth the room; a
    desktop had to scroll two short cards that fit side by side. */
