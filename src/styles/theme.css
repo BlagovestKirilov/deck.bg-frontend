@@ -499,6 +499,19 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* A loss is not an error: it drops the celebratory gold without borrowing the
    danger red, which would read as something having gone wrong. */
 .modal--loss .panel__title { color: var(--text-2); }
+
+/* The result dialog announces an outcome rather than labelling a form, so the
+   title sits over the middle of what it describes — the mark and the line
+   naming the opponent are both centred, and a left-aligned heading above them
+   read as a stray label. */
+.modal--result .panel__header {
+    justify-content: center;
+    /* The header keeps an empty span where the close button would go. It has no
+       width, but the row's gap still counts either side of it and pushed the
+       title half a gap off centre. */
+    gap: 0;
+}
+.modal--result .panel__title { text-align: center; }
 .modal--narrow { max-width: 380px; }
 /* The profile is the only dialog with enough content to be worth the room; a
    desktop had to scroll two short cards that fit side by side. */
@@ -1260,7 +1273,17 @@ code, kbd, samp { font-family: var(--font-mono); }
 }
 .tabla-off { grid-column: 14; border-left: 2px solid #2e1a0e; }
 .tabla-bar--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
-.tabla-bar--source { background: rgba(227, 191, 93, 0.32); cursor: pointer; }
+/* Green, not the gold a tapped point wears.
+   A checker on the bar has to come in before anything else moves, so the bar is
+   picked up for the player rather than chosen by them — and gold means "you
+   chose this". Green says "this is in play", which is what actually happened.
+   Deeper than the unselected bar, and ringed, so it is still plainly the thing
+   being moved from. */
+.tabla-bar--source {
+    background: rgba(87, 198, 125, 0.55);
+    box-shadow: inset 0 0 0 2px var(--success);
+    cursor: pointer;
+}
 .tabla-off--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
 /* Costs more than one die, in the same blue the board uses for such a square.
    The tray holds counts rather than points, so the number sits in a badge
