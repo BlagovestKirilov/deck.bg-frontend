@@ -1273,7 +1273,17 @@ code, kbd, samp { font-family: var(--font-mono); }
 }
 .tabla-off { grid-column: 14; border-left: 2px solid #2e1a0e; }
 .tabla-bar--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
-.tabla-bar--source { background: rgba(227, 191, 93, 0.32); cursor: pointer; }
+/* Green, not the gold a tapped point wears.
+   A checker on the bar has to come in before anything else moves, so the bar is
+   picked up for the player rather than chosen by them — and gold means "you
+   chose this". Green says "this is in play", which is what actually happened.
+   Deeper than the unselected bar, and ringed, so it is still plainly the thing
+   being moved from. */
+.tabla-bar--source {
+    background: rgba(87, 198, 125, 0.55);
+    box-shadow: inset 0 0 0 2px var(--success);
+    cursor: pointer;
+}
 .tabla-off--legal { background: rgba(87, 198, 125, 0.28); cursor: pointer; }
 /* Costs more than one die, in the same blue the board uses for such a square.
    The tray holds counts rather than points, so the number sits in a badge
