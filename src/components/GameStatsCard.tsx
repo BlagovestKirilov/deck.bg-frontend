@@ -1,88 +1,68 @@
 import React from 'react';
 import { GameStats } from '../types/user.types';
-import RankBadge from './RankBadge';
-import Icon, { IconName } from './ui/Icon';
+import RankBadge, { rankName } from './RankBadge';
 
 interface Props {
     title: string;
-    /** Shown when the game has no crest of its own. */
-    icon?: IconName;
-    /** A short mark — Сантасе is known by its 66, the same as on the hub. */
-    crest?: string;
     stats: GameStats;
 }
 
 /**
- * One game's record: rank, W/L and the win ratio.
+ * One game's record: rank, wins, losses and the share won.
  *
  * Each game is ranked separately, so the profile shows one of these per game
  * rather than a single account-wide number — a Santase rank says nothing about
  * how someone plays табла.
  */
-const GameStatsCard: React.FC<Props> = ({ title, icon, crest, stats }) => {
+const GameStatsCard: React.FC<Props> = ({ title, stats }) => {
     const { wins, losses, rank, placementGamesRemaining } = stats;
     const total = wins + losses;
     const winPct = total > 0 ? Math.round((wins / total) * 100) : 0;
     const inPlacement = placementGamesRemaining > 0;
 
     return (
-        <section className="game-stats" aria-label={`Статистика: ${title}`}>
-            <header className="game-stats__head">
-                <span className="game-stats__title">
-                    {crest
-                        ? <span className="game-stats__crest">{crest}</span>
-                        : icon && <Icon name={icon} size={18} />}
-                    {title}
-                </span>
-
-                <span className="game-stats__rank">
-                    <RankBadge
-                        rank={rank}
-                        size="small"
-                        placementGamesRemaining={placementGamesRemaining}
-                    />
+        <section className="record" aria-label={`Статистика: ${title}`}>
+            <header className="record__head">
+                <h4 className="record__game">{title}</h4>
+                <span className="record__rank">
+                    {inPlacement
+                        ? `Още ${placementGamesRemaining} ${placementGamesRemaining === 1 ? 'игра' : 'игри'} до ранг`
+                        : rankName(rank)}
+                    <RankBadge rank={rank} size="small" placementGamesRemaining={placementGamesRemaining} />
                 </span>
             </header>
 
-            <div className="game-stats__row">
-                <div className="stat">
-                    <div className="stat__value">{wins}</div>
-                    <div className="stat__label">Победи</div>
+            <dl className="record__nums">
+                <div className="record__num">
+                    <dt>Победи</dt>
+                    <dd>{wins}</dd>
                 </div>
-                <div className="stat">
-                    <div className="stat__value">{losses}</div>
-                    <div className="stat__label">Загуби</div>
+                <div className="record__num">
+                    <dt>Загуби</dt>
+                    <dd>{losses}</dd>
                 </div>
-                <div className="stat">
-                    <div className="stat__value">{total}</div>
-                    <div className="stat__label">Игри</div>
+                <div className="record__num">
+                    <dt>Игри</dt>
+                    <dd>{total}</dd>
                 </div>
-            </div>
+            </dl>
 
             {total > 0 ? (
                 <>
                     <div
-                        className="ratio"
+                        className="record__ratio"
                         role="img"
-                        aria-label={`Победи ${wins}, загуби ${losses}, ${winPct}% успеваемост`}
+                        aria-label={`Победи ${wins}, загуби ${losses}, ${winPct}% спечелени`}
                     >
-                        <div className="ratio__win" style={{ width: `${winPct}%` }} />
-                        <div className="ratio__loss" style={{ width: `${100 - winPct}%` }} />
+                        <span className="record__ratio-win" style={{ width: `${winPct}%` }} />
+                        <span className="record__ratio-loss" style={{ width: `${100 - winPct}%` }} />
                     </div>
-                    <div className="game-stats__legend">
-                        <span style={{ color: 'var(--success)', fontWeight: 700 }}>{winPct}% победи</span>
-                        {inPlacement && (
-                            <span style={{ color: 'var(--text-3)' }}>
-                                още {placementGamesRemaining} до ранг
-                            </span>
-                        )}
-                        <span style={{ color: 'var(--danger-bright)', fontWeight: 700 }}>
-                            {100 - winPct}% загуби
-                        </span>
-                    </div>
+                    <p className="record__note">
+                        <strong>{winPct}%</strong> от игрите спечелени
+                    </p>
                 </>
             ) : (
-                <p className="game-stats__empty">Още няма изиграни игри.</p>
+                <p className="record__note">Още няма изиграни игри.</p>
             )}
         </section>
     );

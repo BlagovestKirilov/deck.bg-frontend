@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { rememberedUsername } from '../context/AuthContext';
 import { useKeyboardInset } from '../hooks/useKeyboardInset';
@@ -7,8 +8,35 @@ import Button from './ui/Button';
 import Field from './ui/Field';
 import Note from './ui/Note';
 import Icon from './ui/Icon';
+import Brand from './ui/Brand';
+import FeltDrift from './lobby/FeltDrift';
 
 type Mode = 'login' | 'register' | 'forgot';
+
+/**
+ * The card each screen is printed on, in Bulgarian indices — А, Д (дама),
+ * В (вале). Signing in is the ace; the others are a different card so that
+ * turning between them reads as a new card coming up, not the same one
+ * spinning in place.
+ */
+const CARD: Record<Mode, { rank: string; suit: string; red: boolean }> = {
+    login:    { rank: 'А', suit: '♠', red: false },
+    register: { rank: 'Д', suit: '♥', red: true },
+    forgot:   { rank: 'В', suit: '♦', red: true },
+};
+
+const CardIndex: React.FC<{ mode: Mode; corner: 'tl' | 'br' }> = ({ mode, corner }) => {
+    const { rank, suit, red } = CARD[mode];
+    return (
+        <span
+            aria-hidden="true"
+            className={`card-index card-index--${corner} ${red ? 'card-index--red' : ''}`}
+        >
+            <span className="card-index__rank">{rank}</span>
+            <span className="card-index__suit">{suit}</span>
+        </span>
+    );
+};
 
 type FieldKey = 'username' | 'email' | 'password' | 'confirmPassword' | 'forgotEmail';
 type Errors = Partial<Record<FieldKey, string>>;
@@ -56,43 +84,6 @@ const AuthPage: React.FC = () => {
         setErrors({});
         setFormMessage(null);
     }, [mode]);
-
-    /* ---------------------------------------------------------------
-       Ambient card symbols. Generated once; the count is kept low because
-       this renders behind a form on low-end phones. prefers-reduced-motion
-       stops the animation globally (see theme.css).
-       --------------------------------------------------------------- */
-    const driftingSymbols = useMemo(() => {
-        const symbols = ['♠', '♥', '♦', '♣', 'K', 'Q', 'A', 'J', '10', '9'];
-        return Array.from({ length: 18 }).map((_, i) => {
-            const size = 1.4 + Math.random() * 3.4;
-            const opacity = 0.04 + Math.random() * 0.09;
-            return (
-                <span
-                    key={i}
-                    aria-hidden="true"
-                    style={
-                        {
-                            position: 'absolute',
-                            bottom: '-140px',
-                            left: `${Math.random() * 100}%`,
-                            fontSize: `${size}rem`,
-                            color: i % 2 === 0 ? 'var(--gold)' : 'var(--text-3)',
-                            opacity,
-                            filter: size < 2 ? 'blur(2px)' : undefined,
-                            animation: `drift-up ${18 + Math.random() * 26}s linear infinite`,
-                            animationDelay: `${Math.random() * -30}s`,
-                            pointerEvents: 'none',
-                            userSelect: 'none',
-                            '--drift-opacity': opacity,
-                        } as React.CSSProperties
-                    }
-                >
-                    {symbols[Math.floor(Math.random() * symbols.length)]}
-                </span>
-            );
-        });
-    }, []);
 
     /* ---------------------------------------------------------------
        Validation — every failure attaches to the field that caused it,
@@ -277,233 +268,178 @@ const AuthPage: React.FC = () => {
         }
     };
 
-    const heading = isForgot ? 'Забравена парола' : 'Регистрация';
+    const title = isForgot ? 'Забравена парола' : isRegister ? 'Нов профил' : 'Вход';
     const sub = isForgot
-        ? 'Въведете вашия имейл адрес за възстановяване на парола'
+        ? 'Ще ти изпратим линк за нова парола на имейла от регистрацията.'
         : isLogin
-          ? 'Влез и играй Сантасе или Табла'
-          : 'Стани част от елита';
+          ? 'Сантасе и табла срещу реални опоненти.'
+          : 'Един профил за Сантасе и за Табла.';
 
     return (
-        <main className="screen screen--flow">
-            <div aria-hidden="true" style={driftLayerStyle}>
-                {driftingSymbols}
-            </div>
+        <main className="screen screen--flow lobby lobby-auth">
+            <FeltDrift />
 
-            <div className="panel panel--gold" style={cardStyle}>
-                <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
-                    <span style={crestStyle}>
-                        <Icon name="spade" size="58%" />
-                    </span>
-                    {isLogin ? (
-                        <h1 className="sr-only">Вход</h1>
-                    ) : (
-                        <h1 style={headingStyle}>{heading}</h1>
-                    )}
-                    <p style={subStyle}>{sub}</p>
-                </div>
+            <div className="deal">
+                {/* Keyed by mode: a new mode is a new card, and it turns up. */}
+                <section key={mode} className="play-card" aria-labelledby="auth-title">
+                    <CardIndex mode={mode} corner="tl" />
+                    <CardIndex mode={mode} corner="br" />
 
-                {!isForgot ? (
-                    <form onSubmit={handleSubmit} noValidate style={formStyle}>
-                        <Field
-                            ref={usernameRef}
-                            label="Потребителско име"
-                            name="username"
-                            value={form.username}
-                            onChange={onChange('username')}
-                            error={errors.username}
-                            autoComplete={isLogin ? 'username' : 'off'}
-                            autoCapitalize="none"
-                            autoCorrect="off"
-                            spellCheck={false}
-                            placeholder="Потребителско име"
-                            enterKeyHint={enterHint(0)}
-                            onKeyDown={onFieldKeyDown(0)}
-                            hint={isRegister ? '4–20 символа, латински букви и цифри.' : undefined}
-                            required
-                        />
+                    <header className="play-card__head">
+                        {isLogin ? (
+                            <>
+                                {/* The name of the place is what the sign-in card
+                                    shows; the heading is still there for anyone
+                                    navigating by headings. */}
+                                <Brand tone="card" size="lg" />
+                                <h1 id="auth-title" className="sr-only">{title}</h1>
+                            </>
+                        ) : (
+                            <h1 id="auth-title" className="play-card__title">{title}</h1>
+                        )}
+                        <p className="play-card__sub">{sub}</p>
+                    </header>
 
-                        {isRegister && (
+                    {!isForgot ? (
+                        <form onSubmit={handleSubmit} noValidate className="play-card__form">
                             <Field
-                                ref={emailRef}
+                                ref={usernameRef}
+                                label="Потребителско име"
+                                name="username"
+                                value={form.username}
+                                onChange={onChange('username')}
+                                error={errors.username}
+                                autoComplete={isLogin ? 'username' : 'off'}
+                                autoCapitalize="none"
+                                autoCorrect="off"
+                                spellCheck={false}
+                                placeholder="Потребителско име"
+                                enterKeyHint={enterHint(0)}
+                                onKeyDown={onFieldKeyDown(0)}
+                                hint={isRegister ? '4–20 символа, латински букви и цифри.' : undefined}
+                                required
+                            />
+
+                            {isRegister && (
+                                <Field
+                                    ref={emailRef}
+                                    label="Имейл"
+                                    name="email"
+                                    type="email"
+                                    inputMode="email"
+                                    value={form.email}
+                                    onChange={onChange('email')}
+                                    error={errors.email}
+                                    autoComplete="email"
+                                    autoCapitalize="none"
+                                    placeholder="example@mail.com"
+                                    hint="Само за потвърждение и за нова парола."
+                                    enterKeyHint={enterHint(1)}
+                                    onKeyDown={onFieldKeyDown(1)}
+                                    required
+                                />
+                            )}
+
+                            <Field
+                                ref={passwordRef}
+                                label="Парола"
+                                name="password"
+                                type="password"
+                                value={form.password}
+                                onChange={onChange('password')}
+                                error={errors.password}
+                                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                                placeholder="••••••••"
+                                enterKeyHint={enterHint(isRegister ? 2 : 1)}
+                                onKeyDown={onFieldKeyDown(isRegister ? 2 : 1)}
+                                required
+                            />
+
+                            {isRegister && (
+                                <Field
+                                    ref={confirmRef}
+                                    label="Повтори паролата"
+                                    name="confirmPassword"
+                                    type="password"
+                                    value={form.confirmPassword}
+                                    onChange={onChange('confirmPassword')}
+                                    error={errors.confirmPassword}
+                                    autoComplete="new-password"
+                                    placeholder="••••••••"
+                                    enterKeyHint="go"
+                                    required
+                                />
+                            )}
+
+                            {formMessage && <Note tone={formMessage.tone}>{formMessage.text}</Note>}
+
+                            <Button type="submit" variant="primary" size="lg" block loading={isLoading}>
+                                {isLogin ? 'Влез' : 'Създай профил'}
+                            </Button>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleForgotSubmit} noValidate className="play-card__form">
+                            <Field
+                                ref={forgotRef}
                                 label="Имейл"
-                                name="email"
+                                name="forgotEmail"
                                 type="email"
                                 inputMode="email"
-                                value={form.email}
-                                onChange={onChange('email')}
-                                error={errors.email}
+                                value={forgotEmail}
+                                onChange={(e) => {
+                                    setForgotEmail(e.target.value);
+                                    setErrors({});
+                                    setFormMessage(null);
+                                }}
+                                error={errors.forgotEmail}
                                 autoComplete="email"
                                 autoCapitalize="none"
                                 placeholder="example@mail.com"
-                                hint="Използва се само за потвърждение и възстановяване на парола."
-                                enterKeyHint={enterHint(1)}
-                                onKeyDown={onFieldKeyDown(1)}
-                                required
-                            />
-                        )}
-
-                        <Field
-                            ref={passwordRef}
-                            label="Парола"
-                            name="password"
-                            type="password"
-                            value={form.password}
-                            onChange={onChange('password')}
-                            error={errors.password}
-                            autoComplete={isLogin ? 'current-password' : 'new-password'}
-                            placeholder="••••••••"
-                            enterKeyHint={enterHint(isRegister ? 2 : 1)}
-                            onKeyDown={onFieldKeyDown(isRegister ? 2 : 1)}
-                            required
-                        />
-
-                        {isRegister && (
-                            <Field
-                                ref={confirmRef}
-                                label="Потвърди паролата"
-                                name="confirmPassword"
-                                type="password"
-                                value={form.confirmPassword}
-                                onChange={onChange('confirmPassword')}
-                                error={errors.confirmPassword}
-                                autoComplete="new-password"
-                                placeholder="••••••••"
                                 enterKeyHint="go"
                                 required
                             />
+
+                            {formMessage && <Note tone={formMessage.tone}>{formMessage.text}</Note>}
+
+                            <Button type="submit" variant="primary" size="lg" block loading={isForgotLoading}>
+                                Изпрати линк
+                            </Button>
+                        </form>
+                    )}
+
+                    <footer className="play-card__foot">
+                        {isLogin && (
+                            <button type="button" className="btn btn--link" onClick={() => setMode('forgot')}>
+                                Забравена парола?
+                            </button>
                         )}
 
-                        {formMessage && <Note tone={formMessage.tone}>{formMessage.text}</Note>}
-
-                        <Button type="submit" variant="primary" size="lg" block loading={isLoading}>
-                            {isLogin ? 'Влез' : 'Регистрирай се'}
-                        </Button>
-                    </form>
-                ) : (
-                    <form onSubmit={handleForgotSubmit} noValidate style={formStyle}>
-                        <Field
-                            ref={forgotRef}
-                            label="Имейл"
-                            name="forgotEmail"
-                            type="email"
-                            inputMode="email"
-                            value={forgotEmail}
-                            onChange={(e) => {
-                                setForgotEmail(e.target.value);
-                                setErrors({});
-                                setFormMessage(null);
-                            }}
-                            error={errors.forgotEmail}
-                            autoComplete="email"
-                            autoCapitalize="none"
-                            placeholder="example@mail.com"
-                            enterKeyHint="go"
-                            required
-                        />
-
-                        {formMessage && <Note tone={formMessage.tone}>{formMessage.text}</Note>}
-
-                        <Button type="submit" variant="primary" size="lg" block loading={isForgotLoading}>
-                            Изпрати
-                        </Button>
-                    </form>
-                )}
-
-                <div style={footerStyle}>
-                    {isLogin && (
-                        <button type="button" className="btn btn--link" onClick={() => setMode('forgot')}>
-                            Забравена парола?
-                        </button>
-                    )}
-
-                    {isForgot ? (
-                        <button type="button" className="btn btn--link" onClick={() => setMode('login')}>
-                            <Icon name="arrowLeft" size={16} />
-                            Назад към вход
-                        </button>
-                    ) : (
-                        <p style={switchStyle}>
-                            {isLogin ? 'Нямаш профил?' : 'Вече имаш профил?'}
-                            <button
-                                type="button"
-                                className="btn btn--link"
-                                onClick={() => setMode(isLogin ? 'register' : 'login')}
-                            >
-                                {isLogin ? 'Създай сега' : 'Влез тук'}
+                        {isForgot ? (
+                            <button type="button" className="btn btn--link" onClick={() => setMode('login')}>
+                                <Icon name="arrowLeft" size={16} />
+                                Обратно към вход
                             </button>
-                        </p>
-                    )}
-                </div>
+                        ) : (
+                            <p className="play-card__switch">
+                                {isLogin ? 'Нямаш профил?' : 'Вече имаш профил?'}
+                                <button
+                                    type="button"
+                                    className="btn btn--link"
+                                    onClick={() => setMode(isLogin ? 'register' : 'login')}
+                                >
+                                    {isLogin ? 'Създай профил' : 'Влез'}
+                                </button>
+                            </p>
+                        )}
+                    </footer>
+                </section>
             </div>
+
+            <p className="lobby-auth__legal">
+                <Link to="/privacy">Поверителност</Link>
+            </p>
         </main>
     );
-};
-
-const driftLayerStyle: React.CSSProperties = {
-    position: 'absolute',
-    inset: 0,
-    overflow: 'hidden',
-    pointerEvents: 'none',
-};
-
-const cardStyle: React.CSSProperties = {
-    position: 'relative',
-    zIndex: 1,
-    // margin:auto rather than relying on align-items, so a tall form keeps its
-    // top reachable when it overflows and the screen has to scroll.
-    margin: 'auto',
-    width: '100%',
-    maxWidth: '400px',
-    padding: 'clamp(24px, 6vw, 40px)',
-};
-
-const crestStyle: React.CSSProperties = {
-    display: 'grid',
-    placeItems: 'center',
-    width: 'clamp(56px, 15vw, 72px)',
-    height: 'clamp(56px, 15vw, 72px)',
-    margin: '0 auto var(--sp-4)',
-    borderRadius: '50%',
-    background: 'var(--gold-wash)',
-    border: '1px solid var(--line-gold)',
-    color: 'var(--gold)',
-};
-
-const headingStyle: React.CSSProperties = {
-    fontSize: 'var(--fs-2xl)',
-    color: 'var(--gold)',
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-};
-
-const subStyle: React.CSSProperties = {
-    marginTop: 'var(--sp-2)',
-    fontSize: 'var(--fs-sm)',
-    color: 'var(--text-3)',
-};
-
-const formStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--sp-4)',
-};
-
-const footerStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    marginTop: 'var(--sp-4)',
-};
-
-const switchStyle: React.CSSProperties = {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 'var(--sp-1)',
-    fontSize: 'var(--fs-sm)',
-    color: 'var(--text-3)',
 };
 
 export default AuthPage;

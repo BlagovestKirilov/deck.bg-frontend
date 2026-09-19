@@ -87,13 +87,11 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
      * `stats` is the current shape; the legacy top-level santaseWins/Losses are
      * still read as a fallback so an older server does not blank the page.
      */
-    const gameCards: {
-        key: GameKey; title: string; icon?: 'dice'; crest?: string; stats: GameStats;
-    }[] =
+    const gameCards: { key: GameKey; title: string; stats: GameStats }[] =
         profile
             ? ([
-                  { key: 'SANTASE' as const, title: 'Сантасе', crest: '66' },
-                  { key: 'TABLA' as const, title: 'Табла', icon: 'dice' as const },
+                  { key: 'SANTASE' as const, title: 'Сантасе' },
+                  { key: 'TABLA' as const, title: 'Табла' },
               ]
                   .map((game) => {
                       const stats = profile.stats?.[game.key]
@@ -108,9 +106,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                               : null);
                       return stats ? { ...game, stats } : null;
                   })
-                  .filter(Boolean) as {
-                      key: GameKey; title: string; icon?: 'dice'; crest?: string; stats: GameStats;
-                  }[])
+                  .filter(Boolean) as { key: GameKey; title: string; stats: GameStats }[])
             : [];
 
     /* ---------------- email confirmation ---------------- */
@@ -254,76 +250,73 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
         <>
             <Modal title="Профил" width="wide" onClose={onClose}>
                 {isLoading ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
+                    <div className="lobby profile">
                         {/* Skeletons reserve the real layout so nothing jumps when data lands */}
-                        <div className="skeleton" style={{ height: 22, width: '52%', margin: '0 auto' }} />
-                        <div style={{ display: 'flex', gap: 'var(--sp-3)' }}>
-                            <div className="skeleton" style={{ height: 84, flex: 1 }} />
-                            <div className="skeleton" style={{ height: 84, flex: 1 }} />
-                            <div className="skeleton" style={{ height: 84, flex: 1 }} />
+                        <div className="profile__id">
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 'var(--sp-2)' }}>
+                                <div className="skeleton" style={{ height: 34, width: '46%' }} />
+                                <div className="skeleton" style={{ height: 14, width: '70%' }} />
+                            </div>
                         </div>
-                        <div className="skeleton" style={{ height: 14, width: '100%' }} />
+                        <div className="profile__games">
+                            <div className="skeleton" style={{ height: 156 }} />
+                            <div className="skeleton" style={{ height: 156 }} />
+                        </div>
                         <span className="sr-only">Зареждане на профила…</span>
                     </div>
                 ) : error ? (
                     <Note tone="error">{error}</Note>
                 ) : profile ? (
-                    <div className="profile-body">
-                        {/* identity */}
-                        <div style={identityStyle}>
-                            <h3 style={usernameStyle}>{username}</h3>
-                        </div>
+                    <div className="lobby profile">
+                        {/* Who this is, and whether their email is confirmed —
+                            the one thing on the page that may need doing. */}
+                        <header className="profile__id">
+                            <div className="profile__who">
+                                <h3 className="profile__name">{username}</h3>
+                                <p className="profile__email">
+                                    <span
+                                        className={`profile__email-state ${
+                                            profile.isEmailConfirmed
+                                                ? 'profile__email-state--ok'
+                                                : 'profile__email-state--bad'
+                                        }`}
+                                    >
+                                        <Icon name={profile.isEmailConfirmed ? 'checkCircle' : 'xCircle'} size={15} />
+                                        {profile.isEmailConfirmed ? 'Имейлът е потвърден' : 'Имейлът не е потвърден'}
+                                    </span>
 
-                        {/* email confirmation state */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)', alignItems: 'center' }}>
-                            <span className={`badge ${profile.isEmailConfirmed ? 'badge--success' : 'badge--danger'}`}>
-                                <Icon name={profile.isEmailConfirmed ? 'checkCircle' : 'xCircle'} size={15} />
-                                {profile.isEmailConfirmed ? 'Имейлът е потвърден' : 'Имейлът не е потвърден'}
-                            </span>
+                                    {!profile.isEmailConfirmed && !emailSent && (
+                                        <button
+                                            type="button"
+                                            className="btn btn--link"
+                                            disabled={isResendingEmail}
+                                            onClick={handleResendEmail}
+                                        >
+                                            {isResendingEmail ? 'Изпращане…' : 'Изпрати имейл за потвърждение'}
+                                        </button>
+                                    )}
+                                </p>
+                            </div>
+                        </header>
 
-                            {!profile.isEmailConfirmed && !emailSent && (
-                                <Button
-                                    variant="secondary"
-                                    size="sm"
-                                    icon="mail"
-                                    loading={isResendingEmail}
-                                    onClick={handleResendEmail}
-                                >
-                                    Изпрати имейл за потвърждение
-                                </Button>
-                            )}
+                        {resendMessage && <Note tone={resendMessage.tone}>{resendMessage.text}</Note>}
 
-                            {resendMessage && <Note tone={resendMessage.tone}>{resendMessage.text}</Note>}
-                        </div>
-
-                        {/* stats — one card per game, each with its own rank.
-                            Side by side once there is room, so a desktop does not
-                            scroll for two short cards. */}
-                        <div className="profile-games">
+                        {/* One record per game, each with its own rank. Side by
+                            side once there is room. */}
+                        <div className="profile__games">
                             {gameCards.map((game) => (
-                                <GameStatsCard
-                                    key={game.key}
-                                    title={game.title}
-                                    icon={game.icon}
-                                    crest={game.crest}
-                                    stats={game.stats}
-                                />
+                                <GameStatsCard key={game.key} title={game.title} stats={game.stats} />
                             ))}
                         </div>
 
-                        {/* account actions. The divider keeps the destructive one
-                            apart when they stack; side by side the gap does it. */}
-                        <div className="profile-actions">
-                            <Button variant="secondary" icon="lock" block onClick={openPasswordChange}>
+                        <div className="profile__actions">
+                            <Button variant="secondary" icon="lock" onClick={openPasswordChange}>
                                 Промени парола
                             </Button>
 
-                            <hr className="profile-actions__rule" style={dividerStyle} />
-
-                            <Button
-                                variant="danger"
-                                icon="trash"
-                                block
+                            <button
+                                type="button"
+                                className="btn btn--link profile__delete"
                                 onClick={() => {
                                     setDeletePassword('');
                                     setDeleteError(null);
@@ -331,7 +324,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                                 }}
                             >
                                 Изтрий акаунт
-                            </Button>
+                            </button>
                         </div>
                     </div>
                 ) : null}
@@ -474,13 +467,6 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
     );
 };
 
-const identityStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--sp-3)',
-};
-
 const avatarStyle: React.CSSProperties = {
     display: 'grid',
     placeItems: 'center',
@@ -491,22 +477,6 @@ const avatarStyle: React.CSSProperties = {
     border: '1px solid var(--line-gold)',
     color: 'var(--gold)',
     boxShadow: 'var(--sh-2)',
-};
-
-const usernameStyle: React.CSSProperties = {
-    fontSize: 'var(--fs-xl)',
-    color: 'var(--text-1)',
-    fontWeight: 600,
-    wordBreak: 'break-word',
-    textAlign: 'center',
-};
-
-const dividerStyle: React.CSSProperties = {
-    width: '100%',
-    height: 0,
-    margin: 0,
-    border: 0,
-    borderTop: '1px solid var(--line)',
 };
 
 export default ProfilePage;

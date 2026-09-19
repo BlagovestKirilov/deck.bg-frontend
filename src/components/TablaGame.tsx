@@ -13,6 +13,8 @@ import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+import GamePrelude from './lobby/GamePrelude';
+import { TablaArt } from './lobby/GameArt';
 
 /** What the badge's colour is called aloud; the badge itself is decoration. */
 const COLOR_LABEL: Record<CheckerColor, string> = { white: 'белите', black: 'черните' };
@@ -30,6 +32,8 @@ const TURN_SECONDS = 45;
 const WARNING_SECONDS = 10;
 /** When the turn pill starts reading as urgent. */
 const WARNING_AT = 10;
+/** Wait before sending a blocked roll's pass again, when it did not get through. */
+const PASS_RETRY_MS = 2000;
 
 const TablaGame: React.FC = () => {
     const navigate = useNavigate();
@@ -90,8 +94,15 @@ const TablaGame: React.FC = () => {
 
     /* ---------------- actions ---------------- */
 
-    /** Runs a table action. Returns false when it did not go through. */
-    const guard = useCallback(async (fn: () => Promise<unknown>, label?: string): Promise<boolean> => {
+    /**
+     * Runs a table action. Returns false when it did not go through.
+     *
+     * `quiet` is for actions the player did not take themselves — the automatic
+     * pass — which retry on their own and have nothing to report.
+     */
+    const guard = useCallback(async (
+        fn: () => Promise<unknown>, label?: string, quiet = false,
+    ): Promise<boolean> => {
         if (busy) return false;
         setBusy(true);
         try {
@@ -103,7 +114,7 @@ const TablaGame: React.FC = () => {
             // retries on its own, and if the session is really over the player
             // is being sent to the login screen — either way "Нещо се обърка"
             // tells them nothing and looks like the game broke.
-            if (!isSessionExpired(err)) {
+            if (!quiet && !isSessionExpired(err)) {
                 setToast(err?.response?.data?.message ?? 'Нещо се обърка. Опитайте отново.');
             }
             return false;
@@ -334,21 +345,32 @@ const TablaGame: React.FC = () => {
      */
     const blocked = Boolean(state?.isOnTurn && state?.noMovesAvailable);
 
-    /** One pass per blocked roll, whether the timer sends it or ДОБРЕ does. */
+    /** One pass per blocked roll in flight at a time. */
     const passSentRef = useRef(false);
+    /** The next attempt, when the last one did not reach the server. */
+    const passRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const clearPassRetry = () => {
+        if (passRetryRef.current) clearTimeout(passRetryRef.current);
+        passRetryRef.current = null;
+    };
 
     const passNow = useCallback(async () => {
         setShowPass(false);
         if (passSentRef.current) return;
         passSentRef.current = true;
 
-        // If the pass never reached the server the turn is still ours. Put the
-        // prompt back rather than leaving the player on a board they cannot act
-        // on: ДОБРЕ is then the retry, and the error itself is in the toast.
-        const passed = await guard(tablaService.confirm);
+        // If the pass never reached the server the turn is still ours. The
+        // notice stays up and the pass is sent again shortly — no button to
+        // press and nothing to read: the player had no move, so there is
+        // nothing they could have done differently. Once the roll is no longer
+        // blocked the effect below cancels any attempt still waiting.
+        const passed = await guard(tablaService.confirm, undefined, true);
         if (!passed) {
             passSentRef.current = false;
             setShowPass(true);
+            clearPassRetry();
+            passRetryRef.current = setTimeout(() => passNowRef.current(), PASS_RETRY_MS);
         }
     }, [guard]);
 
@@ -363,51 +385,32 @@ const TablaGame: React.FC = () => {
         if (!blocked) {
             passSentRef.current = false;
             setShowPass(false);
+            clearPassRetry();
             return undefined;
         }
         setShowPass(true);
         const id = setTimeout(() => passNowRef.current(), 2600);
-        return () => clearTimeout(id);
+        return () => {
+            clearTimeout(id);
+            clearPassRetry();
+        };
     }, [blocked]);
 
     /* ---------------- lobby ---------------- */
 
     if (!state) {
         return (
-            <main className="screen">
-                <div className="panel panel--gold" style={lobbyCard}>
-                    <span style={crest}>
-                        <Icon name="dice" size="56%" />
-                    </span>
-                    <h1 style={{ fontSize: 'var(--fs-2xl)', color: 'var(--text-1)' }}>Табла</h1>
-                    <p style={{ color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
-                        Класическа табла срещу реални опоненти
-                    </p>
-
+            <main className="screen screen--flow">
+                <GamePrelude
+                    title="Табла"
+                    rule="Изведи всички пулове пръв."
+                    Art={TablaArt}
+                    isSearching={isSearching}
+                    onStart={startSearch}
+                    onBack={() => navigate('/')}
+                >
                     <ColorChoice value={myColor} onChange={setMyColor} />
-
-                    <Button
-                        variant="primary"
-                        size="lg"
-                        block
-                        loading={isSearching}
-                        onClick={startSearch}
-                        style={{ marginTop: 'var(--sp-2)' }}
-                    >
-                        НОВА ИГРА
-                    </Button>
-
-                    {isSearching && (
-                        <p role="status" style={{ color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }}>
-                            Търсим опонент…
-                        </p>
-                    )}
-
-                    <button type="button" className="btn btn--link" onClick={() => navigate('/')}>
-                        <Icon name="arrowLeft" size={16} />
-                        Назад
-                    </button>
-                </div>
+                </GamePrelude>
             </main>
         );
     }
@@ -529,6 +532,20 @@ const TablaGame: React.FC = () => {
                         </>
                     )}
 
+                    {/* A blocked roll is said beside the dice, not in a dialog
+                        over them: the player can see for themselves why there
+                        is no move. It passes on its own a moment later. */}
+                    {showPass && !state.winnerUsername && (
+                        <span className="tabla-pass" role="status">
+                            <span aria-hidden="true">ПОЧИВАШ</span>
+                            {/* The word alone is clear on screen; read aloud it
+                                needs the reason and what happens next. */}
+                            <span className="sr-only">
+                                Почиваш: няма възможен ход, редът минава към противника.
+                            </span>
+                        </span>
+                    )}
+
                     {canRoll && (
                         <Button variant="primary" icon="dice" loading={busy}
                                 className="btn--keep-label"
@@ -584,31 +601,6 @@ const TablaGame: React.FC = () => {
                     <p style={{ color: 'var(--text-2)' }}>
                         Сигурни ли сте, че искате да напуснете играта? Играта се брои за загубена.
                     </p>
-                </Modal>
-            )}
-
-            {showPass && !state.winnerUsername && (
-                <Modal
-                    title="ПОЧИВАШ"
-                    width="narrow"
-                    dismissOnScrim={false}
-                    actions={
-                        <Button variant="primary" size="lg" onClick={() => void passNow()}>
-                            ДОБРЕ
-                        </Button>
-                    }
-                >
-                    <div style={passBody}>
-                        {state.die1 != null && state.die2 != null && (
-                            <span className="tabla-actions" style={{ minHeight: 0 }}>
-                                <Die value={state.die1} />
-                                <Die value={state.die2} />
-                            </span>
-                        )}
-                        <p style={{ color: 'var(--text-2)' }}>
-                            С тези зарове нямате възможен ход. Редът минава към опонента.
-                        </p>
-                    </div>
                 </Modal>
             )}
 
@@ -726,37 +718,6 @@ const ColorChoice: React.FC<{ value: CheckerColor; onChange: (next: CheckerColor
         </div>
     </div>
 );
-
-const passBody: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--sp-4)',
-    textAlign: 'center',
-};
-
-const lobbyCard: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--sp-3)',
-    width: '100%',
-    maxWidth: '420px',
-    padding: 'clamp(24px, 7vw, 44px)',
-    textAlign: 'center',
-};
-
-const crest: React.CSSProperties = {
-    display: 'grid',
-    placeItems: 'center',
-    width: 'clamp(60px, 17vw, 84px)',
-    height: 'clamp(60px, 17vw, 84px)',
-    marginBottom: 'var(--sp-2)',
-    borderRadius: '50%',
-    background: 'var(--gold-wash)',
-    border: '1px solid var(--line-gold)',
-    color: 'var(--gold)',
-};
 
 const resultBody: React.CSSProperties = {
     display: 'flex',

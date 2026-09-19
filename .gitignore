@@ -28,3 +28,9 @@ android/app/*.jks
 android/app/*.keystore
 *.jks
 *.keystore
+
+# Playwright — reports, traces and videos are build output, not source
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache

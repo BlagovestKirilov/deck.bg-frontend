@@ -21,42 +21,42 @@ const RANK_CONFIG: Record<Rank, { name: string; borderColor: string; glowColor: 
         image: '/rank-unranked.png',
     },
     BRONZE: {
-        name: 'БРОНЗ',
+        name: 'Бронз',
         borderColor: '#cd7f32',
         glowColor: 'rgba(205, 127, 50, 0.5)',
         textColor: '#e0a874',
         image: '/rank-bronze.png',
     },
     SILVER: {
-        name: 'СРЕБРО',
+        name: 'Сребро',
         borderColor: '#b8b8b8',
         glowColor: 'rgba(200, 200, 200, 0.5)',
         textColor: '#e6e6e6',
         image: '/rank-silver.png',
     },
     GOLD: {
-        name: 'ЗЛАТО',
+        name: 'Злато',
         borderColor: '#f0c420',
         glowColor: 'rgba(255, 200, 0, 0.55)',
         textColor: '#ffe066',
         image: '/rank-gold.png',
     },
     PLATINUM: {
-        name: 'ПЛАТИНА',
+        name: 'Платина',
         borderColor: '#6ec5d8',
         glowColor: 'rgba(110, 197, 216, 0.55)',
         textColor: '#bceef8',
         image: '/rank-platinum.png',
     },
     DIAMOND: {
-        name: 'ДИАМАНТ',
+        name: 'Диамант',
         borderColor: '#38b6ff',
         glowColor: 'rgba(56, 182, 255, 0.6)',
         textColor: '#aae6ff',
         image: '/rank-diamond.png',
     },
     LEGEND: {
-        name: 'ЛЕГЕНДА',
+        name: 'Легенда',
         borderColor: '#ff9500',
         glowColor: 'rgba(255, 149, 0, 0.7)',
         textColor: '#ffd60a',
@@ -95,7 +95,6 @@ export const RankMedal: React.FC<{ rank: Rank; size?: RankBadgeProps['size']; al
             aria-hidden={alt ? undefined : true}
             width={44}
             height={44}
-            loading="lazy"
             decoding="async"
             style={{
                 width: dimension,
@@ -176,7 +175,6 @@ const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', placementG
                     aria-hidden="true"
                     width={44}
                     height={44}
-                    loading="lazy"
                     decoding="async"
                     style={{
                         width: dimension,

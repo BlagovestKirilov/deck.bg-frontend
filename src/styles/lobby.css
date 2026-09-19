@@ -1,0 +1,741 @@
+/* =====================================================================
+   Lobby — sign-in, the game hub and the profile.
+
+   The game tables are green felt; the lobby is the same room, one step
+   before you sit down. So the felt stays, and what sits on it is the
+   subject's own objects: a playing card to sign in on, a fanned hand and a
+   табла board to choose between.
+
+   Everything here is scoped under .lobby. The games share the base theme
+   (tokens, .btn, .field, .modal) and must not move when this file changes.
+   ===================================================================== */
+
+.lobby {
+    /* Card stock and the inks printed on it. */
+    --card:        #faf8f3;
+    --ink:         #1d1b18;
+    --ink-2:       #4f4a42;   /* ~8:1 on --card */
+    --ink-3:       #6b655b;   /* ~5.2:1 on --card */
+    --ink-line:    rgba(29, 27, 24, 0.18);
+    --suit-red:    #b4232c;   /* ~6:1 on --card */
+    --suit-red-wash: rgba(180, 35, 44, 0.08);
+
+    /* The table's green, as a button printed on the card. */
+    --felt-ink:       #155235;
+    --felt-ink-hover: #1b6441;
+    --felt-ink-wash:  rgba(21, 82, 53, 0.10);
+
+    --lobby-display: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
+    --lobby-body:    'Sofia Sans', var(--font-body);
+
+    font-family: var(--lobby-body);
+}
+
+/* =====================================================================
+   The playing card (sign-in, register, forgotten password)
+   ===================================================================== */
+
+.lobby-auth {
+    flex-direction: column;
+    gap: var(--sp-5);
+    /* The table under a lamp, not a flat colour: a warm pool of light over the
+       middle, the cloth's weave at the edge of visibility, and the room
+       falling off into the dark at the edges. */
+    background:
+        radial-gradient(ellipse 75% 55% at 50% 32%, rgba(255, 226, 150, 0.11), transparent 70%),
+        repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.016) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.06) 0 1px, transparent 1px 3px),
+        radial-gradient(ellipse 120% 90% at 50% 36%, #1f5a37 0%, #11391f 42%, #06180b 78%, #030b05 100%);
+}
+
+/* ---- things drifting across the felt ---- */
+
+.felt-drift {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    user-select: none;
+}
+.drifter {
+    position: absolute;
+    bottom: -120px;
+    opacity: 0;
+    will-change: transform, opacity;
+    animation-name: felt-drift;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+}
+.drifter--card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 38px;
+    height: 54px;
+    padding: 3px 4px;
+    border-radius: 4px;
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    line-height: 1;
+}
+.drifter__rank { font-family: var(--lobby-display); font-size: 13px; font-weight: 800; }
+.drifter__pip { font-size: 11px; }
+.drifter--suit { color: var(--card); line-height: 1; }
+.drifter--card.drifter--red { color: var(--suit-red); }
+.drifter--suit.drifter--red { color: #e8a0a4; }
+
+@keyframes felt-drift {
+    0% {
+        opacity: 0;
+        transform: translateY(0) rotate(var(--drift-spin)) scale(var(--drift-scale));
+    }
+    12%, 85% { opacity: var(--drift-opacity); }
+    100% {
+        opacity: 0;
+        transform: translateY(-120vh) rotate(calc(var(--drift-spin) + var(--drift-turn))) scale(var(--drift-scale));
+    }
+}
+
+/* Positioned so it paints over the drift layer; the drift layer is itself
+   positioned and would otherwise pass over anything left in normal flow. */
+.deal,
+.lobby-auth__legal {
+    position: relative;
+    z-index: 1;
+}
+
+.deal {
+    width: 100%;
+    max-width: 400px;
+    margin: auto auto 0;
+    perspective: 1400px;
+}
+
+.play-card {
+    position: relative;
+    width: 100%;
+    /* A real card's proportions. aspect-ratio only sets the minimum here:
+       registration is taller than a card, and the card grows to hold it
+       rather than clipping the form. */
+    aspect-ratio: 5 / 7;
+    display: flex;
+    flex-direction: column;
+    padding: clamp(60px, 15vw, 72px) clamp(22px, 7vw, 40px);
+    background: var(--card);
+    color: var(--ink);
+    /* ~5.5% of the width, the corner of a 63 mm card. */
+    border-radius: clamp(16px, 5vw, 22px);
+    /* A card lying on cloth: a hard contact edge and a long soft falloff,
+       not the same grey haze every panel gets. */
+    box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.35),
+        0 2px 3px rgba(0, 0, 0, 0.25),
+        0 22px 44px -14px rgba(0, 0, 0, 0.7);
+    transform-origin: 50% 50%;
+    /* Turned face-up when it arrives, and again whenever the mode changes —
+       the card is keyed by mode, so a new mode is a new card. */
+    animation: card-turn 420ms var(--ease-out) both;
+}
+
+@keyframes card-turn {
+    from { transform: rotateY(-86deg) scale(0.97); }
+    to   { transform: none; }
+}
+
+/* Corner index. Rank over suit, like the card in your hand; the bottom one is
+   the same mark turned upside down. Decoration for the eye only — the heading
+   says what the card is for. */
+.card-index {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 32px;
+    line-height: 1;
+    color: var(--ink);
+    user-select: none;
+    pointer-events: none;
+}
+.card-index--red { color: var(--suit-red); }
+.card-index--tl { top: clamp(12px, 3.6vw, 18px); left: clamp(10px, 3.4vw, 16px); }
+.card-index--br { bottom: clamp(12px, 3.6vw, 18px); right: clamp(10px, 3.4vw, 16px); transform: rotate(180deg); }
+.card-index__rank {
+    font-family: var(--lobby-display);
+    font-size: clamp(1.7rem, 7vw, 2.1rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+.card-index__suit { font-size: clamp(1.15rem, 4.8vw, 1.4rem); margin-top: 2px; }
+
+.play-card__head {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-bottom: var(--sp-6);
+    text-align: center;
+}
+.play-card__title {
+    font-family: var(--lobby-display);
+    font-size: clamp(2.2rem, 9vw, 2.8rem);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+.play-card__sub {
+    max-width: 30ch;
+    text-wrap: balance;
+    font-size: var(--fs-md);
+    line-height: 1.45;
+    color: var(--ink-2);
+}
+
+.play-card__form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+}
+
+.play-card__foot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: auto;
+    padding-top: var(--sp-5);
+}
+.play-card__switch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0 var(--sp-1);
+    color: var(--ink-2);
+}
+
+/* ---- the shared form parts, reprinted in ink ---- */
+
+.play-card .field__label {
+    font-family: var(--lobby-body);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink-2);
+}
+.play-card .field__req { color: var(--suit-red); }
+.play-card .field__input {
+    border: 1px solid var(--ink-line);
+    background: #fff;
+    color: var(--ink);
+    font-family: var(--lobby-body);
+}
+.play-card .field__input::placeholder { color: var(--ink-3); opacity: 1; }
+.play-card .field__input:hover:not(:disabled) { border-color: rgba(29, 27, 24, 0.34); }
+.play-card .field__input:focus {
+    border-color: var(--felt-ink);
+    background: #fff;
+    box-shadow: 0 0 0 3px var(--felt-ink-wash);
+}
+.play-card .field__input[aria-invalid='true'] { border-color: var(--suit-red); }
+.play-card .field__input[aria-invalid='true']:focus { box-shadow: 0 0 0 3px var(--suit-red-wash); }
+.play-card .field__affix { color: var(--ink-3); }
+.play-card .field__affix:hover { color: var(--ink); background: rgba(29, 27, 24, 0.06); }
+.play-card .field__hint { color: var(--ink-3); }
+.play-card .field__error { color: var(--suit-red); }
+
+/* Autofill paints its own pale yellow over the card; keep the ink colours. */
+.play-card .field__input:-webkit-autofill {
+    -webkit-text-fill-color: var(--ink);
+    -webkit-box-shadow: 0 0 0 40px #fff inset;
+}
+
+.play-card .note--error   { background: var(--suit-red-wash); border-left-color: var(--suit-red); color: #8e1a22; }
+.play-card .note--success { background: var(--felt-ink-wash); border-left-color: var(--felt-ink); color: var(--felt-ink); }
+
+.play-card .btn--primary {
+    background: var(--felt-ink);
+    color: var(--card);
+    box-shadow: none;
+    font-family: var(--lobby-body);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+.play-card .btn--primary:hover:not(:disabled) { background: var(--felt-ink-hover); }
+
+.play-card .btn--link {
+    color: var(--ink);
+    font-family: var(--lobby-body);
+    font-weight: 700;
+    text-decoration-color: var(--suit-red);
+    text-decoration-thickness: 2px;
+}
+.play-card .btn--link:hover { color: var(--suit-red); }
+
+/* The blue focus ring is drawn for the dark felt and nearly vanishes on white. */
+.play-card :focus-visible { outline-color: var(--felt-ink); }
+
+.lobby-auth__legal {
+    margin-bottom: auto;
+    font-size: var(--fs-sm);
+    color: var(--text-3);
+}
+.lobby-auth__legal a { color: var(--text-2); text-underline-offset: 3px; }
+.lobby-auth__legal a:hover { color: var(--text-1); }
+
+/* =====================================================================
+   The game hub
+   ===================================================================== */
+
+.hub {
+    width: 100%;
+    max-width: 880px;
+    margin: 0 auto;
+    padding-bottom: calc(var(--sp-10) + var(--sa-bottom));
+}
+
+.hub-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    min-height: clamp(56px, 12vw, 68px);
+}
+.hub-nav__actions { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.hub-nav .btn { font-family: var(--lobby-body); }
+
+.hub__head {
+    margin: clamp(20px, 6vw, 48px) 0 clamp(20px, 5vw, 36px);
+}
+/* Greeting and title read as one unit: about 2:1, not the 2.6:1 that made the
+   greeting look like a footnote. Both scale together from phone to desktop. */
+.hub__hello {
+    font-size: clamp(1.1rem, 4.4vw, 1.4rem);
+    font-weight: 500;
+    line-height: 1.2;
+    color: var(--text-2);
+    overflow-wrap: anywhere;
+}
+.hub__title {
+    margin-top: 2px;
+    font-family: var(--lobby-display);
+    font-size: clamp(2.3rem, 9vw, 3.4rem);
+    font-weight: 800;
+    line-height: 0.95;
+    letter-spacing: -0.01em;
+    color: var(--text-1);
+}
+
+.hub__games {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--sp-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* One game. The picture does the work a bordered card used to: no frame,
+   no glow — a slightly lighter patch of cloth with the game lying on it. */
+.game-pick {
+    display: grid;
+    grid-template-columns: clamp(112px, 34vw, 140px) 1fr;
+    align-items: center;
+    gap: var(--sp-4);
+    width: 100%;
+    padding: var(--sp-3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--text-1);
+    font-family: var(--lobby-body);
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur) var(--ease-out),
+                border-color var(--dur) var(--ease-out);
+}
+.game-pick:hover { background: rgba(255, 255, 255, 0.065); border-color: rgba(255, 255, 255, 0.12); }
+.game-pick:active { background: rgba(255, 255, 255, 0.08); }
+
+.game-pick__art {
+    display: block;
+    aspect-ratio: 4 / 3;
+    border-radius: 12px;
+    background: radial-gradient(ellipse at 50% 60%, #1d5333, #0c2817);
+    overflow: hidden;
+}
+.game-pick__art svg { display: block; width: 100%; height: 100%; }
+
+.game-pick__text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-1);
+    min-width: 0;
+}
+.game-pick__name {
+    font-family: var(--lobby-display);
+    font-size: clamp(1.9rem, 8vw, 2.4rem);
+    font-weight: 800;
+    line-height: 1;
+}
+.game-pick__rule {
+    font-size: var(--fs-md);
+    line-height: 1.35;
+    color: var(--text-2);
+    text-wrap: balance;
+}
+
+.hub-record {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin-top: var(--sp-2);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--text-2);
+}
+
+/* The objects answer the pointer: the hand opens a little, the dice roll. */
+.art-card, .art-die {
+    transition: transform var(--dur-slow) var(--ease-out);
+    transform-box: fill-box;
+}
+.art-card { transform-origin: 50% 100%; }
+.art-die  { transform-origin: center; }
+.game-pick:hover .art-card--1 { transform: rotate(-6deg); }
+.game-pick:hover .art-card--2 { transform: rotate(-2deg); }
+.game-pick:hover .art-card--3 { transform: rotate(2deg); }
+.game-pick:hover .art-card--4 { transform: rotate(6deg); }
+.game-pick:hover .art-die--a { transform: rotate(-16deg); }
+.game-pick:hover .art-die--b { transform: rotate(20deg); }
+
+@media (min-width: 640px) {
+    .hub__games { grid-template-columns: 1fr 1fr; gap: var(--sp-5); }
+    .game-pick {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+        padding: var(--sp-4);
+    }
+    .game-pick__text { padding: 0 var(--sp-1) var(--sp-1); }
+}
+
+/* =====================================================================
+   Profile (inside the shared modal)
+   ===================================================================== */
+
+.profile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-6);
+}
+
+.profile__id {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-4);
+    min-width: 0;
+}
+.profile__who { min-width: 0; }
+.profile__name {
+    font-family: var(--lobby-display);
+    font-size: clamp(2rem, 8vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-1);
+    overflow-wrap: anywhere;
+}
+.profile__email {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--sp-3);
+    margin-top: var(--sp-1);
+    font-size: var(--fs-sm);
+}
+.profile__email-state { display: inline-flex; align-items: center; gap: var(--sp-2); }
+.profile__email-state--ok  { color: var(--success); }
+.profile__email-state--bad { color: var(--danger-bright); }
+.profile__email .btn--link {
+    min-height: var(--tap);
+    padding-inline: 0;
+    justify-content: flex-start;
+    text-align: left;
+    font-family: var(--lobby-body);
+}
+
+.profile__games {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--sp-5);
+}
+
+/* One game's record. Separated by a single rule, not boxed: the numbers are
+   the content and they carry the section on their own. */
+.record {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-3);
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--line-strong);
+}
+.record__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+}
+.record__game {
+    font-family: var(--lobby-display);
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-1);
+}
+.record__rank {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--text-2);
+    text-align: right;
+}
+
+.record__nums {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--sp-3);
+    margin: 0;
+}
+.record__num {
+    display: flex;
+    flex-direction: column-reverse;   /* number above its label; dt stays first in the markup */
+    margin: 0;
+}
+.record__num dt { font-size: var(--fs-sm); color: var(--text-3); }
+.record__num dd {
+    margin: 0;
+    font-family: var(--lobby-display);
+    font-size: clamp(2.4rem, 10vw, 3rem);
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-1);
+}
+
+.record__ratio {
+    display: flex;
+    height: 6px;
+    border-radius: var(--r-pill);
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.08);
+}
+.record__ratio-win  { background: var(--success); }
+.record__ratio-loss { background: var(--danger); opacity: 0.75; }
+.record__note { font-size: var(--fs-sm); color: var(--text-3); }
+.record__note strong { color: var(--text-1); font-weight: 700; }
+
+.profile__actions {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-2);
+    padding-top: var(--sp-5);
+    border-top: 1px solid var(--line-strong);
+}
+.profile__actions .btn { font-family: var(--lobby-body); }
+/* Destructive, so deliberately the quietest thing on the page: a text
+   action set apart, never the brightest button in view. */
+.profile__delete.btn--link {
+    align-self: center;
+    color: var(--danger-bright);
+    text-decoration-color: rgba(255, 154, 154, 0.5);
+}
+.profile__delete.btn--link:hover { color: var(--danger); }
+
+@media (min-width: 760px) {
+    .profile__games { grid-template-columns: 1fr 1fr; gap: var(--sp-8); }
+    .profile__actions { flex-direction: row; align-items: center; justify-content: space-between; }
+    .profile__delete.btn--link { align-self: auto; }
+}
+
+/* =====================================================================
+   Signing out — the other end of the sign-in card
+   ===================================================================== */
+
+/* You sign in on a white card, so you sign out on one: the same stock and
+   inks, laid on the dimmed table. The shared modal supplies the behaviour;
+   only its surface is reprinted here. */
+.modal.leave {
+    border: 0;
+    border-radius: 20px;
+    background: var(--card);
+    color: var(--ink);
+    box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.35),
+        0 24px 48px -16px rgba(0, 0, 0, 0.75);
+}
+.leave .panel__header { border-bottom-color: var(--ink-line); }
+.leave .panel__title {
+    font-family: var(--lobby-display);
+    font-size: clamp(1.8rem, 7vw, 2.1rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--ink);
+}
+.leave .panel__header .btn--icon { color: var(--ink-3); }
+.leave .panel__header .btn--icon:hover:not(:disabled) { background: rgba(29, 27, 24, 0.06); color: var(--ink); }
+.leave__text { font-size: var(--fs-md); line-height: 1.5; color: var(--ink-2); }
+
+.leave .btn { font-family: var(--lobby-body); font-weight: 700; letter-spacing: 0.01em; }
+.leave .btn--primary { background: var(--felt-ink); color: var(--card); box-shadow: none; }
+.leave .btn--primary:hover:not(:disabled) { background: var(--felt-ink-hover); }
+.leave .btn--ghost { border-color: var(--ink-line); background: transparent; color: var(--ink); }
+.leave .btn--ghost:hover:not(:disabled) { background: rgba(29, 27, 24, 0.05); color: var(--ink); }
+.leave :focus-visible { outline-color: var(--felt-ink); }
+
+/* =====================================================================
+   Before a game (Сантасе / Табла, no game running yet)
+   ===================================================================== */
+
+.prelude {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    width: 100%;
+    max-width: 460px;
+    margin: 0 auto;
+}
+
+.prelude__bar {
+    display: flex;
+    align-items: center;
+    min-height: clamp(56px, 12vw, 68px);
+}
+.prelude__back {
+    min-height: var(--tap);
+    font-family: var(--lobby-body);
+    font-weight: 600;
+}
+
+.prelude__body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--sp-2);
+    margin: auto 0;
+    padding-bottom: var(--sp-6);
+}
+
+.prelude__art {
+    aspect-ratio: 4 / 3;
+    margin-bottom: var(--sp-4);
+    border-radius: 18px;
+    background: radial-gradient(ellipse at 50% 60%, #1d5333, #0c2817);
+    overflow: hidden;
+}
+.prelude__art svg { display: block; width: 100%; height: 100%; }
+
+.prelude__title {
+    font-family: var(--lobby-display);
+    font-size: clamp(2.6rem, 11vw, 3.6rem);
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: -0.015em;
+    color: var(--text-1);
+}
+.prelude__rule {
+    font-size: var(--fs-lg);
+    color: var(--text-2);
+}
+
+/* A card-white button: on the felt it is the brightest thing in view, and it
+   is the colour everything in the lobby is printed on. */
+.prelude .prelude__start {
+    margin-top: var(--sp-5);
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), 0 10px 24px -10px rgba(0, 0, 0, 0.7);
+    font-family: var(--lobby-body);
+    font-weight: 700;
+    letter-spacing: 0.01em;
+}
+.prelude .prelude__start:hover:not(:disabled) { background: #ffffff; }
+/* Searching keeps it bright — a greyed-out button reads as "can't", not "busy". */
+.prelude .prelude__start:disabled { opacity: 1; }
+.prelude .prelude__start .spinner { color: var(--felt-ink); }
+
+.prelude__status {
+    min-height: 1.55em;
+    font-size: var(--fs-sm);
+    color: var(--text-2);
+    text-align: center;
+}
+
+/* ---- checker colour (табла) ---- */
+
+.prelude .color-choice {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    margin-top: var(--sp-4);
+}
+.prelude .color-choice__label {
+    font-size: var(--fs-sm);
+    font-weight: 600;
+    color: var(--text-2);
+}
+.prelude .color-choice__options {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-3);
+}
+.prelude .color-choice__option {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: 56px;
+    padding: 0 var(--sp-4);
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--text-2);
+    font-family: var(--lobby-body);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out),
+                border-color var(--dur-fast) var(--ease-out),
+                color var(--dur-fast) var(--ease-out);
+}
+.prelude .color-choice__option:hover { background: rgba(255, 255, 255, 0.07); color: var(--text-1); }
+/* Selected is said three ways — ring, weight of colour, and aria-checked —
+   never by colour alone. */
+.prelude .color-choice__option.is-selected {
+    border-color: var(--card);
+    box-shadow: inset 0 0 0 1px var(--card);
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-1);
+}
+.prelude .color-choice__chip {
+    width: 30px;
+    max-width: none;
+    aspect-ratio: 1;
+    flex: 0 0 auto;
+}
+
+@media (min-width: 640px) {
+    .prelude__art { margin-bottom: var(--sp-5); }
+}
+
+/* =====================================================================
+   Motion
+   ===================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+    .play-card { animation: none; }
+    .game-pick:hover .art-card,
+    .game-pick:hover .art-die { transform: none; }
+}
