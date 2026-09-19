@@ -26,7 +26,13 @@ apiClient.interceptors.request.use(
  */
 const SESSION_EXPIRED = 'sessionExpired';
 
-/** True when a request failed only because the session ended. */
+/**
+ * True when a request failed because of the session, not because of what the
+ * player did: either the session is over, or it could not be renewed just now
+ * because the server was out of reach. Screens stay silent about both — the
+ * first ends in the login screen anyway, and the second fixes itself on the
+ * next request.
+ */
 export function isSessionExpired(error: unknown): boolean {
     return Boolean(
         error && typeof error === 'object' && (error as Record<string, unknown>)[SESSION_EXPIRED],
@@ -56,27 +62,79 @@ let refreshing: Promise<string> | null = null;
 /** Set once the session is over, so the redirect happens a single time. */
 let sessionEnded = false;
 
+/**
+ * Waits between refresh attempts that could not reach the server. Short on
+ * purpose: they run while a tap is waiting for its answer.
+ */
+const REFRESH_RETRY_DELAYS_MS = [800, 2000];
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * The server looked at the refresh token and turned it down, so no retry will
+ * change the answer and the session really is over.
+ *
+ * Anything short of that — no answer at all, a timeout, a gateway error while a
+ * deploy restarts the backend — says nothing about the token, and must not log
+ * anyone out. That used to be exactly what happened: every deploy could send a
+ * player in the middle of a game to the login screen.
+ *
+ * A 5xx normally means "try again", with one exception. The backend currently
+ * parses the token before it validates it, so an expired or malformed refresh
+ * token surfaces as a 500 carrying the jjwt exception's name rather than as a
+ * 401. That answer is about the token, and it is final.
+ */
+function refreshRejected(error: unknown): boolean {
+    const response = (error as { response?: { status: number; data?: { details?: unknown } } })?.response;
+    if (!response) return false;
+    if (response.status < 500) return true;
+    return /jwt|signature/i.test(String(response.data?.details ?? ''));
+}
+
+async function requestRefresh(): Promise<string> {
+    for (let attempt = 0; ; attempt++) {
+        try {
+            // Read on every attempt: another tab may have rotated it meanwhile.
+            const refreshToken = localStorage.getItem('refreshToken');
+
+            // Plain axios, not apiClient: this request must never re-enter the
+            // interceptor and refresh in a loop.
+            const response = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
+            const { token, refreshToken: rotated } = response.data;
+            localStorage.setItem('token', token);
+            if (rotated) {
+                localStorage.setItem('refreshToken', rotated);
+            }
+            return token as string;
+        } catch (error) {
+            if (refreshRejected(error) || attempt >= REFRESH_RETRY_DELAYS_MS.length) throw error;
+            await wait(REFRESH_RETRY_DELAYS_MS[attempt]);
+        }
+    }
+}
+
 function refreshAccessToken(): Promise<string> {
     if (!refreshing) {
-        const refreshToken = localStorage.getItem('refreshToken');
-
-        // Plain axios, not apiClient: this request must never re-enter the
-        // interceptor and refresh in a loop.
-        refreshing = axios
-            .post(`${API_BASE_URL}/auth/refresh`, { refreshToken })
-            .then((response) => {
-                const { token, refreshToken: rotated } = response.data;
-                localStorage.setItem('token', token);
-                if (rotated) {
-                    localStorage.setItem('refreshToken', rotated);
-                }
-                return token as string;
-            })
-            .finally(() => {
-                refreshing = null;
-            });
+        refreshing = requestRefresh().finally(() => {
+            refreshing = null;
+        });
     }
     return refreshing;
+}
+
+/**
+ * A 401 that has nothing to do with the player's session.
+ *
+ * Public endpoints answer 401 about the thing they were asked to check — a
+ * password-reset link that has expired, for one. Treating that as an expired
+ * session tried a refresh, found none, and threw the person onto the login
+ * screen instead of the "invalid link" page. And a request that carried no
+ * token cannot have had its token expire.
+ */
+function isOutsideSession(config: InternalAxiosRequestConfig | undefined): boolean {
+    if (!config) return true;
+    if ((config.url ?? '').startsWith('/auth/')) return true;
+    return !config.headers?.get('Authorization');
 }
 
 function endSession(): void {
@@ -95,27 +153,39 @@ apiClient.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config;
 
-        if (error.response?.status !== 401) {
+        if (error.response?.status !== 401 || isOutsideSession(originalRequest)) {
             return Promise.reject(error);
         }
 
         // A second 401 after a fresh token means the session is genuinely over.
-        if (originalRequest?._retry) {
+        if (originalRequest._retry) {
             endSession();
             return Promise.reject(markSessionExpired(error));
         }
 
         originalRequest._retry = true;
 
+        let token: string;
         try {
-            const token = await refreshAccessToken();
-            originalRequest.headers.set('Authorization', `Bearer ${token}`);
-            return await apiClient(originalRequest);
+            token = await refreshAccessToken();
         } catch (refreshError) {
-            endSession();
-            // The caller learns the session ended, not that their action failed.
-            return Promise.reject(markSessionExpired(refreshError));
+            if (refreshRejected(refreshError)) {
+                endSession();
+                // The caller learns the session ended, not that their action failed.
+                return Promise.reject(markSessionExpired(refreshError));
+            }
+            // The server could not be reached to renew the token. The session
+            // is not over: the tokens stay, and the next request tries again.
+            // Flagged so no screen reports it as a failed move.
+            return Promise.reject(markSessionExpired(error));
         }
+
+        // Retried outside the try above. A retried move the server refuses —
+        // not your turn, already played — is an ordinary answer to the move.
+        // Inside the try it was caught as a failed refresh, and a refused move
+        // right after the token expired logged the player out mid-game.
+        originalRequest.headers.set('Authorization', `Bearer ${token}`);
+        return apiClient(originalRequest);
     }
 );
 
