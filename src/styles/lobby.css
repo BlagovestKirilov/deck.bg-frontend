@@ -60,40 +60,27 @@
 .drifter {
     position: absolute;
     bottom: -120px;
+    color: var(--card);
+    line-height: 1;
     opacity: 0;
     will-change: transform, opacity;
     animation-name: felt-drift;
     animation-timing-function: linear;
     animation-iteration-count: infinite;
 }
-.drifter--card {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    width: 38px;
-    height: 54px;
-    padding: 3px 4px;
-    border-radius: 4px;
-    background: var(--card);
-    color: var(--ink);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    line-height: 1;
-}
-.drifter__rank { font-family: var(--lobby-display); font-size: 13px; font-weight: 800; }
-.drifter__pip { font-size: 11px; }
-.drifter--suit { color: var(--card); line-height: 1; }
-.drifter--card.drifter--red { color: var(--suit-red); }
-.drifter--suit.drifter--red { color: #e8a0a4; }
+/* Hearts and diamonds keep their colour, softened so they sit in the felt
+   rather than glow on it. */
+.drifter--red { color: #e8a0a4; }
 
 @keyframes felt-drift {
     0% {
         opacity: 0;
-        transform: translateY(0) rotate(var(--drift-spin)) scale(var(--drift-scale));
+        transform: translateY(0) rotate(var(--drift-spin));
     }
     12%, 85% { opacity: var(--drift-opacity); }
     100% {
         opacity: 0;
-        transform: translateY(-120vh) rotate(calc(var(--drift-spin) + var(--drift-turn))) scale(var(--drift-scale));
+        transform: translateY(-120vh) rotate(calc(var(--drift-spin) + var(--drift-turn)));
     }
 }
 
@@ -270,6 +257,16 @@
     font-weight: 700;
     text-decoration-color: var(--suit-red);
     text-decoration-thickness: 2px;
+}
+
+/* Underlines in the lobby run unbroken. By default the browser cuts the line
+   wherever a letter dips below it, and the Bulgarian forms of з, д, ф, р, у
+   dip a lot — the red rule came out in pieces. Set just below those tails
+   instead, so it neither breaks nor runs through them. */
+.lobby .btn--link,
+.lobby a {
+    text-decoration-skip-ink: none;
+    text-underline-offset: 0.3em;
 }
 .play-card .btn--link:hover { color: var(--suit-red); }
 
