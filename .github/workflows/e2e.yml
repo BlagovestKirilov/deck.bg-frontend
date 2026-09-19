@@ -1,0 +1,38 @@
+name: E2E smoke
+
+# Kept apart from deploy.yml on purpose. That workflow builds and ships an
+# image, and putting a young test suite in front of it would mean a flake can
+# block a deploy. This one only reports.
+on:
+  pull_request:
+  push:
+    branches: [ "dev" ]
+  workflow_dispatch: {}
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Only Chromium: the suite runs it at a desktop and a phone viewport, and
+      # a second engine would double the run for no question it answers.
+      - run: npx playwright install --with-deps chromium
+
+      # No backend here, so only the public tier runs; the rest skips itself.
+      - run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
