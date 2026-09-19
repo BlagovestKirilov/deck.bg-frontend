@@ -1,3 +1,5 @@
-/* Single entry point for app styling — all tokens and component classes
-   live in styles/theme.css. */
+/* Single entry point for app styling. theme.css holds the tokens and the
+   shared components; lobby.css the sign-in, hub and profile screens, scoped
+   under .lobby so the game tables never pick it up. */
 @import './styles/theme.css';
+@import './styles/lobby.css';

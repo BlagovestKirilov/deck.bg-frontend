@@ -12,6 +12,8 @@ import RankIcon, { getRankLabel } from './RankIcon';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+import GamePrelude from './lobby/GamePrelude';
+import { SantaseArt } from './lobby/GameArt';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -1447,37 +1449,14 @@ const SantaseGame: React.FC = () => {
 
             {!gameState ? (
                 <div style={styles.lobby}>
-                    <div className="panel panel--gold" style={lobbyCardStyle}>
-                        <span style={lobbyCrestStyle}>66</span>
-
-                        <h1 style={{fontSize: 'var(--fs-2xl)', color: 'var(--text-1)'}}>Сантасе 66</h1>
-
-                        <p style={{color: 'var(--text-3)', fontSize: 'var(--fs-sm)'}}>
-                            Класическо Сантасе срещу реални опоненти
-                        </p>
-
-                        <Button
-                            variant="primary"
-                            size="lg"
-                            block
-                            loading={isSearching}
-                            onClick={startSearch}
-                            style={{marginTop: 'var(--sp-4)'}}
-                        >
-                            НОВА ИГРА
-                        </Button>
-
-                        {isSearching && (
-                            <p role="status" style={{color: 'var(--text-3)', fontSize: 'var(--fs-sm)'}}>
-                                Търсим опонент…
-                            </p>
-                        )}
-
-                        <button type="button" className="btn btn--link" onClick={() => navigate('/')}>
-                            <Icon name="arrowLeft" size={16}/>
-                            Назад
-                        </button>
-                    </div>
+                    <GamePrelude
+                        title="Сантасе"
+                        rule="Първият до 66 точки печели."
+                        Art={SantaseArt}
+                        isSearching={isSearching}
+                        onStart={startSearch}
+                        onBack={() => navigate('/')}
+                    />
                 </div>
             ) : (
                 <div style={styles.gameWrapper}>
@@ -2000,8 +1979,12 @@ const styles: Record<string, React.CSSProperties> = {
     lobby: {
         flex: 1,
         display: 'flex',
-        alignItems: 'center',
+        // Stretch, not centre: the prelude centres its own body, and a short
+        // phone in landscape needs this box to scroll rather than clip — the
+        // table around it hides overflow for the game.
+        alignItems: 'stretch',
         justifyContent: 'center',
+        overflowY: 'auto',
         padding: 'var(--sp-5)',
         paddingBottom: 'calc(var(--sp-5) + var(--sa-bottom))',
     },
@@ -2125,32 +2108,6 @@ const turnRowStyle: React.CSSProperties = {
     width: '100%',
     padding: '0 var(--sp-4)',
     marginBottom: 'clamp(12px, 3vw, 18px)',
-};
-
-const lobbyCardStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--sp-3)',
-    width: '100%',
-    maxWidth: '420px',
-    padding: 'clamp(24px, 7vw, 44px)',
-    textAlign: 'center',
-};
-
-const lobbyCrestStyle: React.CSSProperties = {
-    display: 'grid',
-    placeItems: 'center',
-    width: 'clamp(60px, 17vw, 84px)',
-    height: 'clamp(60px, 17vw, 84px)',
-    marginBottom: 'var(--sp-2)',
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, var(--accent-bright), var(--accent) 55%, var(--accent-deep))',
-    color: 'var(--text-on-accent)',
-    fontFamily: 'var(--font-display)',
-    fontSize: 'clamp(1.6rem, 6vw, 2.2rem)',
-    fontWeight: 700,
-    boxShadow: 'var(--glow-accent)',
 };
 
 const resultBodyStyle: React.CSSProperties = {

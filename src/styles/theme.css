@@ -517,35 +517,6 @@ code, kbd, samp { font-family: var(--font-mono); }
    desktop had to scroll two short cards that fit side by side. */
 .modal--wide { max-width: 860px; }
 
-/* Profile layout. One column by default, two once there is room for them. */
-.profile-body {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-5);
-}
-.profile-games {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: var(--sp-4);
-}
-.profile-actions {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-}
-
-@media (min-width: 760px) {
-    .profile-games { grid-template-columns: 1fr 1fr; }
-    .profile-actions {
-        flex-direction: row;
-        align-items: center;
-        gap: var(--sp-4);
-    }
-    /* Stacked, a rule separates the destructive action; in a row the gap
-       already does, and a horizontal rule between two buttons reads as noise. */
-    .profile-actions__rule { display: none; }
-}
-
 .modal__body { min-height: 0; }
 
 .modal__actions {
@@ -597,7 +568,7 @@ code, kbd, samp { font-family: var(--font-mono); }
 }
 
 /* =====================================================================
-   Badges / stats
+   Badges
    ===================================================================== */
 
 .badge {
@@ -612,145 +583,6 @@ code, kbd, samp { font-family: var(--font-mono); }
 }
 .badge--success { background: var(--success-wash); color: var(--success); }
 .badge--danger  { background: var(--danger-wash);  color: var(--danger-bright); }
-
-/* The rank line on a game-hub card. */
-.hub-record {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    margin-top: var(--sp-2);
-    padding: var(--sp-2) var(--sp-3);
-    border-radius: var(--r-pill);
-    background: rgba(255, 255, 255, .05);
-    border: 1px solid var(--line);
-}
-.hub-record__text {
-    display: flex;
-    align-items: baseline;
-    gap: var(--sp-2);
-    min-width: 0;
-}
-.hub-record__rank {
-    font-size: var(--fs-xs);
-    font-weight: 700;
-    letter-spacing: .04em;
-    color: var(--text-2);
-}
-
-
-/* =====================================================================
-   Per-game record card (profile)
-   One per game, because a rank is earned per game.
-   ===================================================================== */
-
-.game-stats {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-3);
-    padding: var(--sp-4);
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-}
-.game-stats__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-3);
-    min-width: 0;
-}
-.game-stats__title {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    min-width: 0;
-    font-family: var(--font-display);
-    font-size: var(--fs-md);
-    font-weight: 700;
-    color: var(--text-1);
-    letter-spacing: .04em;
-    text-transform: uppercase;
-}
-.game-stats__rank {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    flex: 0 0 auto;
-}
-/* Сантасе is known by its 66 — the same mark the game hub uses, rather than the
-   generic card glyph that read as a copy icon. Drawn in the title's own colour
-   at the same 18px as Табла's dice icon, so the two card headers read as the
-   same kind of mark; the gold pill this had at first made Сантасе look like the
-   more important of the two games. */
-.game-stats__crest {
-    display: inline-grid;
-    place-items: center;
-    width: 24px;
-    height: 24px;
-    /* A ring in the inherited colour: it gives the number the weight of a mark
-       rather than two loose digits, without breaking the match with Табла's
-       dice icon — same colour, just a drawn edge. */
-    border: 1.5px solid currentColor;
-    border-radius: 50%;
-    color: inherit;
-    font-family: var(--font-display);
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -.02em;
-}
-.game-stats__row {
-    display: flex;
-    gap: var(--sp-3);
-}
-.game-stats__legend {
-    display: flex;
-    justify-content: space-between;
-    gap: var(--sp-2);
-    margin-top: var(--sp-2);
-    font-size: var(--fs-xs);
-}
-.game-stats__empty {
-    font-size: var(--fs-xs);
-    color: var(--text-3);
-    text-align: center;
-}
-
-.stat {
-    flex: 1;
-    min-width: 0;
-    padding: var(--sp-4) var(--sp-3);
-    text-align: center;
-    background: var(--surface-raised);
-    border: 1px solid var(--line);
-    border-radius: var(--r-lg);
-}
-.stat__value {
-    font-family: var(--font-display);
-    font-size: var(--fs-2xl);
-    font-weight: 700;
-    color: var(--gold);
-    font-variant-numeric: tabular-nums;
-}
-.stat__label {
-    font-size: var(--fs-xs);
-    color: var(--text-3);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 700;
-}
-
-/* win/loss ratio bar — the labels carry the meaning, not just the color */
-.ratio {
-    display: flex;
-    height: 14px;
-    border-radius: var(--r-pill);
-    overflow: hidden;
-    border: 1px solid var(--line-strong);
-    background: var(--surface-raised);
-}
-.ratio__win  { background: linear-gradient(90deg, #3f9e60, var(--success)); transition: width var(--dur-slow) var(--ease-out); }
-.ratio__loss { background: linear-gradient(90deg, var(--danger), #c14a4a); transition: width var(--dur-slow) var(--ease-out); }
 
 /* =====================================================================
    Long-form document pages (privacy policy, deletion info)
@@ -844,14 +676,6 @@ code, kbd, samp { font-family: var(--font-mono); }
 @keyframes urgent-glow {
     0%, 100% { box-shadow: var(--sh-3), 0 0 24px rgba(255,111,111,.28); }
     50%      { box-shadow: var(--sh-3), 0 0 44px rgba(255,111,111,.52); }
-}
-
-@keyframes drift-up {
-    0%   { transform: translateY(0) rotate(0deg) translateX(0); opacity: 0; }
-    12%  { opacity: var(--drift-opacity, 0.1); }
-    50%  { transform: translateY(-52vh) rotate(180deg) translateX(18px); }
-    88%  { opacity: var(--drift-opacity, 0.1); }
-    100% { transform: translateY(-112vh) rotate(360deg) translateX(-18px); opacity: 0; }
 }
 
 /* =====================================================================
@@ -1339,56 +1163,6 @@ code, kbd, samp { font-family: var(--font-mono); }
     font-variant-numeric: tabular-nums;
 }
 
-/* Choosing which colour your own checkers are drawn in. */
-.color-choice {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--sp-2);
-    width: 100%;
-    margin-top: var(--sp-2);
-}
-.color-choice__label {
-    font-size: var(--fs-xs);
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: var(--text-3);
-}
-.color-choice__options {
-    display: flex;
-    gap: var(--sp-2);
-    width: 100%;
-}
-.color-choice__option {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--sp-2);
-    flex: 1;
-    min-height: var(--tap);
-    padding: 0 var(--sp-3);
-    border: 1px solid var(--line);
-    border-radius: var(--r-md);
-    background: var(--surface-raised);
-    color: var(--text-2);
-    font-size: var(--fs-sm);
-    font-weight: 600;
-    cursor: pointer;
-    transition: border-color var(--dur-fast) var(--ease-out),
-                color var(--dur-fast) var(--ease-out);
-}
-.color-choice__option.is-selected {
-    border-color: var(--gold);
-    color: var(--text-1);
-    background: var(--gold-wash);
-}
-.color-choice__chip {
-    width: 20px;
-    max-width: none;
-    aspect-ratio: 1;
-    flex: 0 0 auto;
-}
-
 /* Dice: a real cube with six faces, turned in 3D. Never the unicode faces —
    those render wildly differently across Android and iOS. */
 .die {
@@ -1543,6 +1317,20 @@ code, kbd, samp { font-family: var(--font-mono); }
     width: 100%;
     /* Reserved so the board does not jump a row when the dice appear. */
     min-height: clamp(44px, 12vw, 56px);
+}
+
+/* A roll with no legal move, said beside the dice rather than over them. One
+   word, so it fits the single-line action row on the narrowest phone. */
+.tabla-pass {
+    flex: 0 0 auto;
+    font-family: var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1;
+    color: var(--text-1);
+    white-space: nowrap;
+    animation: note-in var(--dur) var(--ease-out);
 }
 
 /* Phones: the board fills the width and the HUD stacks around it. Rotating
