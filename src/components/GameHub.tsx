@@ -130,7 +130,7 @@ const GameHub: React.FC = () => {
                 <Modal
                     title="Изход от профила"
                     width="narrow"
-                    className="lobby leave"
+                    className="lobby sheet"
                     onClose={() => setConfirmLogout(false)}
                     actions={
                         <>
@@ -140,7 +140,7 @@ const GameHub: React.FC = () => {
                         </>
                     }
                 >
-                    <p className="leave__text">Следващия път ще трябва да влезеш с името и паролата си.</p>
+                    <p className="sheet__text">Следващия път ще трябва да влезеш с името и паролата си.</p>
                 </Modal>
             )}
         </main>

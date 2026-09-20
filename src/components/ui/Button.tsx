@@ -7,7 +7,6 @@ type Variant =
     | 'secondary'
     | 'ghost'
     | 'danger'
-    | 'danger-outline'
     | 'link';
 
 interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'children'> {

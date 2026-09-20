@@ -67,13 +67,19 @@ const CardComponent: React.FC<{
     isSelected?: boolean;
     isSmall?: boolean;
     isLastDrawn?: boolean;
-}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false}) => {
+    /** The trump, lying sideways with the deck across its middle. */
+    isTrump?: boolean;
+}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false, isTrump = false}) => {
     const suit = SUIT_MAP[card.suit] || {symbol: '?', color: SUIT_COLOR.black};
     const displayRank = card.rank === 'NINE' ? '9' : (card.rank === 'TEN' ? '10' : card.rank[0]);
     const name = `${RANK_LABEL_BG[card.rank] ?? card.rank} ${SUIT_LABEL_BG[card.suit] ?? ''}`.trim();
 
     const width = isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)';
-    const cornerSize = isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
+    // The trump keeps only its indices, so they can be read from across the
+    // table: the deck sits over its middle, where the pip would be.
+    const cornerSize = isTrump
+        ? 'clamp(1.1rem, 4vw, 1.9rem)'
+        : isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
     const pipSize = isSmall ? 'clamp(1.4rem, 5.2vw, 2.7rem)' : 'clamp(1.8rem, 6.4vw, 2.6rem)';
 
     const interactive = isPlayable && !!onClick;
@@ -84,6 +90,7 @@ const CardComponent: React.FC<{
         !isPlayable ? 'pcard--blocked' : '',
         isSelected ? 'pcard--selected' : '',
         isLastDrawn ? 'card-shimmer' : '',
+        isTrump ? 'pcard--trump' : '',
     ].filter(Boolean).join(' ');
 
     const style: React.CSSProperties = {
@@ -92,7 +99,20 @@ const CardComponent: React.FC<{
         color: suit.color,
     };
 
-    const face = (
+    // The trump lies sideways under the deck, so its index is turned back the
+    // other way: the card is at ninety degrees, the rank and suit read upright.
+    // Only the one index — the other end is under the pile, and the pip with it.
+    const trumpFace = (
+        <span
+            className="pcard__corner"
+            style={{alignSelf: 'flex-start', fontSize: cornerSize, transform: 'rotate(-90deg)'}}
+        >
+            <span>{displayRank}</span>
+            <span>{suit.symbol}</span>
+        </span>
+    );
+
+    const face = isTrump ? trumpFace : (
         <>
             <span className="pcard__corner" style={{alignSelf: 'flex-start', fontSize: cornerSize}}>
                 <span>{displayRank}</span>
@@ -135,21 +155,24 @@ const AppModal: React.FC<{
     onCancel?: () => void;
     confirmText?: string;
     cancelText?: string;
-}> = ({title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ"}) => (
+    /** The confirmation costs the game, so it is red rather than green. */
+    isDestructive?: boolean;
+}> = ({title, message, onConfirm, onCancel, confirmText = "Потвърди", cancelText = "Отказ", isDestructive}) => (
     <Modal
         title={title}
         width="narrow"
+        className="lobby sheet"
         onClose={onCancel}
         dismissOnScrim={false}
         actions={
             <>
                 {onCancel && <Button variant="ghost" onClick={onCancel}>{cancelText}</Button>}
-                <Button variant="primary" onClick={onConfirm}>{confirmText}</Button>
+                <Button variant={isDestructive ? 'danger' : 'primary'} onClick={onConfirm}>{confirmText}</Button>
             </>
         }
     >
         {typeof message === 'string'
-            ? <p style={{color: 'var(--text-2)', textAlign: 'center'}}>{message}</p>
+            ? <p className="sheet__text" style={{textAlign: 'center'}}>{message}</p>
             : message}
     </Modal>
 );
@@ -165,36 +188,26 @@ const TrickResultPopup: React.FC<{
     }, [onDismiss]);
 
     return (
-        <Modal title="Край на раздаването" width="narrow" dismissOnScrim={false}>
+        <Modal title="Край на раздаването" width="narrow" className="lobby sheet" dismissOnScrim={false}>
             <div style={{display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)'}}>
-                <div className="note note--success" style={{justifyContent: 'center'}}>
-                    <Icon name="trophy" size={18} className="note__icon"/>
-                    <span><strong>{trickResult.winner}</strong></span>
+                <div className="sheet__taker">
+                    <Icon name="trophy" size={18}/>
+                    <span>{trickResult.winner}</span>
                 </div>
 
                 <div>
-                    <div style={scoreRowStyle}>
+                    <div className="sheet__row">
                         <span className="truncate">{trickResult.p1Name}</span>
-                        <span className="tabular" style={{fontWeight: 800, color: 'var(--gold)'}}>{trickResult.p1Score} т.</span>
+                        <span className="tabular sheet__row-points">{trickResult.p1Score} т.</span>
                     </div>
-                    <div style={{...scoreRowStyle, borderBottom: 'none'}}>
+                    <div className="sheet__row">
                         <span className="truncate">{trickResult.p2Name}</span>
-                        <span className="tabular" style={{fontWeight: 800, color: 'var(--gold)'}}>{trickResult.p2Score} т.</span>
+                        <span className="tabular sheet__row-points">{trickResult.p2Score} т.</span>
                     </div>
                 </div>
             </div>
         </Modal>
     );
-};
-
-const scoreRowStyle: React.CSSProperties = {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 'var(--sp-4)',
-    padding: 'var(--sp-3) 0',
-    borderBottom: '1px solid var(--line)',
-    color: 'var(--text-2)',
 };
 
 /**
@@ -240,7 +253,10 @@ const SantaseGame: React.FC = () => {
         title: string;
         message: string;
         action: () => void;
-        onCancel?: () => void
+        onCancel?: () => void;
+        isDestructive?: boolean;
+        confirmText?: string;
+        cancelText?: string;
     }>(null);
     const [trickResult, setTrickResult] = useState<null | {
         winner: string;
@@ -842,7 +858,10 @@ const SantaseGame: React.FC = () => {
     const handleLeaveGame = () => {
         setConfirmAction({
             title: 'Напускане на играта',
-            message: 'Сигурни ли сте, че искате да напуснете играта?',
+            message: 'Играта се брои за загубена.',
+            isDestructive: true,
+            confirmText: 'Напусни',
+            cancelText: 'Остани',
             action: async () => {
                 try {
                     await gameService.surrender();
@@ -1590,7 +1609,7 @@ const SantaseGame: React.FC = () => {
                                                         }
                                                     }
                                                 }}>
-                                                    <CardComponent card={gameState.trumpCard!} isSmall/>
+                                                    <CardComponent card={gameState.trumpCard!} isSmall isTrump/>
                                                 </div>
                                                 <div style={{
                                                     ...styles.deckPile,
@@ -1725,7 +1744,7 @@ const SantaseGame: React.FC = () => {
                                                     disabled rather than pointer-events:none */}
                                                 <button
                                                     type="button"
-                                                    className="round-btn round-btn--accent"
+                                                    className="round-btn round-btn--claim"
                                                     disabled={!canFinishDeal}
                                                     aria-label="Обяви 66 точки и приключи раздаването"
                                                     style={{
@@ -1756,7 +1775,12 @@ const SantaseGame: React.FC = () => {
                                         gap: isMobile ? '0' : 'var(--sp-3)',
                                         flexWrap: 'nowrap' as const,
                                         width: '100%',
-                                        overflow: 'hidden',
+                                        // clip sideways so a wide fan cannot push the table into a
+                                        // horizontal scroll, but stay open upwards: a lifted or
+                                        // selected card rises 10px and wears a ring, and plain
+                                        // overflow:hidden cut both off.
+                                        overflowX: 'clip' as const,
+                                        overflowY: 'visible' as const,
                                         padding: '0 clamp(10px, 3vw, 20px)',
                                         marginTop: isMobile ? 'clamp(20px, 5vw, 25px)' : '0',
                                     }}>
@@ -1764,8 +1788,17 @@ const SantaseGame: React.FC = () => {
                                             <div
                                                 key={card.id}
                                                 style={{
-                                                    // half-overlap fan: each card shows its left half
-                                                    marginLeft: isMobile && index > 0 ? 'clamp(-58px, -14vw, -50px)' : '0',
+                                                    /* The fan is set by how much of each card stays
+                                                       visible, not by a fixed negative margin: that
+                                                       left ~23px showing on a 390px phone, half the
+                                                       44px a finger needs. The margin is the card's
+                                                       own width minus the strip we want to keep, so
+                                                       the strip is never below 44px however the card
+                                                       scales. Six cards still fit: at 320px the hand
+                                                       is 74 + 5x44 = 294px inside ~300px of room. */
+                                                    marginLeft: isMobile && index > 0
+                                                        ? 'calc(clamp(44px, 13vw, 64px) - clamp(74px, 20vw, 104px))'
+                                                        : '0',
                                                 }}
                                             >
                                                 <CardComponent
@@ -1798,33 +1831,30 @@ const SantaseGame: React.FC = () => {
                                 // Same wording as табла, and in the same case:
                                 // the two result dialogs disagreed on both.
                                 title={iWon ? 'Победа!' : 'Загуба'}
-                                className={`modal--result ${iWon ? '' : 'modal--loss'}`}
+                                // The game is over, so this is the lobby
+                                // talking, not the table: same card the sign-in
+                                // and the logout are printed on. modal--result
+                                // keeps the title centred over the mark.
+                                className={`lobby sheet result modal--result ${iWon ? '' : 'modal--loss'}`}
                                 width="narrow"
                                 dismissOnScrim={false}
                                 actions={
                                     <Button variant="primary" size="lg" onClick={() => finishGameAndReturn()}>
-                                        КЪМ НАЧАЛО
+                                        Към начало
                                     </Button>
                                 }
                             >
-                                <div style={resultBodyStyle}>
+                                <div className="result__body">
                                     {/* icon + wording both carry the outcome, so it reads
                                         the same in grayscale or to a screen reader */}
-                                    <span
-                                        style={{
-                                            ...resultMarkStyle,
-                                            color: iWon ? 'var(--gold)' : 'var(--text-3)',
-                                            background: iWon ? 'var(--gold-wash)' : 'rgba(255,255,255,0.06)',
-                                            borderColor: iWon ? 'var(--line-gold)' : 'var(--line)',
-                                        }}
-                                    >
+                                    <span className={`result__mark ${iWon ? 'result__mark--win' : 'result__mark--loss'}`}>
                                         <Icon name={iWon ? 'trophy' : 'flag'} size="50%"/>
                                     </span>
 
                                     {/* The title carries the outcome; this line
                                         says against whom, or how it ended. Same
                                         wording as табла. */}
-                                    <p style={{fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)'}}>
+                                    <p className="result__line">
                                         {isSurrender
                                             ? (opponentSurrendered
                                                 ? `${surrenderedPlayer} се предаде!`
@@ -1834,15 +1864,15 @@ const SantaseGame: React.FC = () => {
                                                 : `Загубихте от ${opponentName}`)}
                                     </p>
 
-                                    <div style={finalScoreStyle}>
-                                        <div style={{textAlign: 'center', minWidth: 0}}>
-                                            <div className="truncate" style={{color: 'var(--text-3)', fontSize: 'var(--fs-xs)'}}>{username}</div>
-                                            <div className="tabular" style={{...finalScoreNumStyle, color: iWon ? 'var(--success)' : 'var(--text-2)'}}>{myScore}</div>
+                                    <div className="result__score">
+                                        <div className="result__score-side">
+                                            <div className="truncate result__score-name">{username}</div>
+                                            <div className={`tabular result__score-num ${iWon ? 'result__score-num--won' : ''}`}>{myScore}</div>
                                         </div>
-                                        <span style={{color: 'var(--text-3)', fontSize: 'var(--fs-lg)'}}>:</span>
-                                        <div style={{textAlign: 'center', minWidth: 0}}>
-                                            <div className="truncate" style={{color: 'var(--text-3)', fontSize: 'var(--fs-xs)'}}>{opponentName}</div>
-                                            <div className="tabular" style={{...finalScoreNumStyle, color: iWon ? 'var(--text-2)' : 'var(--danger-bright)'}}>{theirScore}</div>
+                                        <span className="result__score-colon">:</span>
+                                        <div className="result__score-side">
+                                            <div className="truncate result__score-name">{opponentName}</div>
+                                            <div className={`tabular result__score-num ${iWon ? '' : 'result__score-num--won'}`}>{theirScore}</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1863,14 +1893,16 @@ const SantaseGame: React.FC = () => {
                 return (
                     <Modal
                         title="Времето изтича!"
-                        tone="danger"
                         width="narrow"
                         dismissOnScrim={false}
-                        className="modal--urgent"
+                        // Printed on the same card as every other dialog; the
+                        // red rule and the red count carry the urgency, so the
+                        // danger tone's inline colour is not wanted here.
+                        className="lobby sheet urgent"
                         actions={
                             <>
                                 <Button
-                                    variant="danger-outline"
+                                    variant="ghost"
                                     onClick={handleInactivitySurrender}
                                 >
                                     Предавам се
@@ -1887,27 +1919,19 @@ const SantaseGame: React.FC = () => {
                     >
                         <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--sp-4)', textAlign: 'center'}}>
                             <div
-                                className="tabular"
+                                className={`tabular sheet__countdown ${critical ? 'sheet__countdown--critical' : ''}`}
                                 role="timer"
                                 aria-live="assertive"
                                 aria-label={`Остават ${turnTimeRemaining} секунди`}
-                                style={{
-                                    fontFamily: 'var(--font-display)',
-                                    fontSize: 'clamp(3rem, 16vw, 4.5rem)',
-                                    fontWeight: 700,
-                                    lineHeight: 1,
-                                    color: critical ? 'var(--danger)' : 'var(--warning)',
-                                }}
                             >
                                 {turnTimeRemaining}
                             </div>
 
-                            <p style={{color: 'var(--text-2)', fontSize: 'var(--fs-sm)'}}>
+                            <p className="sheet__text">
                                 Ако не предприемете действие, играта ще приключи като загуба.
                             </p>
 
-                            <span className={`badge ${extensionsLeft === 0 ? 'badge--danger' : 'badge--success'}`}>
-                                <Icon name="clock" size={15}/>
+                            <span className="sheet__note">
                                 Оставащи удължения: {extensionsLeft} / {MAX_INACTIVITY}
                             </span>
                         </div>
@@ -1919,6 +1943,9 @@ const SantaseGame: React.FC = () => {
                 <AppModal
                     title={confirmAction.title}
                     message={confirmAction.message}
+                    isDestructive={confirmAction.isDestructive}
+                    confirmText={confirmAction.confirmText}
+                    cancelText={confirmAction.cancelText}
                     onConfirm={confirmAction.action}
                     onCancel={confirmAction.onCancel ? confirmAction.onCancel : () => setConfirmAction(null)}
                 />
@@ -2119,42 +2146,6 @@ const turnRowStyle: React.CSSProperties = {
     width: '100%',
     padding: '0 var(--sp-4)',
     marginBottom: 'clamp(12px, 3vw, 18px)',
-};
-
-const resultBodyStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--sp-4)',
-    textAlign: 'center',
-};
-
-const resultMarkStyle: React.CSSProperties = {
-    display: 'grid',
-    placeItems: 'center',
-    width: 'clamp(72px, 20vw, 96px)',
-    height: 'clamp(72px, 20vw, 96px)',
-    borderRadius: '50%',
-    border: '1px solid',
-    animation: 'scale-in var(--dur-slow) var(--ease-spring)',
-};
-
-const finalScoreStyle: React.CSSProperties = {
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 'var(--sp-4)',
-    width: '100%',
-    padding: 'var(--sp-4)',
-    background: 'var(--surface-raised)',
-    border: '1px solid var(--line)',
-    borderRadius: 'var(--r-lg)',
-};
-
-const finalScoreNumStyle: React.CSSProperties = {
-    fontFamily: 'var(--font-display)',
-    fontSize: 'var(--fs-2xl)',
-    fontWeight: 700,
 };
 
 export default SantaseGame;

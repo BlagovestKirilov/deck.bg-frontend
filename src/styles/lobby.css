@@ -11,19 +11,7 @@
    ===================================================================== */
 
 .lobby {
-    /* Card stock and the inks printed on it. */
-    --card:        #faf8f3;
-    --ink:         #1d1b18;
-    --ink-2:       #4f4a42;   /* ~8:1 on --card */
-    --ink-3:       #6b655b;   /* ~5.2:1 on --card */
-    --ink-line:    rgba(29, 27, 24, 0.18);
-    --suit-red:    #b4232c;   /* ~6:1 on --card */
-    --suit-red-wash: rgba(180, 35, 44, 0.08);
-
-    /* The table's green, as a button printed on the card. */
-    --felt-ink:       #155235;
-    --felt-ink-hover: #1b6441;
-    --felt-ink-wash:  rgba(21, 82, 53, 0.10);
+    /* Colours live in theme.css :root — the table borrows them too. */
 
     --lobby-display: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
     --lobby-body:    'Sofia Sans', var(--font-body);
@@ -681,13 +669,14 @@
 }
 
 /* =====================================================================
-   Signing out — the other end of the sign-in card
+   Dialogs printed on card stock: signing out, and the end of a game
    ===================================================================== */
 
-/* You sign in on a white card, so you sign out on one: the same stock and
-   inks, laid on the dimmed table. The shared modal supplies the behaviour;
-   only its surface is reprinted here. */
-.modal.leave {
+/* You sign in on a white card, so you sign out on one, and a finished game
+   hands you back on one too — both are the lobby speaking, not the table.
+   The same stock and inks, laid on the dimmed board. The shared modal
+   supplies the behaviour; only its surface is reprinted here. */
+.modal.sheet {
     border: 0;
     border-radius: 20px;
     background: var(--card);
@@ -696,24 +685,143 @@
         0 1px 0 rgba(0, 0, 0, 0.35),
         0 24px 48px -16px rgba(0, 0, 0, 0.75);
 }
-.leave .panel__header { border-bottom-color: var(--ink-line); }
-.leave .panel__title {
+.sheet .panel__header { border-bottom-color: var(--ink-line); }
+.sheet .panel__title {
     font-family: var(--lobby-display);
     font-size: clamp(1.8rem, 7vw, 2.1rem);
     font-weight: 800;
     line-height: 1;
     color: var(--ink);
 }
-.leave .panel__header .btn--icon { color: var(--ink-3); }
-.leave .panel__header .btn--icon:hover:not(:disabled) { background: rgba(29, 27, 24, 0.06); color: var(--ink); }
-.leave__text { font-size: var(--fs-md); line-height: 1.5; color: var(--ink-2); }
+.sheet .panel__header .btn--icon { color: var(--ink-3); }
+.sheet .panel__header .btn--icon:hover:not(:disabled) { background: rgba(29, 27, 24, 0.06); color: var(--ink); }
+.sheet__text { font-size: var(--fs-md); line-height: 1.5; color: var(--ink-2); }
 
-.leave .btn { font-family: var(--lobby-body); font-weight: 700; letter-spacing: 0.01em; }
-.leave .btn--primary { background: var(--felt-ink); color: var(--card); box-shadow: none; }
-.leave .btn--primary:hover:not(:disabled) { background: var(--felt-ink-hover); }
-.leave .btn--ghost { border-color: var(--ink-line); background: transparent; color: var(--ink); }
-.leave .btn--ghost:hover:not(:disabled) { background: rgba(29, 27, 24, 0.05); color: var(--ink); }
-.leave :focus-visible { outline-color: var(--felt-ink); }
+.sheet .btn { font-family: var(--lobby-body); font-weight: 700; letter-spacing: 0.01em; }
+.sheet .btn--primary { background: var(--felt-ink); color: var(--card); box-shadow: none; }
+.sheet .btn--primary:hover:not(:disabled) { background: var(--felt-ink-hover); }
+/* Forfeiting really does lose the game, so it stays red — but printed flat in
+   the card's own red, not the table's glowing gradient. */
+.sheet .btn--danger { background: var(--suit-red); color: var(--card); box-shadow: none; }
+.sheet .btn--danger:hover:not(:disabled) { background: #981c24; }
+.sheet .btn--ghost { border-color: var(--ink-line); background: transparent; color: var(--ink); }
+.sheet .btn--ghost:hover:not(:disabled) { background: rgba(29, 27, 24, 0.05); color: var(--ink); }
+.sheet :focus-visible { outline-color: var(--felt-ink); }
+
+/* A dialog that is counting down. The urgency is in the red rule, the red
+   heading and the number itself — not in a glow, which on paper reads as a
+   printing fault rather than a warning. */
+.modal.sheet.urgent { border: 1px solid var(--suit-red); }
+.sheet.urgent .panel__title { color: var(--suit-red); }
+.sheet.urgent .panel__header { border-bottom-color: var(--suit-red-wash); }
+
+.sheet__countdown {
+    font-family: var(--lobby-display);
+    font-size: clamp(3.4rem, 16vw, 4.6rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--suit-red);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+/* The last few seconds. Motion rather than a second colour: the number is
+   already as red as the card allows, and a beat draws the eye back to a dialog
+   someone has stopped reading. */
+.sheet__countdown--critical { animation: countdown-beat 1s ease-in-out infinite; }
+
+@keyframes countdown-beat {
+    50% { transform: scale(1.09); }
+}
+
+/* Its own quiet line: how many reprieves are left, not a decorated badge. */
+.sheet__note {
+    font-size: var(--fs-sm);
+    color: var(--ink-3);
+    text-align: center;
+}
+
+/* End of a deal: who took it, and the two scores. */
+.sheet__taker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    color: var(--ink);
+}
+.sheet__taker svg { color: var(--felt-ink); }
+.sheet__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    color: var(--ink-2);
+}
+.sheet__row + .sheet__row { border-top: 1px solid var(--ink-line); }
+.sheet__row-points {
+    font-family: var(--lobby-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--ink);
+}
+
+/* ---- the end of a game ---- */
+
+.result__body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-4);
+    text-align: center;
+}
+
+/* The mark and the wording both carry the outcome, so it survives being read
+   in grey or read aloud. A loss is quiet rather than red: nothing went wrong,
+   the game simply ended the other way. */
+.result__mark {
+    display: grid;
+    place-items: center;
+    width: clamp(72px, 20vw, 96px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    animation: scale-in var(--dur-slow) var(--ease-spring);
+}
+.result__mark--win  { background: var(--felt-ink); color: var(--card); }
+.result__mark--loss { background: rgba(29, 27, 24, 0.07); color: var(--ink-3); }
+
+.result__line {
+    font-family: var(--lobby-body);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+/* Сантасе's final score, ruled on the card rather than boxed in a dark panel. */
+.result__score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-4);
+    width: 100%;
+    padding-top: var(--sp-4);
+    border-top: 1px solid var(--ink-line);
+}
+.result__score-side { min-width: 0; text-align: center; }
+.result__score-name { font-size: var(--fs-xs); color: var(--ink-3); }
+.result__score-num {
+    font-family: var(--lobby-display);
+    font-size: clamp(2rem, 9vw, 2.6rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--ink-2);
+}
+/* Only the winning number is coloured; the loser's stays ink, so the contrast
+   is between one and the other, not between good and bad. */
+.result__score-num--won { color: var(--felt-ink); }
+.result__score-colon { font-size: var(--fs-lg); color: var(--ink-3); }
 
 /* =====================================================================
    Before a game (Сантасе / Табла, no game running yet)
