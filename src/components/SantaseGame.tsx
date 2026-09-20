@@ -52,6 +52,9 @@ const SUIT_LABEL_BG: Record<Suit, string> = {
     DIAMONDS: 'каро', CLUBS: 'спатия',
 };
 
+/** The one or two characters a card shows in its corner. */
+const rankGlyph = (rank: string) => rank === 'NINE' ? '9' : rank === 'TEN' ? '10' : rank[0];
+
 /**
  * A playing card.
  *
@@ -67,19 +70,15 @@ const CardComponent: React.FC<{
     isSelected?: boolean;
     isSmall?: boolean;
     isLastDrawn?: boolean;
-    /** The trump, lying sideways with the deck across its middle. */
-    isTrump?: boolean;
-}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false, isTrump = false}) => {
+    /** Overrides the size step. The trump has to match the pile exactly. */
+    width?: string;
+}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false, width: fixedWidth}) => {
     const suit = SUIT_MAP[card.suit] || {symbol: '?', color: SUIT_COLOR.black};
-    const displayRank = card.rank === 'NINE' ? '9' : (card.rank === 'TEN' ? '10' : card.rank[0]);
+    const displayRank = rankGlyph(card.rank);
     const name = `${RANK_LABEL_BG[card.rank] ?? card.rank} ${SUIT_LABEL_BG[card.suit] ?? ''}`.trim();
 
-    const width = isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)';
-    // The trump keeps only its indices, so they can be read from across the
-    // table: the deck sits over its middle, where the pip would be.
-    const cornerSize = isTrump
-        ? 'clamp(1.1rem, 4vw, 1.9rem)'
-        : isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
+    const width = fixedWidth ?? (isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)');
+    const cornerSize = isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
     const pipSize = isSmall ? 'clamp(1.4rem, 5.2vw, 2.7rem)' : 'clamp(1.8rem, 6.4vw, 2.6rem)';
 
     const interactive = isPlayable && !!onClick;
@@ -90,7 +89,6 @@ const CardComponent: React.FC<{
         !isPlayable ? 'pcard--blocked' : '',
         isSelected ? 'pcard--selected' : '',
         isLastDrawn ? 'card-shimmer' : '',
-        isTrump ? 'pcard--trump' : '',
     ].filter(Boolean).join(' ');
 
     const style: React.CSSProperties = {
@@ -99,20 +97,7 @@ const CardComponent: React.FC<{
         color: suit.color,
     };
 
-    // The trump lies sideways under the deck, so its index is turned back the
-    // other way: the card is at ninety degrees, the rank and suit read upright.
-    // Only the one index — the other end is under the pile, and the pip with it.
-    const trumpFace = (
-        <span
-            className="pcard__corner"
-            style={{alignSelf: 'flex-start', fontSize: cornerSize, transform: 'rotate(-90deg)'}}
-        >
-            <span>{displayRank}</span>
-            <span>{suit.symbol}</span>
-        </span>
-    );
-
-    const face = isTrump ? trumpFace : (
+    const face = (
         <>
             <span className="pcard__corner" style={{alignSelf: 'flex-start', fontSize: cornerSize}}>
                 <span>{displayRank}</span>
@@ -1585,38 +1570,38 @@ const SantaseGame: React.FC = () => {
                                         justifyContent: 'flex-start',
                                     }}>
                                         {gameState.remainingCardsCount > 0 && !gameState.isClosed ? (
-                                            <div style={{
-                                                position: 'relative',
-                                                width: 'clamp(80px, 22vw, 120px)',
-                                                height: 'clamp(95px, 26vw, 150px)',
-                                            }}>
-                                                <div style={{
-                                                    ...styles.trumpUnder,
-                                                    top: 'clamp(3px, 1.2vw, 10px)',
-                                                    left: 'clamp(35px, 10vw, 90px)',
-                                                    zIndex: 1,
-                                                }} onClick={async () => {
-                                                    if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
-                                                        setShowInactivityPopup(false);
-                                                        try {
-                                                            await gameService.replaceCard();
-                                                            // Reset timer to 22 seconds after replace card
-                                                            setTurnTimeRemaining(22);
-                                                            setIsInWarningPhase(false);
-                                                            saveTurnStartTime(Date.now());
-                                                        } catch (e) {
-                                                            console.error(e);
+                                            <div className="deck-cluster" style={{
+                                                // One token sets the whole cluster: the pile is this
+                                                // wide, the trump is one card turned on its side and
+                                                // placed against it. They used to carry three
+                                                // unrelated clamps and drifted apart at every width.
+                                                '--deck-w': 'clamp(80px, 22vw, 120px)',
+                                            } as React.CSSProperties}>
+                                                <div
+                                                    className="trump-slot"
+                                                    role="img"
+                                                    aria-label={`Коз: ${RANK_LABEL_BG[gameState.trumpCard!.rank] ?? ''} ${SUIT_LABEL_BG[gameState.trumpCard!.suit] ?? ''}`.trim()}
+                                                    onClick={async () => {
+                                                        if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
+                                                            setShowInactivityPopup(false);
+                                                            try {
+                                                                await gameService.replaceCard();
+                                                                // Reset timer to 22 seconds after replace card
+                                                                setTurnTimeRemaining(22);
+                                                                setIsInWarningPhase(false);
+                                                                saveTurnStartTime(Date.now());
+                                                            } catch (e) {
+                                                                console.error(e);
+                                                            }
                                                         }
-                                                    }
-                                                }}>
-                                                    <CardComponent card={gameState.trumpCard!} isSmall isTrump/>
+                                                    }}
+                                                >
+                                                    {/* The same card the hand is dealt, at the pile's
+                                                        size. role="img" above carries the name, so
+                                                        this is not announced twice. */}
+                                                    <CardComponent card={gameState.trumpCard!} width="var(--deck-w)"/>
                                                 </div>
-                                                <div style={{
-                                                    ...styles.deckPile,
-                                                    width: 'clamp(70px, 19vw, 140px)',
-                                                    aspectRatio: '71 / 103',
-                                                    zIndex: 2,
-                                                }} onClick={() => {
+                                                <div className="deck-pile" onClick={() => {
                                                     if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {
                                                         setConfirmAction({
                                                             title: 'Затваряне',
@@ -2073,36 +2058,12 @@ const styles: Record<string, React.CSSProperties> = {
         justifyContent: 'center',
         alignItems: 'center',
     },
-    deckPile: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundImage: 'url(/card-back.png)',
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        borderRadius: 'var(--r-md)',
-        boxShadow: 'var(--sh-2)',
-        cursor: 'pointer',
-        overflow: 'hidden',
-        touchAction: 'manipulation',
-        transition: 'transform var(--dur-fast) var(--ease-out)',
-    },
     deckCount: {
         fontFamily: 'var(--font-display)',
         fontWeight: 800,
         color: '#fff',
         // dark halo keeps the count legible over any card back artwork
         textShadow: '0 1px 3px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.7)',
-    },
-    trumpUnder: {
-        position: 'absolute',
-        transform: 'rotate(90deg)',
-        zIndex: 1,
-        cursor: 'pointer',
-        touchAction: 'manipulation',
     },
     closedTrump: {
         display: 'flex',
