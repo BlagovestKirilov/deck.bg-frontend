@@ -579,13 +579,15 @@ const TablaGame: React.FC = () => {
                 <Modal
                     title="Напускане на играта"
                     width="narrow"
-                    tone="danger"
+                    className="lobby sheet"
                     onClose={() => setConfirmLeave(false)}
                     actions={
                         <>
                             <Button variant="ghost" onClick={() => setConfirmLeave(false)}>
-                                Отказ
+                                Остани
                             </Button>
+                            {/* Leaving forfeits, so it keeps the red: this one
+                                really does lose the game. */}
                             <Button
                                 variant="danger"
                                 onClick={() => {
@@ -593,13 +595,13 @@ const TablaGame: React.FC = () => {
                                     void leaveGame().then(() => navigate('/'));
                                 }}
                             >
-                                Потвърди
+                                Напусни
                             </Button>
                         </>
                     }
                 >
-                    <p style={{ color: 'var(--text-2)' }}>
-                        Сигурни ли сте, че искате да напуснете играта? Играта се брои за загубена.
+                    <p className="sheet__text">
+                        Играта се брои за загубена.
                     </p>
                 </Modal>
             )}
@@ -608,21 +610,27 @@ const TablaGame: React.FC = () => {
                 <Modal
                     title="Още ли сте тук?"
                     width="narrow"
-                    tone="danger"
+                    className="lobby sheet urgent"
                     dismissOnScrim={false}
                     actions={
                         <Button variant="primary" size="lg" onClick={() => void handleContinue()}>
-                            ПРОДЪЛЖИ
+                            Продължи
                         </Button>
                     }
                 >
-                    <p style={{ textAlign: 'center', color: 'var(--text-2)' }}>
-                        Времето за хода изтече. Продължете в следващите{' '}
-                        <span className="tabular" style={{ color: 'var(--danger)', fontWeight: 800 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+                        <div
+                            className={`tabular sheet__countdown ${secondsLeft <= 3 ? 'sheet__countdown--critical' : ''}`}
+                            role="timer"
+                            aria-live="assertive"
+                            aria-label={`Остават ${secondsLeft} секунди`}
+                        >
                             {secondsLeft}
-                        </span>{' '}
-                        секунди, иначе играта се брои за загубена.
-                    </p>
+                        </div>
+                        <p className="sheet__text" style={{ textAlign: 'center' }}>
+                            Времето за хода изтече. Продължете, иначе играта се брои за загубена.
+                        </p>
+                    </div>
                 </Modal>
             )}
 
@@ -632,22 +640,20 @@ const TablaGame: React.FC = () => {
                     // "Играта приключи" was identical whether you had won or
                     // lost, leaving a single body line to carry the result.
                     title={iWon ? 'Победа!' : 'Загуба'}
-                    className={`modal--result ${iWon ? '' : 'modal--loss'}`}
+                    // The game is over, so this is the lobby talking, not the
+                    // table: same card the sign-in and the logout are printed
+                    // on. modal--result keeps the title centred over the mark.
+                    className={`lobby sheet result modal--result ${iWon ? '' : 'modal--loss'}`}
                     width="narrow"
                     dismissOnScrim={false}
                     actions={
                         <Button variant="primary" size="lg" onClick={() => { finishAndReturn(); navigate('/'); }}>
-                            КЪМ НАЧАЛО
+                            Към начало
                         </Button>
                     }
                 >
-                    <div style={resultBody}>
-                        <span style={{
-                            ...resultMark,
-                            color: iWon ? 'var(--gold)' : 'var(--text-3)',
-                            background: iWon ? 'var(--gold-wash)' : 'rgba(255,255,255,.06)',
-                            borderColor: iWon ? 'var(--line-gold)' : 'var(--line)',
-                        }}>
+                    <div className="result__body">
+                        <span className={`result__mark ${iWon ? 'result__mark--win' : 'result__mark--loss'}`}>
                             <Icon name={iWon ? 'trophy' : 'flag'} size="50%" />
                         </span>
 
@@ -655,7 +661,7 @@ const TablaGame: React.FC = () => {
                             against whom, or how it ended. A result with no
                             opponent named reads like a scoreboard rather than
                             a game someone just played. */}
-                        <p style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-1)' }}>
+                        <p className="result__line">
                             {state.surrenderPlayerUsername
                                 ? (state.surrenderPlayerUsername === username
                                     ? `Предадохте се на ${opponentName}`
@@ -718,23 +724,5 @@ const ColorChoice: React.FC<{ value: CheckerColor; onChange: (next: CheckerColor
         </div>
     </div>
 );
-
-const resultBody: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--sp-4)',
-    textAlign: 'center',
-};
-
-const resultMark: React.CSSProperties = {
-    display: 'grid',
-    placeItems: 'center',
-    width: 'clamp(72px, 20vw, 96px)',
-    height: 'clamp(72px, 20vw, 96px)',
-    borderRadius: '50%',
-    border: '1px solid',
-    animation: 'scale-in var(--dur-slow) var(--ease-spring)',
-};
 
 export default TablaGame;

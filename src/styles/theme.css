@@ -35,6 +35,20 @@
     --accent-deep:   #c9741a;
     --accent-wash:   rgba(245, 159, 43, 0.16);
 
+    /* ---- card stock and its inks ----
+       The lobby is printed on these: sign-in, the dialogs, the legal pages.
+       The table borrows them for anything that reads as a card or a token. */
+    --card:          #faf8f3;
+    --ink:           #1d1b18;
+    --ink-2:         #4f4a42;   /* ~8:1 on --card */
+    --ink-3:         #6b655b;   /* ~5.2:1 on --card */
+    --ink-line:      rgba(29, 27, 24, 0.18);
+    --suit-red:      #b4232c;   /* ~6:1 on --card */
+    --suit-red-wash: rgba(180, 35, 44, 0.08);
+    --felt-ink:      #155235;   /* the table green, as ink on a card */
+    --felt-ink-hover:#1b6441;
+    --felt-ink-wash: rgba(21, 82, 53, 0.10);
+
     /* ---- semantic ---- */
     --success:      #57c67d;
     --success-wash: rgba(87, 198, 125, 0.14);
@@ -333,14 +347,6 @@ code, kbd, samp { font-family: var(--font-mono); }
     box-shadow: var(--glow-danger);
 }
 .btn--danger:hover:not(:disabled) { background: linear-gradient(135deg, #d24f4d 0%, #b02c2c 100%); }
-
-/* destructive outline — visually separated from the primary path */
-.btn--danger-outline {
-    background: transparent;
-    color: var(--danger-bright);
-    border-color: var(--danger);
-}
-.btn--danger-outline:hover:not(:disabled) { background: var(--danger-wash); }
 
 .btn--link {
     min-height: var(--tap);
@@ -673,11 +679,6 @@ code, kbd, samp { font-family: var(--font-mono); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
-@keyframes urgent-glow {
-    0%, 100% { box-shadow: var(--sh-3), 0 0 24px rgba(255,111,111,.28); }
-    50%      { box-shadow: var(--sh-3), 0 0 44px rgba(255,111,111,.52); }
-}
-
 /* =====================================================================
    Game-table pieces used by SantaseGame
    ===================================================================== */
@@ -758,6 +759,11 @@ code, kbd, samp { font-family: var(--font-mono); }
     box-shadow: 0 0 0 3px var(--gold), var(--sh-2);
     transform: translateY(-10px);
 }
+/* The phone hand overlaps, so the card you lift has to come out from under the
+   one dealt after it — otherwise the lift is hidden by its own neighbour. */
+.pcard--playable:hover,
+.pcard--playable:focus-visible,
+.pcard--selected { z-index: 2; }
 .pcard__corner {
     display: flex;
     flex-direction: column;
@@ -766,7 +772,19 @@ code, kbd, samp { font-family: var(--font-mono); }
     font-weight: 800;
     font-family: var(--font-display);
 }
-.pcard__pip { align-self: center; opacity: 0.92; }
+/* line-height 1, because the body's 1.55 added ~23px of empty space above and
+   below a single glyph — more than a card has to spare. The contents then
+   stood taller than the 71:103 the card is shaped to, so every card stretched
+   to fit; the one with the freshly-drawn shimmer could not, since its own
+   overflow:hidden held the ratio, and it clipped its lower index instead. One
+   card shorter than the rest, all of them cut off at the bottom. */
+.pcard__pip { align-self: center; opacity: 0.92; line-height: 1; }
+
+/* The trump lies sideways with the deck across its middle, so its centre is
+   never visible — the pip showed only as a cut-off fragment beside the pile,
+   which is what made the card look broken. Its indices carry it instead, and
+   they are what sticks out. */
+.pcard--trump .pcard__pip { display: none; }
 
 .card-back {
     background-image: url(/card-back.png);
@@ -816,11 +834,24 @@ code, kbd, samp { font-family: var(--font-mono); }
     transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .round-btn:active:not(:disabled) { transform: scale(0.94); }
-.round-btn--accent {
-    background: linear-gradient(135deg, var(--accent-bright), var(--accent) 55%, var(--accent-deep));
-    color: var(--text-on-accent);
-    box-shadow: var(--glow-accent);
+/* Claiming 66 is the one act that ends a deal, so the control is the thing it
+   claims: a card-stock token with the count printed on it, the same stock the
+   dialogs are printed on. The felt-green ring is the whole state — ringed means
+   you can claim, bare and dimmed means you cannot. */
+.round-btn--claim {
+    background: var(--card);
+    color: var(--ink);
+    box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.35),
+        0 6px 16px -6px rgba(0, 0, 0, 0.7);
 }
+.round-btn--claim:not(:disabled) {
+    box-shadow:
+        inset 0 0 0 2px var(--felt-ink),
+        0 1px 0 rgba(0, 0, 0, 0.35),
+        0 6px 16px -6px rgba(0, 0, 0, 0.7);
+}
+.round-btn--claim:hover:not(:disabled) { background: #fff; }
 .round-btn--danger {
     background: rgba(120, 26, 26, 0.72);
     border: 1px solid rgba(255,111,111,.55);
@@ -871,9 +902,6 @@ code, kbd, samp { font-family: var(--font-mono); }
         padding-inline: 0;
     }
 }
-
-/* Time-critical dialog: a slow red breathing glow, no layout movement. */
-.modal--urgent { animation: modal-in var(--dur-slow) var(--ease-spring), urgent-glow 1.4s ease-in-out infinite; }
 
 /* =====================================================================
    Табла (backgammon) board
