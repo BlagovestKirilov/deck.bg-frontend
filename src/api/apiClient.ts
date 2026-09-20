@@ -122,6 +122,49 @@ function refreshAccessToken(): Promise<string> {
     return refreshing;
 }
 
+/** When the token expires, in milliseconds, or null if it cannot be read. */
+function expiryOf(token: string): number | null {
+    try {
+        const [, payload] = token.split('.');
+        const { exp } = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+        return typeof exp === 'number' ? exp * 1000 : null;
+    } catch {
+        return null;
+    }
+}
+
+/** Renewed this long before it expires, so it survives the connection. */
+const SOCKET_TOKEN_MARGIN_MS = 60_000;
+
+/**
+ * An access token good for opening the game socket.
+ *
+ * The socket sends it once, on the CONNECT frame, and nothing checks it again
+ * for the life of that connection — so unlike a request, it cannot be retried
+ * with a fresh token after a 401. It is renewed up front when it is close to
+ * expiring.
+ *
+ * Returns whatever is stored if the renewal cannot be reached: the socket then
+ * fails to connect and the caller's reconnect brings it round again, which is
+ * the same thing that happens to any dropped connection.
+ */
+export async function socketToken(): Promise<string | null> {
+    const token = localStorage.getItem('token');
+    if (!token) return null;
+
+    // Only renew when the token says it is nearly out. One that cannot be read
+    // is handed over as it is: the server judges it, and a refusal is just
+    // another failed connection, which the caller already retries.
+    const expiry = expiryOf(token);
+    if (expiry === null || expiry - Date.now() > SOCKET_TOKEN_MARGIN_MS) return token;
+
+    try {
+        return await refreshAccessToken();
+    } catch {
+        return token;
+    }
+}
+
 /**
  * A 401 that has nothing to do with the player's session.
  *

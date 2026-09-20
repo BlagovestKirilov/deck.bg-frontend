@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
+import { socketToken } from '../api/apiClient';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -149,13 +150,22 @@ export function useGameSession<S extends MinimalState>(
         );
     }, [applyState, username]);
 
-    const connect = useCallback((isReconnect: boolean) => {
+    const connect = useCallback(async (isReconnect: boolean) => {
         if (connectingRef.current) return;
         connectingRef.current = true;
 
-        // The socket endpoint authenticates with the refresh token.
-        const token = localStorage.getItem('refreshToken') ?? localStorage.getItem('token');
-        const socket = new SockJS(`${API_BASE_URL}/ws-game?token=${token}`);
+        // The token goes in the CONNECT frame below, never in this URL: URLs
+        // are written to access logs, the proxy's included. It is the access
+        // token, renewed first if it is nearly out, because the socket presents
+        // it once and keeps the connection for as long as it lasts.
+        const token = await socketToken();
+
+        // Renewing the token is the one await in here, and leaving the game
+        // during it tears the session down. Without this check the socket
+        // would be built afterwards, with nothing left to close it.
+        if (!connectingRef.current) return;
+
+        const socket = new SockJS(`${API_BASE_URL}/ws-game`);
         socketRef.current = socket;
 
         const client = Stomp.over(socket);
@@ -244,7 +254,7 @@ export function useGameSession<S extends MinimalState>(
     const startSearch = useCallback(() => {
         if (isSearching || gameIdRef.current) return;
         setIsSearching(true);
-        connect(false);
+        void connect(false);
     }, [connect, isSearching]);
 
     const finishAndReturn = useCallback(() => {
