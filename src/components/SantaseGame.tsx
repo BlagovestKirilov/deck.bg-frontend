@@ -932,6 +932,26 @@ const SantaseGame: React.FC = () => {
     }, [gameState?.bonus, gameState?.opponentPlayerBonus]);
 
     const [isUiLocked, setIsUiLocked] = useState(false);
+
+    /* A new game deals a new table.
+
+       announcedSuit is the one that carried over. It is cleared when a deal
+       finishes, but a game also ends on a surrender, on an inactivity loss, or
+       on the deal that wins it — and each of those three exit paths clears its
+       own set of state. The component never unmounts between games, so the
+       King or Queen you announced kept its gold ring on a card in the next
+       game's hand. Keyed on the id of the game being played: however the last
+       one ended, the next starts clean.
+
+       finalWinner is deliberately not here — it is what the result dialog is
+       showing when the game ends, and the exit paths own it. */
+    useEffect(() => {
+        setAnnouncedSuit(null);
+        setTrickResult(null);
+        setIsUiLocked(false);
+        setShowInactivityPopup(false);
+    }, [gameState?.gameId]);
+
     const messageQueue = useRef<GameState[]>([]);
     const isProcessingQueue = useRef(false);
 
