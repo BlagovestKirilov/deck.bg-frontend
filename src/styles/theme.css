@@ -692,7 +692,13 @@ code, kbd, samp { font-family: var(--font-mono); }
     background: linear-gradient(100deg, transparent 20%,
                 rgba(87,198,125,.55) 42%, rgba(255,255,255,.85) 50%,
                 rgba(87,198,125,.55) 58%, transparent 80%);
-    animation: shimmer-sweep 620ms var(--ease-out);
+    /* Parked past the card's right edge. The sweep runs once, and with no
+       resting place it fell back to transform:none when it finished — the
+       gradient sitting square across the card, a green band that never left.
+       "both" holds this same spot at the end, and the declared transform
+       covers the case where the animation never runs at all (reduced motion). */
+    transform: translateX(110%);
+    animation: shimmer-sweep 620ms var(--ease-out) both;
     pointer-events: none;
 }
 
