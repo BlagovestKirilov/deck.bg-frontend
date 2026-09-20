@@ -4,6 +4,7 @@ import SockJS from 'sockjs-client';
 import {Stomp} from '@stomp/stompjs';
 import {useAuthContext} from '../context/AuthContext';
 import {gameService} from '../api/gameService';
+import {socketToken} from '../api/apiClient';
 import {userService} from '../api/userService';
 import {Card, GameState, Suit} from '../types/game.types';
 import {Rank} from '../types/user.types';
@@ -1039,22 +1040,32 @@ const SantaseGame: React.FC = () => {
         });
     };
 
-    const connectWebSocket = (isReconnect: boolean = false) => {
+    const connectWebSocket = async (isReconnect: boolean = false) => {
         // Prevent multiple simultaneous connection attempts
         if (connectionLockRef.current) {
-            return;
-        }
-
-        const sockToken = localStorage.getItem('refreshToken');
-        if (!sockToken) {
-            console.error('No refresh token found');
-            setIsConnected(false);
             return;
         }
 
         // Set connection lock
         connectionLockRef.current = true;
         setIsConnected(false);
+
+        // The access token, sent in the CONNECT frame below and never in the
+        // URL, where it would be written to the access logs. Renewed first if
+        // it is nearly out: the socket presents it once and then holds the
+        // connection for as long as it lasts.
+        const sockToken = await socketToken();
+        if (!sockToken) {
+            connectionLockRef.current = false;
+            setIsConnected(false);
+            return;
+        }
+
+        // Leaving the game while the token was being renewed released the lock;
+        // building the socket now would leave one nobody closes.
+        if (!connectionLockRef.current) {
+            return;
+        }
 
         // Clean up old connection before creating new one
         const cleanupOldConnection = () => {
@@ -1113,7 +1124,7 @@ const SantaseGame: React.FC = () => {
             connectionTimeoutRef.current = null;
         }
 
-        const socket = new SockJS(API_BASE_URL + `/ws-game?token=${sockToken}`);
+        const socket = new SockJS(API_BASE_URL + '/ws-game');
         socketRef.current = socket;
         const client = Stomp.over(socket);
 
