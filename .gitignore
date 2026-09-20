@@ -34,3 +34,7 @@ android/app/*.keystore
 /playwright-report
 /blob-report
 /playwright/.cache
+
+# Build output. The Dockerfile runs npm run build itself and serves that,
+# so a committed bundle is never the one deployed.
+/dist
