@@ -1,0 +1,38 @@
+# The image builds the app itself (npm install + npm run build), so the build
+# context only needs the sources. Everything here is either rebuilt inside the
+# image or has nothing to do with it — without this file, COPY . . dragged in
+# node_modules, android and ios: ~240MB, and host-built native modules on top
+# of the ones npm install produces for the image's platform.
+
+node_modules
+dist
+
+# Native shells. They wrap this same web build; the image never opens them.
+android
+ios
+
+# History, CI and editor state
+.git
+.github
+.idea
+.vscode
+
+# Test output and the suite itself: the image serves the app, it does not run tests.
+e2e
+playwright.config.ts
+playwright-report
+blob-report
+test-results
+playwright/.cache
+
+# Local overrides. .env.production is NOT here — the build reads it for the API
+# URL. These are the per-developer files that would silently override it.
+*.local
+.env.*.local
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+Dockerfile
+.dockerignore
+README.md
