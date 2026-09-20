@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 interface User {
     username: string;
@@ -25,19 +25,28 @@ export function rememberedUsername(): string {
     }
 }
 
-export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [user, setUser] = useState<User | null>(null);
-    const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-    // Persist session on refresh
-    useEffect(() => {
+/**
+ * The session this device already holds, or null.
+ *
+ * Read while the provider is first rendering, not in an effect: an effect runs
+ * after the first paint, so a signed-in tab painted the sign-in screen — deal
+ * animation and all — for one frame on every refresh before swapping to the
+ * hub. Storage can throw when a browser has it blocked.
+ */
+function storedSession(): User | null {
+    try {
         const token = localStorage.getItem('token');
         const username = localStorage.getItem('username');
-        if (token && username) {
-            setUser({ username });
-            setIsAuthenticated(true);
-        }
-    }, []);
+        return token && username ? { username } : null;
+    } catch {
+        return null;
+    }
+}
+
+export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+    const [user, setUser] = useState<User | null>(storedSession);
+    // Derived, not a second piece of state: the two cannot disagree.
+    const isAuthenticated = user !== null;
 
     const login = (userData: User, token: string, refreshToken?: string) => {
         localStorage.setItem('token', token);
@@ -48,7 +57,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
 
         setUser(userData);
-        setIsAuthenticated(true);
     };
 
     const logout = () => {
@@ -60,7 +68,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         localStorage.removeItem('username');
 
         setUser(null);
-        setIsAuthenticated(false);
     };
 
     return (
