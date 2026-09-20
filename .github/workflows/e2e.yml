@@ -3,10 +3,11 @@ name: E2E smoke
 # Kept apart from deploy.yml on purpose. That workflow builds and ships an
 # image, and putting a young test suite in front of it would mean a flake can
 # block a deploy. This one only reports.
+# Once per pull request into master, not once per push to dev: the same
+# commit was being smoke-tested twice, and dev is where the work happens.
 on:
   pull_request:
-  push:
-    branches: [ "dev" ]
+    branches: [ "master" ]
   workflow_dispatch: {}
 
 jobs:
