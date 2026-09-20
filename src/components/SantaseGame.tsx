@@ -83,13 +83,34 @@ const CardComponent: React.FC<{
 
     const interactive = isPlayable && !!onClick;
 
+    /* The sweep belongs to the moment the card arrives, not to the card.
+       isLastDrawn stays set on it until the next draw, and playing a card
+       reorders the hand — React moves the remaining nodes, and re-inserting a
+       node restarts any CSS animation on it. So the drawn card swept again on
+       every play. It now sweeps once and drops the class when the animation
+       reports itself done. */
+    const [sweeping, setSweeping] = useState(isLastDrawn);
+    const swept = useRef(isLastDrawn);
+    useEffect(() => {
+        if (isLastDrawn && !swept.current) {
+            swept.current = true;
+            setSweeping(true);
+        }
+    }, [isLastDrawn]);
+
     const className = [
         'pcard',
         interactive ? 'pcard--playable' : '',
         !isPlayable ? 'pcard--blocked' : '',
         isSelected ? 'pcard--selected' : '',
-        isLastDrawn ? 'card-shimmer' : '',
+        sweeping ? 'card-shimmer' : '',
     ].filter(Boolean).join(' ');
+
+    // The sweep runs on ::before, and its end bubbles to the card. Named, so a
+    // future animation on the same element cannot cut this one short.
+    const onAnimationEnd = (e: React.AnimationEvent) => {
+        if (e.animationName === 'shimmer-sweep') setSweeping(false);
+    };
 
     const style: React.CSSProperties = {
         width,
@@ -119,14 +140,21 @@ const CardComponent: React.FC<{
 
     if (!interactive) {
         return (
-            <div className={className} style={style} role="img" aria-label={name}>
+            <div className={className} style={style} role="img" aria-label={name} onAnimationEnd={onAnimationEnd}>
                 {face}
             </div>
         );
     }
 
     return (
-        <button type="button" className={className} style={style} onClick={onClick} aria-label={`Изиграй ${name}`}>
+        <button
+            type="button"
+            className={className}
+            style={style}
+            onClick={onClick}
+            onAnimationEnd={onAnimationEnd}
+            aria-label={`Изиграй ${name}`}
+        >
             {face}
         </button>
     );
