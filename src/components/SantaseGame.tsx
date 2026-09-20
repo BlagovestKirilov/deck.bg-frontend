@@ -70,12 +70,14 @@ const CardComponent: React.FC<{
     isSelected?: boolean;
     isSmall?: boolean;
     isLastDrawn?: boolean;
-}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false}) => {
+    /** Overrides the size step. The trump has to match the pile exactly. */
+    width?: string;
+}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false, width: fixedWidth}) => {
     const suit = SUIT_MAP[card.suit] || {symbol: '?', color: SUIT_COLOR.black};
     const displayRank = rankGlyph(card.rank);
     const name = `${RANK_LABEL_BG[card.rank] ?? card.rank} ${SUIT_LABEL_BG[card.suit] ?? ''}`.trim();
 
-    const width = isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)';
+    const width = fixedWidth ?? (isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)');
     const cornerSize = isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
     const pipSize = isSmall ? 'clamp(1.4rem, 5.2vw, 2.7rem)' : 'clamp(1.8rem, 6.4vw, 2.6rem)';
 
@@ -1576,7 +1578,7 @@ const SantaseGame: React.FC = () => {
                                                 '--deck-w': 'clamp(80px, 22vw, 120px)',
                                             } as React.CSSProperties}>
                                                 <div
-                                                    className="trump-card"
+                                                    className="trump-slot"
                                                     role="img"
                                                     aria-label={`Коз: ${RANK_LABEL_BG[gameState.trumpCard!.rank] ?? ''} ${SUIT_LABEL_BG[gameState.trumpCard!.suit] ?? ''}`.trim()}
                                                     onClick={async () => {
@@ -1594,18 +1596,10 @@ const SantaseGame: React.FC = () => {
                                                         }
                                                     }}
                                                 >
-                                                    {/* Only one end of the card is out from under the
-                                                        pile, so that is all that is drawn: its index,
-                                                        upright, the way it lies on a table. */}
-                                                    <span
-                                                        className="trump-card__index"
-                                                        style={{color: SUIT_MAP[gameState.trumpCard!.suit]?.color ?? SUIT_COLOR.black}}
-                                                    >
-                                                        <span>{rankGlyph(gameState.trumpCard!.rank)}</span>
-                                                        <span className="trump-card__suit">
-                                                            {SUIT_MAP[gameState.trumpCard!.suit]?.symbol ?? '?'}
-                                                        </span>
-                                                    </span>
+                                                    {/* The same card the hand is dealt, at the pile's
+                                                        size. role="img" above carries the name, so
+                                                        this is not announced twice. */}
+                                                    <CardComponent card={gameState.trumpCard!} width="var(--deck-w)"/>
                                                 </div>
                                                 <div className="deck-pile" onClick={() => {
                                                     if (gameState.isOnTurn && gameState.remainingCardsCount < 12 && gameState.remainingCardsCount > 2 && isConnected) {

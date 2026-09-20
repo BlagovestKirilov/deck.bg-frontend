@@ -780,15 +780,10 @@ code, kbd, samp { font-family: var(--font-mono); }
    card shorter than the rest, all of them cut off at the bottom. */
 .pcard__pip { align-self: center; opacity: 0.92; line-height: 1; }
 
-
 /* The stock, and the trump lying crosswise under it.
 
-   One token sizes the pair: the pile is --deck-w across, the trump is the
-   same card turned on its side, so they can never disagree. The trump used to
-   be a .pcard rotated 90deg with its index counter-rotated back, positioned by
-   three unrelated clamps — what showed past the pile was a blank white slab
-   with the index at the end that was covered. Only one end of the card is out
-   from under the pile, so only that end is drawn. */
+   One token sizes the pair: the pile is --deck-w across and the trump is an
+   ordinary card at that same width, so the two can never disagree. */
 .deck-cluster {
     position: relative;
     width: var(--deck-w);
@@ -813,38 +808,20 @@ code, kbd, samp { font-family: var(--font-mono); }
     transition: transform var(--dur-fast) var(--ease-out);
 }
 
-.trump-card {
+/* The trump, face up and turned a quarter under the pile — the way it is
+   dealt on a table. Its middle is covered, so what shows is one corner of a
+   real card, sideways, which is exactly what you see across a real table.
+   84.5% lands that end where the pile leaves off plus a bit over half the
+   pile's width: 46px at the smallest the table gets, and still a card. */
+.trump-slot {
     position: absolute;
     top: 50%;
-    /* Tucked left so the pile covers the rest of it, and out to the right by
-       a bit over half the pile's width — enough to read, and enough to hit:
-       45x80px at the smallest the table gets. */
-    left: 12%;
-    width: calc(var(--deck-w) * 103 / 71);
-    height: var(--deck-w);
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    padding-right: 6%;
-    border-radius: var(--r-md);
-    /* The same stock the hand is printed on. */
-    background: linear-gradient(150deg, #ffffff 0%, #f2f2ef 100%);
-    box-shadow: var(--sh-1);
+    left: 84.5%;
+    transform: translate(-50%, -50%) rotate(90deg);
     cursor: pointer;
     touch-action: manipulation;
     z-index: 1;
 }
-.trump-card__index {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    line-height: 1;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: clamp(1.05rem, 3.4vw, 1.5rem);
-}
-.trump-card__suit { font-size: 0.88em; }
 
 .card-back {
     background-image: url(/card-back.png);
