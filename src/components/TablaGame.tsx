@@ -345,6 +345,16 @@ const TablaGame: React.FC = () => {
      */
     const blocked = Boolean(state?.isOnTurn && state?.noMovesAvailable);
 
+    /* The other side of a blocked roll. The throw reaches both players, but
+       noMovesAvailable is the mover's alone — so the opponent watched the dice
+       land, nothing move, and their turn arrive a moment later: a pause that
+       reads as a slow player or a dropped connection. maxDiceUsable reaches
+       both, and with dice on the table a 0 means exactly this. It cannot be a
+       leftover: every turn change clears the dice and zeroes the count. */
+    const opponentBlocked = Boolean(
+        state && !state.isOnTurn && state.die1 != null && state.maxDiceUsable === 0,
+    );
+
     /** One pass per blocked roll in flight at a time. */
     const passSentRef = useRef(false);
     /** The next attempt, when the last one did not reach the server. */
@@ -542,6 +552,20 @@ const TablaGame: React.FC = () => {
                                 needs the reason and what happens next. */}
                             <span className="sr-only">
                                 Почиваш: няма възможен ход, редът минава към противника.
+                            </span>
+                        </span>
+                    )}
+
+                    {/* ПОЧИВАШ's third person: the verb says who, and the turn
+                        pill just above already names the opponent — spelling it
+                        out again overflowed a 320px row once doubles add their
+                        count. Shown once the dice have landed: the throw is the
+                        thing to watch first, and this is its explanation. */}
+                    {opponentBlocked && !diceRoll.airborne && !state.winnerUsername && (
+                        <span className="tabla-pass" role="status">
+                            <span aria-hidden="true">ПОЧИВА</span>
+                            <span className="sr-only">
+                                Опонентът почива: няма възможен ход, редът минава към теб.
                             </span>
                         </span>
                     )}
