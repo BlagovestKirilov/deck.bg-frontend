@@ -8,10 +8,24 @@ const apiClient = axios.create({
     },
 });
 
+/**
+ * The endpoints that need no session: logging in, registering, the whole
+ * password-reset flow, and the deletion link — everything opened from an email,
+ * where the browser is as likely as not to hold an expired session.
+ *
+ * None of them reads who is calling, and sending a token they never asked for
+ * is how an expired session used to break a password-reset link: the server
+ * judged the stale token and answered about that instead of about the link.
+ */
+function isPublic(url: string | undefined): boolean {
+    const path = url ?? '';
+    return path.startsWith('/auth/') || path === '/user/confirm-deletion';
+}
+
 apiClient.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
         const token = localStorage.getItem('token');
-        if (token && config.headers) {
+        if (token && config.headers && !isPublic(config.url)) {
             config.headers.set('Authorization', `Bearer ${token}`);
         }
         return config;
@@ -176,7 +190,7 @@ export async function socketToken(): Promise<string | null> {
  */
 function isOutsideSession(config: InternalAxiosRequestConfig | undefined): boolean {
     if (!config) return true;
-    if ((config.url ?? '').startsWith('/auth/')) return true;
+    if (isPublic(config.url)) return true;
     return !config.headers?.get('Authorization');
 }
 
