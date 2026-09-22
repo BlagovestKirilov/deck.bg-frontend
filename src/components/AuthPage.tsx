@@ -10,32 +10,21 @@ import Note from './ui/Note';
 import Icon from './ui/Icon';
 import Brand from './ui/Brand';
 import FeltDrift from './lobby/FeltDrift';
+import CardIndex from './lobby/CardIndex';
 
 type Mode = 'login' | 'register' | 'forgot';
 
 /**
- * The card each screen is printed on, in Bulgarian indices — А, Д (дама),
- * В (вале). Signing in is the ace; the others are a different card so that
- * turning between them reads as a new card coming up, not the same one
+ * The card each screen is printed on, indexed the way the cards in the game
+ * are — A, K, Q, J. (Cyrillic В for the jack read as a Latin B: a card that
+ * does not exist.) Signing in is the ace; the others are a different card so
+ * that turning between them reads as a new card coming up, not the same one
  * spinning in place.
  */
 const CARD: Record<Mode, { rank: string; suit: string; red: boolean }> = {
-    login:    { rank: 'А', suit: '♠', red: false },
-    register: { rank: 'Д', suit: '♥', red: true },
-    forgot:   { rank: 'В', suit: '♦', red: true },
-};
-
-const CardIndex: React.FC<{ mode: Mode; corner: 'tl' | 'br' }> = ({ mode, corner }) => {
-    const { rank, suit, red } = CARD[mode];
-    return (
-        <span
-            aria-hidden="true"
-            className={`card-index card-index--${corner} ${red ? 'card-index--red' : ''}`}
-        >
-            <span className="card-index__rank">{rank}</span>
-            <span className="card-index__suit">{suit}</span>
-        </span>
-    );
+    login:    { rank: 'A', suit: '♠', red: false },
+    register: { rank: 'Q', suit: '♥', red: true },
+    forgot:   { rank: 'J', suit: '♦', red: true },
 };
 
 type FieldKey = 'username' | 'email' | 'password' | 'confirmPassword' | 'forgotEmail';
@@ -282,8 +271,8 @@ const AuthPage: React.FC = () => {
             <div className="deal">
                 {/* Keyed by mode: a new mode is a new card, and it turns up. */}
                 <section key={mode} className="play-card" aria-labelledby="auth-title">
-                    <CardIndex mode={mode} corner="tl" />
-                    <CardIndex mode={mode} corner="br" />
+                    <CardIndex {...CARD[mode]} corner="tl" />
+                    <CardIndex {...CARD[mode]} corner="br" />
 
                     <header className="play-card__head">
                         {isLogin ? (

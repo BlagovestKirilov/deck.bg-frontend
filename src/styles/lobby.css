@@ -220,6 +220,51 @@
 .play-card .field__hint { color: var(--ink-3); }
 .play-card .field__error { color: var(--suit-red); }
 
+/* ---- the outcome card (email confirmed, link expired, account deleted) ---- */
+
+/* A ring drawn in the outcome's ink — the old washed disc, printed on paper. */
+.status-card__mark {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border: 1.5px solid currentColor;
+    border-radius: 50%;
+}
+.status-card .play-card__sub { max-width: 32ch; }
+/* The words sit in the middle of the card's face, the action at its foot —
+   an outcome is a line or two, and pinned to the top it left a hole. */
+.status-card .play-card__head { margin-block: auto; }
+
+/* The sign-in card sits low to leave room for the link under it. A card with
+   nothing beneath it is dealt to the middle of the table. */
+.deal--center { margin: auto; }
+.status-card__actions {
+    align-items: stretch;
+    gap: var(--sp-3);
+    width: 100%;
+}
+.status-card .btn { font-family: var(--lobby-body); font-weight: 700; letter-spacing: 0.01em; }
+
+/* Selected text on card stock.
+
+   The app-wide selection (theme.css) is a faint gold wash with near-white
+   text, made for the dark felt. On a card it set white text on cream, so the
+   words vanished at the moment someone selected them to copy. On paper the
+   selection is the table green with the text knocked out of it — the pairing
+   the primary buttons already use.
+
+   -webkit-text-fill-color as well: autofilled fields paint their text with
+   it (below), and it wins over color, which would leave that text dark on
+   the dark green. */
+.play-card ::selection,
+.legal__sheet ::selection,
+.modal.sheet ::selection {
+    background: var(--felt-ink);
+    color: var(--card);
+    -webkit-text-fill-color: var(--card);
+}
+
 /* Autofill paints its own pale yellow over the card; keep the ink colours. */
 .play-card .field__input:-webkit-autofill {
     -webkit-text-fill-color: var(--ink);
@@ -702,10 +747,14 @@
 .sheet .btn--primary:hover:not(:disabled) { background: var(--felt-ink-hover); }
 /* Forfeiting really does lose the game, so it stays red — but printed flat in
    the card's own red, not the table's glowing gradient. */
-.sheet .btn--danger { background: var(--suit-red); color: var(--card); box-shadow: none; }
-.sheet .btn--danger:hover:not(:disabled) { background: #981c24; }
-.sheet .btn--ghost { border-color: var(--ink-line); background: transparent; color: var(--ink); }
-.sheet .btn--ghost:hover:not(:disabled) { background: rgba(29, 27, 24, 0.05); color: var(--ink); }
+.sheet .btn--danger,
+.play-card .btn--danger { background: var(--suit-red); color: var(--card); box-shadow: none; }
+.sheet .btn--danger:hover:not(:disabled),
+.play-card .btn--danger:hover:not(:disabled) { background: #981c24; }
+.sheet .btn--ghost,
+.play-card .btn--ghost { border-color: var(--ink-line); background: transparent; color: var(--ink); }
+.sheet .btn--ghost:hover:not(:disabled),
+.play-card .btn--ghost:hover:not(:disabled) { background: rgba(29, 27, 24, 0.05); color: var(--ink); }
 .sheet :focus-visible { outline-color: var(--felt-ink); }
 
 /* A dialog that is counting down. The urgency is in the red rule, the red

@@ -33,7 +33,7 @@ const SPINS = [
 export const THROW_MS = 650;
 const APEX_MS = 260;
 
-function prefersReducedMotion(): boolean {
+export function prefersReducedMotion(): boolean {
     try {
         return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     } catch {

@@ -35,7 +35,7 @@ test.describe('public screens load without throwing', () => {
     test('email confirmed', async ({ page }) => {
         await page.goto('/confirmation-success');
         await expect(
-            page.getByRole('heading', { name: 'Имейлът е потвърден!', level: 1 }),
+            page.getByRole('heading', { name: 'Имейлът е потвърден', level: 1 }),
         ).toBeVisible();
     });
 

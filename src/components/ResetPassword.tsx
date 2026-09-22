@@ -6,10 +6,17 @@ import Button from './ui/Button';
 import Field from './ui/Field';
 import Note from './ui/Note';
 import Icon from './ui/Icon';
+import CardIndex from './lobby/CardIndex';
 
 type Errors = Partial<Record<'newPassword' | 'confirmPassword', string>>;
 
 const PASSWORD_RE = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
+
+/**
+ * J♦ — the card «Забравена парола» is printed on. The link in the email picks
+ * that same card back up, now to set the new password.
+ */
+const CARD = { rank: 'J', suit: '♦', red: true } as const;
 
 const ResetPassword: React.FC = () => {
     const navigate = useNavigate();
@@ -112,111 +119,85 @@ const ResetPassword: React.FC = () => {
         }
     };
 
-    // While the link is being checked, show the shape of the page rather than
-    // a bare spinner, so the transition into the form does not jump.
+    // While the link is being checked the card is already on the table, with
+    // its title, so nothing jumps when the form arrives underneath it.
     if (!token || isValidatingLink) {
         return (
-            <main className="screen screen--flow">
-                <div className="panel panel--gold" style={cardStyle}>
-                    <div className="skeleton" style={{ height: 84, width: 84, borderRadius: '50%', margin: '0 auto' }} />
-                    <div className="skeleton" style={{ height: 26, width: '70%', margin: 'var(--sp-5) auto 0' }} />
-                    <div className="skeleton" style={{ height: 16, width: '50%', margin: 'var(--sp-3) auto 0' }} />
-                    <p style={{ marginTop: 'var(--sp-6)', color: 'var(--text-3)', fontSize: 'var(--fs-sm)' }} role="status">
-                        Проверка на линка…
-                    </p>
+            <main className="screen screen--flow lobby lobby-auth">
+                <div className="deal deal--center">
+                    <section className="play-card" aria-labelledby="reset-title" aria-busy="true">
+                        <CardIndex {...CARD} corner="tl" />
+                        <CardIndex {...CARD} corner="br" />
+                        <header className="play-card__head">
+                            <h1 id="reset-title" className="play-card__title">Нова парола</h1>
+                            <p className="play-card__sub" role="status">Проверяваме линка…</p>
+                        </header>
+                    </section>
                 </div>
             </main>
         );
     }
 
     return (
-        <main className="screen screen--flow">
-            <div className="panel panel--gold" style={cardStyle}>
-                <div style={{ textAlign: 'center', marginBottom: 'var(--sp-6)' }}>
-                    <span style={crestStyle}>
-                        <Icon name="lock" size="50%" />
-                    </span>
-                    <h1 style={titleStyle}>Възстановяване на парола</h1>
-                    <p style={subStyle}>Въведете нова парола за вашия профил</p>
-                </div>
+        <main className="screen screen--flow lobby lobby-auth">
+            <div className="deal deal--center">
+                <section className="play-card" aria-labelledby="reset-title">
+                    <CardIndex {...CARD} corner="tl" />
+                    <CardIndex {...CARD} corner="br" />
 
-                <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)' }}>
-                    <Field
-                        ref={newPwRef}
-                        label="Нова парола"
-                        name="newPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        value={form.newPassword}
-                        onChange={onChange('newPassword')}
-                        error={errors.newPassword}
-                        hint="5–50 символа, латиница и цифри."
-                        placeholder="••••••••"
-                        enterKeyHint="next"
-                        onKeyDown={onNewPasswordKeyDown}
-                        required
-                    />
+                    <header className="play-card__head">
+                        <h1 id="reset-title" className="play-card__title">Нова парола</h1>
+                        <p className="play-card__sub">Избери нова парола за профила си.</p>
+                    </header>
 
-                    <Field
-                        ref={confirmPwRef}
-                        label="Потвърди паролата"
-                        name="confirmPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        value={form.confirmPassword}
-                        onChange={onChange('confirmPassword')}
-                        error={errors.confirmPassword}
-                        placeholder="••••••••"
-                        enterKeyHint="go"
-                        required
-                    />
+                    <form onSubmit={handleSubmit} noValidate className="play-card__form">
+                        <Field
+                            ref={newPwRef}
+                            label="Нова парола"
+                            name="newPassword"
+                            type="password"
+                            autoComplete="new-password"
+                            value={form.newPassword}
+                            onChange={onChange('newPassword')}
+                            error={errors.newPassword}
+                            hint="5–50 символа, латиница и цифри."
+                            placeholder="••••••••"
+                            enterKeyHint="next"
+                            onKeyDown={onNewPasswordKeyDown}
+                            required
+                        />
 
-                    {banner && <Note tone={banner.tone}>{banner.text}</Note>}
+                        <Field
+                            ref={confirmPwRef}
+                            label="Потвърди паролата"
+                            name="confirmPassword"
+                            type="password"
+                            autoComplete="new-password"
+                            value={form.confirmPassword}
+                            onChange={onChange('confirmPassword')}
+                            error={errors.confirmPassword}
+                            placeholder="••••••••"
+                            enterKeyHint="go"
+                            required
+                        />
 
-                    <Button type="submit" variant="primary" size="lg" block loading={isSubmitting}>
-                        Промени паролата
-                    </Button>
-                </form>
+                        {banner && <Note tone={banner.tone}>{banner.text}</Note>}
 
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 'var(--sp-3)' }}>
-                    <button type="button" className="btn btn--link" onClick={() => navigate('/')}>
-                        <Icon name="arrowLeft" size={16} />
-                        Назад към вход
-                    </button>
-                </div>
+                        <Button type="submit" variant="primary" size="lg" block loading={isSubmitting}>
+                            Промени паролата
+                        </Button>
+                    </form>
+
+                    <footer className="play-card__foot">
+                        <button type="button" className="btn btn--link" onClick={() => navigate('/')}>
+                            <Icon name="arrowLeft" size={16} />
+                            Обратно към вход
+                        </button>
+                    </footer>
+                </section>
             </div>
         </main>
     );
-};
-
-const cardStyle: React.CSSProperties = {
-    width: '100%',
-    maxWidth: '420px',
-    padding: 'clamp(24px, 6vw, 40px)',
-};
-
-const crestStyle: React.CSSProperties = {
-    display: 'grid',
-    placeItems: 'center',
-    width: 'clamp(64px, 17vw, 84px)',
-    height: 'clamp(64px, 17vw, 84px)',
-    margin: '0 auto var(--sp-4)',
-    borderRadius: '50%',
-    background: 'var(--gold-wash)',
-    border: '1px solid var(--line-gold)',
-    color: 'var(--gold)',
-};
-
-const titleStyle: React.CSSProperties = {
-    fontSize: 'var(--fs-2xl)',
-    color: 'var(--text-1)',
-    fontWeight: 600,
-};
-
-const subStyle: React.CSSProperties = {
-    marginTop: 'var(--sp-2)',
-    fontSize: 'var(--fs-sm)',
-    color: 'var(--text-3)',
 };
 
 export default ResetPassword;

@@ -958,6 +958,7 @@ code, kbd, samp { font-family: var(--font-mono); }
    pushed the dice off the bottom of the screen, so the box measures itself and
    the board reads that measurement through container query units. */
 .tabla-fit {
+    position: relative;
     flex: 1 1 auto;
     min-height: 0;
     width: 100%;
@@ -966,6 +967,89 @@ code, kbd, samp { font-family: var(--font-mono); }
     justify-content: center;
     container-type: size;
 }
+
+/* The opening roll, over the board. Each die lands on its thrower's side —
+   the opponent's up top where they sit, yours below — with the verdict on the
+   line between them.
+
+   The board itself is dimmed rather than covered: a scrim over the whole area
+   put a dark box on the felt above and below the board. When the opening
+   lifts, the board comes back up to full light — the table is ready. */
+.tabla-board { transition: filter var(--dur-slow) var(--ease-out); }
+.tabla-fit--opening .tabla-board { filter: brightness(0.4) saturate(0.8); }
+
+.opening {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* Sized off the width: on a phone the board is width-bound and short, and
+       the whole throw has to fit inside it. cqw is .tabla-fit's width. */
+    gap: min(var(--sp-4), 3cqw);
+    padding: var(--sp-4);
+    text-align: center;
+    animation: note-in var(--dur) var(--ease-out);
+}
+.opening .die { --die: min(76px, 16cqw); }
+/* Where a die will land, before its player has thrown it: the outline of
+   the cube on the table, not a blank die pretending to be one. */
+.opening__slot {
+    width: min(76px, 16cqw);
+    height: min(76px, 16cqw);
+    border: 2px dashed rgba(241, 246, 242, 0.34);
+    border-radius: var(--r-md);
+}
+
+/* The losing die, darkened rather than faded: faded, the board showed through
+   it, and a die with a checker inside it reads as a ghost. */
+.opening .die--used { opacity: 1; filter: brightness(0.5) saturate(0.6); }
+.opening__seat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: min(var(--sp-2), 2cqw);
+    max-width: 100%;
+}
+.opening__name {
+    max-width: 18ch;
+    font-weight: 700;
+    color: var(--text-2);
+}
+/* Gold, as the player's own name is in the bar below the board. */
+.opening__name--me { color: var(--gold); }
+/* A fixed height, so the dice do not jump when the words arrive. */
+.opening__verdict {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-1);
+    min-height: calc(var(--fs-2xl) * 1.2 + var(--fs-md) * 1.4 + var(--sp-1));
+}
+.opening__who,
+.opening__play,
+.opening__name {
+    /* A lift off whatever checker happens to be underneath. */
+    text-shadow: 0 1px 10px rgba(0, 0, 0, 0.85);
+}
+.opening__who {
+    font-family: var(--font-display);
+    font-size: var(--fs-2xl);
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--text-1);
+}
+.opening__play {
+    font-size: var(--fs-md);
+    line-height: 1.4;
+    color: var(--text-2);
+}
+/* The table's own dice are already down underneath; they come into view when
+   the opening lifts, rather than being thrown a second time beside it. */
+.tabla-actions--opening .die { visibility: hidden; }
 
 /* Everything below the board keeps its natural height so it can never be
    squeezed out of view. */

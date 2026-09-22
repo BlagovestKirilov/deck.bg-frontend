@@ -1,31 +1,29 @@
 import React from 'react';
 import Icon, { IconName } from './Icon';
 import Button from './Button';
+import CardIndex from '../lobby/CardIndex';
 
 type Tone = 'success' | 'error' | 'warning' | 'neutral';
 
-const TONE_COLOR: Record<Tone, string> = {
-    success: 'var(--success)',
-    error: 'var(--danger)',
-    warning: 'var(--warning)',
-    neutral: 'var(--gold)',
-};
-
-const TONE_WASH: Record<Tone, string> = {
-    success: 'var(--success-wash)',
-    error: 'var(--danger-wash)',
-    warning: 'var(--warning-wash)',
-    neutral: 'var(--gold-wash)',
+/**
+ * The mark above the title, in the card's own inks: the table green for a
+ * good outcome, suit red for one that went wrong or needs care.
+ */
+const TONE_INK: Record<Tone, string> = {
+    success: 'var(--felt-ink)',
+    error: 'var(--suit-red)',
+    warning: 'var(--suit-red)',
+    neutral: 'var(--ink-3)',
 };
 
 interface StatusScreenProps {
     tone: Tone;
     icon: IconName;
     title: string;
-    message: React.ReactNode;
+    message?: React.ReactNode;
     actionLabel?: string;
     onAction?: () => void;
-    /** Destructive outcomes need a red primary action, not the gold one. */
+    /** Destructive outcomes need a red primary action, not the green one. */
     actionVariant?: 'primary' | 'danger';
     /** Spinner on the primary action; also blocks a second press. */
     actionLoading?: boolean;
@@ -35,8 +33,12 @@ interface StatusScreenProps {
 
 /**
  * Full-screen outcome page: confirmation succeeded, link invalid, account
- * deleted, route not found. Four near-identical copies of this markup used to
- * live in separate files; they are now one component with different content.
+ * deleted, route not found.
+ *
+ * Most of these are reached from a link in an email, so they are printed on
+ * the same card as the sign-in screen, dealt on the same felt. Signing in,
+ * registering and resetting a password are A♠, Q♥ and J♦; an outcome is the
+ * fourth face in the fourth suit, K♣, so the whole flow is one hand.
  */
 const StatusScreen: React.FC<StatusScreenProps> = ({
     tone,
@@ -50,80 +52,37 @@ const StatusScreen: React.FC<StatusScreenProps> = ({
     secondaryLabel,
     onSecondary,
 }) => (
-    <main className="screen">
-        <div className="panel panel--gold" style={cardStyle}>
-            <div
-                style={{
-                    ...markStyle,
-                    background: TONE_WASH[tone],
-                    color: TONE_COLOR[tone],
-                    borderColor: TONE_COLOR[tone],
-                }}
-            >
-                <Icon name={icon} size="52%" />
-            </div>
+    <main className="screen screen--flow lobby lobby-auth">
+        <div className="deal deal--center">
+            <section className="play-card status-card" aria-labelledby="status-title">
+                <CardIndex rank="K" suit="♣" red={false} corner="tl" />
+                <CardIndex rank="K" suit="♣" red={false} corner="br" />
 
-            <h1 style={titleStyle}>{title}</h1>
+                <header className="play-card__head">
+                    <span className="status-card__mark" style={{ color: TONE_INK[tone] }}>
+                        <Icon name={icon} size={30} />
+                    </span>
+                    <h1 id="status-title" className="play-card__title">{title}</h1>
+                    {message && <p className="play-card__sub">{message}</p>}
+                </header>
 
-            <p style={messageStyle}>{message}</p>
-
-            {(actionLabel || secondaryLabel) && (
-                <div style={actionsStyle}>
-                    {actionLabel && onAction && (
-                        <Button variant={actionVariant} size="lg" block loading={actionLoading} onClick={onAction}>
-                            {actionLabel}
-                        </Button>
-                    )}
-                    {secondaryLabel && onSecondary && (
-                        <Button variant="ghost" block onClick={onSecondary}>
-                            {secondaryLabel}
-                        </Button>
-                    )}
-                </div>
-            )}
+                {(actionLabel || secondaryLabel) && (
+                    <div className="play-card__foot status-card__actions">
+                        {actionLabel && onAction && (
+                            <Button variant={actionVariant} size="lg" block loading={actionLoading} onClick={onAction}>
+                                {actionLabel}
+                            </Button>
+                        )}
+                        {secondaryLabel && onSecondary && (
+                            <Button variant="ghost" block onClick={onSecondary}>
+                                {secondaryLabel}
+                            </Button>
+                        )}
+                    </div>
+                )}
+            </section>
         </div>
     </main>
 );
-
-const cardStyle: React.CSSProperties = {
-    width: '100%',
-    maxWidth: '440px',
-    padding: 'clamp(28px, 6vw, 44px) clamp(20px, 5vw, 40px)',
-    textAlign: 'center',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: 'var(--sp-4)',
-};
-
-const markStyle: React.CSSProperties = {
-    width: 'clamp(72px, 20vw, 104px)',
-    height: 'clamp(72px, 20vw, 104px)',
-    display: 'grid',
-    placeItems: 'center',
-    borderRadius: '50%',
-    border: '2px solid',
-    animation: 'scale-in var(--dur-slow) var(--ease-spring)',
-};
-
-const titleStyle: React.CSSProperties = {
-    fontSize: 'var(--fs-2xl)',
-    color: 'var(--text-1)',
-    fontWeight: 600,
-};
-
-const messageStyle: React.CSSProperties = {
-    color: 'var(--text-2)',
-    fontSize: 'var(--fs-md)',
-    maxWidth: '42ch',
-};
-
-const actionsStyle: React.CSSProperties = {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: 'var(--sp-3)',
-    width: '100%',
-    marginTop: 'var(--sp-2)',
-};
 
 export default StatusScreen;
