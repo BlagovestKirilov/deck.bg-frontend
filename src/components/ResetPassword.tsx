@@ -13,10 +13,10 @@ type Errors = Partial<Record<'newPassword' | 'confirmPassword', string>>;
 const PASSWORD_RE = /^[A-Za-z0-9!@#$%^&*()_+=\-.,?]+$/;
 
 /**
- * J♦ — the card «Забравена парола» is printed on. The link in the email picks
+ * Q♦ — the card «Забравена парола» is printed on. The link in the email picks
  * that same card back up, now to set the new password.
  */
-const CARD = { rank: 'J', suit: '♦', red: true } as const;
+const CARD = { rank: 'Q', suit: '♦', red: true } as const;
 
 const ResetPassword: React.FC = () => {
     const navigate = useNavigate();

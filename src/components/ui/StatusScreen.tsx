@@ -37,7 +37,7 @@ interface StatusScreenProps {
  *
  * Most of these are reached from a link in an email, so they are printed on
  * the same card as the sign-in screen, dealt on the same felt. Signing in,
- * registering and resetting a password are A♠, Q♥ and J♦; an outcome is the
+ * registering and resetting a password are A♠, Q♥ and Q♦; an outcome is the
  * fourth face in the fourth suit, K♣, so the whole flow is one hand.
  */
 const StatusScreen: React.FC<StatusScreenProps> = ({
