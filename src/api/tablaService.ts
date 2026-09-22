@@ -9,6 +9,8 @@ export const tablaService = {
 
     getInitialState: () => apiClient.get('/tabla/state'),
 
+    /** This player's die of the opening roll — who starts. */
+    openingThrow: () => apiClient.post('/tabla/opening-throw'),
     roll: () => apiClient.post('/tabla/roll'),
 
     /** `from` is 1..24, or 25 for the bar. The destination is derived server-side. */

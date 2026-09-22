@@ -10,6 +10,7 @@ import { soleOrigin, stillPlayable } from '../utils/tablaSelection';
 import { useDiceRoll } from '../hooks/useDiceRoll';
 import { HOP_MS } from '../hooks/useHopAnimation';
 import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
+import OpeningRoll from './tabla/OpeningRoll';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
@@ -34,6 +35,15 @@ const WARNING_SECONDS = 10;
 const WARNING_AT = 10;
 /** Wait before sending a blocked roll's pass again, when it did not get through. */
 const PASS_RETRY_MS = 2000;
+/**
+ * A clock is running against this player: on turn, or still to throw their
+ * die of the opening roll. The opening has a turn's time and a turn's warning —
+ * nothing is ever thrown for anyone.
+ */
+const mustAct = (s: TablaState) => s.isOnTurn || (s.openingPhase && s.openingMine == null);
+
+/** Per tab: the game whose opening roll has been shown, so a reload skips it. */
+const OPENING_SEEN_KEY = 'tabla-opening-seen';
 
 const TablaGame: React.FC = () => {
     const navigate = useNavigate();
@@ -64,6 +74,28 @@ const TablaGame: React.FC = () => {
     const [showResult, setShowResult] = useState(false);
     /** True while the "still there?" prompt is up and its own clock is running. */
     const [inWarning, setInWarning] = useState(false);
+    /**
+     * The game whose opening roll has already been shown. The server keeps
+     * sending the opening for the whole of the starter's first turn, so a
+     * reload in the middle of it must not throw the dice a second time.
+     */
+    const [openingSeen, setOpeningSeen] = useState<string | null>(() => {
+        try {
+            return sessionStorage.getItem(OPENING_SEEN_KEY);
+        } catch {
+            return null;
+        }
+    });
+    /** The opening can take a throw — no finished one is still on the table. */
+    const [openingReady, setOpeningReady] = useState(true);
+    const closeOpening = useCallback((gameId: string) => {
+        try {
+            sessionStorage.setItem(OPENING_SEEN_KEY, gameId);
+        } catch {
+            // Storage blocked: it is still closed for this visit.
+        }
+        setOpeningSeen(gameId);
+    }, []);
     const lastTurnKeyRef = useRef<string>('');
 
     // The api object is stable so the session hook does not re-subscribe.
@@ -302,10 +334,12 @@ const TablaGame: React.FC = () => {
             reportedRef.current = false;
             givingUpRef.current = false;
         }
-    }, [state?.nextMoveTimeInSeconds, state?.isOnTurn]);
+    }, [state?.nextMoveTimeInSeconds, state?.isOnTurn, state?.openingMine]);
 
     useEffect(() => {
-        if (!state || state.winnerUsername || !state.isOnTurn) {
+        // No deadline from the server yet means no clock to run down — counting
+        // from zero would forfeit the game on the first tick.
+        if (!state || state.winnerUsername || !mustAct(state) || deadlineRef.current === 0) {
             setInWarning(false);
             return undefined;
         }
@@ -429,7 +463,12 @@ const TablaGame: React.FC = () => {
         ? state.secondPlayerUsername
         : state.firstPlayerUsername;
 
-    const urgent = state.isOnTurn && secondsLeft <= WARNING_AT;
+    // Up for the whole opening, then once more for the throw that settled it
+    // — which a reload in the starter's first turn does not replay.
+    const showOpening = state.openingPhase
+        || (Boolean(state.openingThrows?.length) && openingSeen !== state.gameId);
+    const clockRunning = mustAct(state);
+    const urgent = clockRunning && secondsLeft <= WARNING_AT;
     const canUndo = state.isOnTurn && state.pendingHops.length > 0;
     const canRoll = state.isOnTurn && state.die1 == null;
     const iWon = state.winnerUsername === username;
@@ -472,7 +511,7 @@ const TablaGame: React.FC = () => {
                 </button>
             </div>
 
-            <div className="tabla-fit">
+            <div className={`tabla-fit ${showOpening ? 'tabla-fit--opening' : ''}`}>
                 <TablaBoard
                     state={state}
                     selected={selected}
@@ -481,6 +520,17 @@ const TablaGame: React.FC = () => {
                     onCombo={handleCombo}
                     myColor={myColor}
                 />
+                {showOpening && (
+                    <OpeningRoll
+                        phase={state.openingPhase}
+                        throws={state.openingThrows ?? []}
+                        mine={state.openingMine}
+                        opponent={state.openingOpponent}
+                        opponentName={opponentName}
+                        onReady={setOpeningReady}
+                        onDone={() => closeOpening(state.gameId)}
+                    />
+                )}
             </div>
 
             <div className="tabla-footer">
@@ -500,12 +550,21 @@ const TablaGame: React.FC = () => {
                     <span className={`turn-pill ${urgent ? 'turn-pill--urgent' : ''}`} role="status" aria-live="polite">
                         <span
                             className="turn-pill__dot"
-                            style={{ background: state.isOnTurn ? (urgent ? 'var(--danger)' : 'var(--success)') : 'var(--text-3)' }}
+                            style={{ background: clockRunning ? (urgent ? 'var(--danger)' : 'var(--success)') : 'var(--text-3)' }}
                         />
                         {state.isOnTurn ? (
                             <>
                                 <span>ВАШ РЕД</span>
                                 <span className="tabular" style={{ minWidth: '2ch', fontWeight: 800 }}>{secondsLeft}</span>
+                            </>
+                        ) : state.openingPhase ? (
+                            // Nobody is on turn yet: both are throwing. Whoever
+                            // still has to sees their time, as on a turn.
+                            <>
+                                <span>ПЪРВО ХВЪРЛЯНЕ</span>
+                                {clockRunning && (
+                                    <span className="tabular" style={{ minWidth: '2ch', fontWeight: 800 }}>{secondsLeft}</span>
+                                )}
                             </>
                         ) : (
                             <span>ОПОНЕНТЪТ ИГРАЕ…</span>
@@ -513,7 +572,7 @@ const TablaGame: React.FC = () => {
                     </span>
                 </div>
 
-                <div className="tabla-actions">
+                <div className={`tabla-actions ${showOpening ? 'tabla-actions--opening' : ''}`}>
                     {state.die1 != null && state.die2 != null && (
                         <>
                             <Die
@@ -568,6 +627,17 @@ const TablaGame: React.FC = () => {
                                 Опонентът почива: няма възможен ход, редът минава към теб.
                             </span>
                         </span>
+                    )}
+
+                    {/* The opening's own die, thrown with the table's button in
+                        its usual place — nothing is thrown for you. */}
+                    {state.openingPhase && state.openingMine == null && openingReady && (
+                        <Button variant="primary" icon="dice" loading={busy}
+                                className="btn--keep-label"
+                                aria-label="Хвърли своя зар"
+                                onClick={() => void guard(tablaService.openingThrow)}>
+                            Хвърли
+                        </Button>
                     )}
 
                     {canRoll && (

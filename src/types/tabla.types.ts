@@ -31,6 +31,15 @@ export interface ComboHop {
     dice: number[];
 }
 
+/**
+ * One throw of the opening roll: each player throws a single die, and the
+ * higher starts by playing both. Equal dice are thrown again.
+ */
+export interface OpeningThrow {
+    mine: number;
+    opponent: number;
+}
+
 export interface Hop {
     /** 1..24, or 25 for the bar. */
     from: number;
@@ -78,6 +87,19 @@ export interface TablaState {
     usedDiceCount: number;
     mustConfirm: boolean;
     noMovesAvailable: boolean;
+
+    /** Nobody has started yet: each player throws one die. */
+    openingPhase: boolean;
+    /**
+     * Finished throws of the opening roll, ties included, from this player's
+     * side — during the opening, and while the starter plays the opening dice.
+     * Absent after that.
+     */
+    openingThrows?: OpeningThrow[];
+    /** This player's die of the opening throw in progress, once thrown. */
+    openingMine?: number;
+    /** The opponent's die of the opening throw in progress, once thrown. */
+    openingOpponent?: number;
 
     legalHops: Hop[];
     /** Destinations reachable by playing both dice with one checker. */
