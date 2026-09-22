@@ -16,7 +16,7 @@ type Mode = 'login' | 'register' | 'forgot';
 
 /**
  * The card each screen is printed on, indexed the way the cards in the game
- * are — A, K, Q, J. (Cyrillic В for the jack read as a Latin B: a card that
+ * are. (Cyrillic В for the jack read as a Latin B: a card that
  * does not exist.) Signing in is the ace; the others are a different card so
  * that turning between them reads as a new card coming up, not the same one
  * spinning in place.
@@ -24,7 +24,7 @@ type Mode = 'login' | 'register' | 'forgot';
 const CARD: Record<Mode, { rank: string; suit: string; red: boolean }> = {
     login:    { rank: 'A', suit: '♠', red: false },
     register: { rank: 'Q', suit: '♥', red: true },
-    forgot:   { rank: 'J', suit: '♦', red: true },
+    forgot:   { rank: 'Q', suit: '♦', red: true },
 };
 
 type FieldKey = 'username' | 'email' | 'password' | 'confirmPassword' | 'forgotEmail';
