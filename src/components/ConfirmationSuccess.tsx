@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import StatusScreen from './ui/StatusScreen';
 
+/** Where the link in the confirmation email lands. */
 const ConfirmationSuccess: React.FC = () => {
     const navigate = useNavigate();
 
@@ -9,9 +10,8 @@ const ConfirmationSuccess: React.FC = () => {
         <StatusScreen
             tone="success"
             icon="checkCircle"
-            title="Имейлът е потвърден!"
-            message="Вашият имейл адрес е успешно потвърден. Сега можете да влезете в профила си и да започнете да играете!"
-            actionLabel="Към сайта"
+            title="Имейлът е потвърден"
+            actionLabel="Играй"
             onAction={() => navigate('/')}
         />
     );
