@@ -93,16 +93,15 @@ const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, 
  * anyone out. That used to be exactly what happened: every deploy could send a
  * player in the middle of a game to the login screen.
  *
- * A 5xx normally means "try again", with one exception. The backend currently
- * parses the token before it validates it, so an expired or malformed refresh
- * token surfaces as a 500 carrying the jjwt exception's name rather than as a
- * 401. That answer is about the token, and it is final.
+ * A 5xx means "try again": the server is down or restarting, and that says
+ * nothing about the token. An unreadable refresh token used to arrive as one of
+ * those, carrying the jjwt exception's name for this function to match on; the
+ * endpoint answers 401 for it now, so the status alone is the whole story.
  */
 function refreshRejected(error: unknown): boolean {
-    const response = (error as { response?: { status: number; data?: { details?: unknown } } })?.response;
+    const response = (error as { response?: { status: number } })?.response;
     if (!response) return false;
-    if (response.status < 500) return true;
-    return /jwt|signature/i.test(String(response.data?.details ?? ''));
+    return response.status < 500;
 }
 
 async function requestRefresh(): Promise<string> {
