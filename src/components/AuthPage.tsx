@@ -242,16 +242,17 @@ const AuthPage: React.FC = () => {
 
         try {
             await authService.forgotPassword(forgotEmail);
-            setFormMessage({ tone: 'success', text: 'Имейлът за възстановяване на парола е изпратен успешно!' });
+            // The server answers the same way whether or not the address has a
+            // profile — otherwise this screen would tell anyone who asked which
+            // addresses are registered. So neither does this message.
+            setFormMessage({
+                tone: 'success',
+                text: 'Ако има профил с този имейл, изпратихме линк за нова парола.',
+            });
             setForgotEmail('');
         } catch (err: any) {
             const message: string = err.response?.data?.message || '';
-            setFormMessage({
-                tone: 'error',
-                text: message.toLowerCase().includes('is not confirmed')
-                    ? 'Имейлът не е потвърден.'
-                    : message || 'Грешка при изпращане на имейл.',
-            });
+            setFormMessage({ tone: 'error', text: message || 'Грешка при изпращане на имейл.' });
         } finally {
             setIsForgotLoading(false);
         }
