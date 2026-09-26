@@ -1,0 +1,197 @@
+/* =====================================================================
+   Belot — four seats, one of them yours
+
+   The table is turned so the player is always at the bottom and their
+   partner opposite. Everything here is laid out around that: a three-by-three
+   grid with the trick in the middle, which is the shape of the table seen
+   from the one chair that matters.
+
+   Tokens only, as everywhere else: colour, spacing, radius and motion come
+   from theme.css.
+   ===================================================================== */
+
+.belot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    padding: calc(var(--sa-top) + var(--sp-2)) var(--sp-3) calc(var(--sa-bottom) + var(--sp-3));
+    background: var(--felt);
+}
+
+.belot__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    flex: 0 0 auto;
+}
+
+.belot__score {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+    margin: 0;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--text-2);
+}
+.belot__hanging { color: var(--gold); }
+
+/* The table: partner at the top, opponents at the sides, the trick between. */
+.belot__table {
+    flex: 1 1 auto;
+    /* A table is a table, not a room: on a wide screen the seats stay a
+       card's throw apart rather than retreating to the window edges. */
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+    grid-template-rows: auto minmax(0, 1fr);
+    align-items: center;
+    gap: var(--sp-2);
+    min-height: 0;
+}
+
+.belot__seat--partner { grid-column: 2; grid-row: 1; justify-self: center; }
+.belot__seat--left    { grid-column: 1; grid-row: 2; }
+.belot__seat--right   { grid-column: 3; grid-row: 2; }
+.belot__middle        { grid-column: 2; grid-row: 2; align-self: center; }
+
+.belot__seat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-1);
+    padding: var(--sp-2);
+    border-radius: var(--r-md);
+    font-size: var(--fs-xs);
+    color: var(--text-2);
+}
+/* Whose turn it is, said with a ring rather than only a colour. */
+.belot__seat.is-turn {
+    background: var(--gold-wash);
+    box-shadow: inset 0 0 0 1px var(--line-gold);
+    color: var(--text-1);
+}
+
+.belot__name {
+    max-width: 10ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+/* A fan of backs: how many cards they hold, which is public at a real table. */
+.belot__backs { display: flex; }
+.belot__back {
+    width: 10px;
+    height: 16px;
+    margin-left: -5px;
+    border-radius: 2px;
+    background: var(--surface-3);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.belot__back:first-child { margin-left: 0; }
+
+.belot__tag {
+    padding: 1px var(--sp-2);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    font-size: var(--fs-xs);
+    color: var(--text-3);
+}
+.belot__tag--turn { background: var(--accent-wash); color: var(--accent-bright); }
+
+/* ---- the middle: the trick, or the bidding ---- */
+
+.belot__trick,
+.belot__bidding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-3);
+    text-align: center;
+}
+
+.belot__contract {
+    margin: 0;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--text-2);
+}
+
+/* Each played card sits towards the seat that played it, so the trick reads
+   as four people putting cards down rather than a row of four cards. */
+.belot__played {
+    position: relative;
+    width: min(60vw, 240px);
+    aspect-ratio: 1;
+}
+.belot__played-card { position: absolute; }
+.belot__played-card--you     { bottom: 0; left: 50%; transform: translateX(-50%); }
+.belot__played-card--partner { top: 0;    left: 50%; transform: translateX(-50%); }
+.belot__played-card--left    { left: 0;   top: 50%;  transform: translateY(-50%); }
+.belot__played-card--right   { right: 0;  top: 50%;  transform: translateY(-50%); }
+
+.belot__calls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sp-2);
+}
+
+/* A call is a real button at a thumb-sized target, like every other control. */
+.belot__call {
+    min-height: var(--tap);
+    padding: 0 var(--sp-4);
+    border: 1px solid var(--line-gold);
+    border-radius: var(--r-pill);
+    background: var(--surface-2);
+    color: var(--text-1);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+.belot__call:hover { background: var(--surface-3); }
+.belot__call--pass { border-color: var(--line); color: var(--text-2); }
+
+.belot__waiting {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0;
+    font-size: var(--fs-sm);
+    color: var(--text-3);
+}
+
+/* ---- your own hand ---- */
+
+.belot__hand { flex: 0 0 auto; }
+
+.belot__you {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    margin: 0 0 var(--sp-2);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--text-1);
+}
+
+/* The cards overlap the way a held hand does, and spread out when there is
+   room. The last one is always whole. */
+.belot__cards {
+    display: flex;
+    justify-content: center;
+    padding-left: var(--sp-4);
+}
+.belot__cards > * { margin-left: calc(var(--sp-4) * -1); }
+.belot__cards > *:first-child { margin-left: 0; }
+
+@media (min-width: 560px) {
+    .belot__cards { gap: var(--sp-1); padding-left: 0; }
+    .belot__cards > * { margin-left: 0; }
+}

@@ -78,6 +78,26 @@ export const SantaseArt: React.FC = () => (
     </svg>
 );
 
+/**
+ * Белот: the jack and the nine, the two cards that outrank everything else
+ * in a trump suit — and the pair that decides whether a hand is worth bidding.
+ */
+export const BelotArt: React.FC = () => (
+    <svg viewBox="0 0 160 120" aria-hidden="true" focusable="false" className="art-fan">
+        <defs>
+            <filter id="belot-art-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.45" />
+            </filter>
+        </defs>
+        <g filter="url(#belot-art-shadow)">
+            <FanCard rank="В" suit="♠" red={false} angle={-24} className="art-card--1" />
+            <FanCard rank="9" suit="♥" red angle={-8} className="art-card--2" />
+            <FanCard rank="В" suit="♦" red angle={8} className="art-card--3" />
+            <FanCard rank="9" suit="♣" red={false} angle={24} className="art-card--4" />
+        </g>
+    </svg>
+);
+
 /* ---- Табла ---- */
 
 const WOOD_FRAME = '#5b3519';

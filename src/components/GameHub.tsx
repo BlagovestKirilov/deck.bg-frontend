@@ -12,7 +12,7 @@ import Button from './ui/Button';
 import Modal from './ui/Modal';
 import Toast from './ui/Toast';
 import ProfilePage from './ProfilePage';
-import { SantaseArt, TablaArt } from './lobby/GameArt';
+import { BelotArt, SantaseArt, TablaArt } from './lobby/GameArt';
 
 interface GameCard {
     key: GameKey;
@@ -38,6 +38,13 @@ const GAMES: GameCard[] = [
         tagline: 'Изведи всички пулове пръв',
         Art: TablaArt,
         path: '/play/tabla',
+    },
+    {
+        key: 'BELOT',
+        title: 'Белот',
+        tagline: 'Двама срещу двама, до 151',
+        Art: BelotArt,
+        path: '/play/belot',
     },
 ];
 

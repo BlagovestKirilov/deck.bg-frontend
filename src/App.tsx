@@ -1,6 +1,7 @@
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import RequireService from './components/RequireService';
+import BelotGame from './components/belot/BelotGame';
 import { useAuthContext } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
 import GameHub from './components/GameHub';
@@ -48,6 +49,14 @@ const App: React.FC = () => {
                     element={
                         isAuthenticated
                             ? <RequireService service="TABLA"><TablaGame /></RequireService>
+                            : <AuthPage />
+                    }
+                />
+                <Route
+                    path="/play/belot"
+                    element={
+                        isAuthenticated
+                            ? <RequireService service="BELOT"><BelotGame /></RequireService>
                             : <AuthPage />
                     }
                 />
