@@ -17,6 +17,14 @@ const REMEMBERED = 'availableServices';
 export const servicesService = {
     available: async (signal?: AbortSignal): Promise<GameKey[]> => {
         const { data } = await apiClient.get<{ services: GameKey[] }>('/services', { signal });
+
+        // A 200 is not proof of an answer. A proxy that does not know this
+        // path hands back the app’s own index.html with a 200, and taking
+        // that at its word left the lobby with neither a list nor an error.
+        if (!isList(data?.services)) {
+            throw new Error('/services did not answer with a list of games');
+        }
+
         remember(data.services);
         return data.services;
     },
@@ -31,7 +39,8 @@ export const servicesService = {
     lastKnown(): GameKey[] | null {
         try {
             const stored = sessionStorage.getItem(REMEMBERED);
-            return stored ? (JSON.parse(stored) as GameKey[]) : null;
+            const parsed = stored ? JSON.parse(stored) : null;
+            return isList(parsed) ? parsed : null;
         } catch {
             // Private windows and blocked storage: no memory, no harm.
             return null;
@@ -46,6 +55,11 @@ export const servicesService = {
         }
     },
 };
+
+/** Every game a list can hold is a string; anything else is not an answer. */
+function isList(value: unknown): value is GameKey[] {
+    return Array.isArray(value) && value.every((game) => typeof game === 'string');
+}
 
 function remember(services: GameKey[]): void {
     try {
