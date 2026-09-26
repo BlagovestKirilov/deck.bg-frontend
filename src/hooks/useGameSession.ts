@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { noteUnavailable } from '../api/unavailable';
+import { GameKey } from '../types/user.types';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 import { socketToken } from '../api/apiClient';
@@ -53,6 +56,13 @@ export function useGameSession<S extends MinimalState>(
     const [state, setState] = useState<S | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
+
+    // A refused game sends the player back to the lobby, and the callback that
+    // learns about it is deep in the socket wiring, where a hook cannot be
+    // called. Kept in a ref so it is always the current one.
+    const navigate = useNavigate();
+    const navigateRef = useRef(navigate);
+    navigateRef.current = navigate;
 
     const clientRef = useRef<any>(null);
     const socketRef = useRef<any>(null);
@@ -236,7 +246,18 @@ export function useGameSession<S extends MinimalState>(
                 return;
             }
 
-            apiRef.current.searchGame().catch(() => setIsSearching(false));
+            apiRef.current.searchGame().catch((error) => {
+                setIsSearching(false);
+                // 404 from the search is the server saying this game is not on
+                // offer — switched off, or not for this account. Anything else
+                // is an ordinary failure and the screen stays put.
+                if (error?.response?.status === 404) {
+                    // gameKey is the topic's spelling, 'tabla'; the catalogue
+                    // speaks in codes.
+                    noteUnavailable(gameKey.toUpperCase() as GameKey);
+                    navigateRef.current('/', { replace: true });
+                }
+            });
         };
 
         const onError = () => {

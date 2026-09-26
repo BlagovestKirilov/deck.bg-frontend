@@ -5,6 +5,7 @@ import {Stomp} from '@stomp/stompjs';
 import {useAuthContext} from '../context/AuthContext';
 import {gameService} from '../api/gameService';
 import {socketToken} from '../api/apiClient';
+import {noteUnavailable} from '../api/unavailable';
 import {userService} from '../api/userService';
 import {Card, GameState, Suit} from '../types/game.types';
 import {Rank} from '../types/user.types';
@@ -1347,7 +1348,16 @@ const SantaseGame: React.FC = () => {
                         });
                     }
                 });
-                gameService.searchGame().catch(() => setIsSearching(false));
+                gameService.searchGame().catch((error: any) => {
+                    setIsSearching(false);
+                    // A 404 here is the server saying сантасе is not on offer —
+                    // switched off, or not for this account. The lobby explains
+                    // it; anything else is an ordinary failure to search.
+                    if (error?.response?.status === 404) {
+                        noteUnavailable('SANTASE');
+                        navigate('/', { replace: true });
+                    }
+                });
             }
         };
 

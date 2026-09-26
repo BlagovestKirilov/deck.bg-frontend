@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { userService } from '../api/userService';
+import { takeUnavailableNote } from '../api/unavailable';
+import { useAvailableServices } from '../hooks/useAvailableServices';
 import { GameKey, GameStats } from '../types/user.types';
 import { RankMedal, rankName } from './RankBadge';
 import Brand from './ui/Brand';
 import Button from './ui/Button';
 import Modal from './ui/Modal';
+import Note from './ui/Note';
 import ProfilePage from './ProfilePage';
 import { SantaseArt, TablaArt } from './lobby/GameArt';
 
@@ -47,6 +50,15 @@ const GameHub: React.FC = () => {
     const [showProfile, setShowProfile] = useState(false);
     const [confirmLogout, setConfirmLogout] = useState(false);
     const username = user?.username ?? '';
+
+    // Which games are being offered to this player. Null while nothing is known
+    // yet — the first visit in a browser — and then every card is drawn, since
+    // the server turns away anything it is not offering anyway.
+    const { services } = useAvailableServices();
+    const offered = services === null ? GAMES : GAMES.filter((game) => services.includes(game.key));
+
+    // A game screen that was turned away leaves word here; it is shown once.
+    const [turnedAwayFrom] = useState(takeUnavailableNote);
 
     // Each game is rated separately, so the picker shows the record for that
     // game rather than one account-wide number.
@@ -106,8 +118,15 @@ const GameHub: React.FC = () => {
                     <h1 className="hub__title">Избери игра</h1>
                 </header>
 
+                {turnedAwayFrom && (
+                    <Note tone="warning">
+                        {GAMES.find((game) => game.key === turnedAwayFrom)?.title ?? turnedAwayFrom} не е
+                        достъпна в момента. Опитай по-късно.
+                    </Note>
+                )}
+
                 <ul className="hub__games">
-                    {GAMES.map(({ key, title, tagline, Art, path }) => (
+                    {offered.map(({ key, title, tagline, Art, path }) => (
                         <li key={key}>
                             <button type="button" className="game-pick" onClick={() => navigate(path)}>
                                 <span className="game-pick__art">
