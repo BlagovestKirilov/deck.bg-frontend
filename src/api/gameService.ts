@@ -2,32 +2,32 @@ import apiClient from './apiClient';
 
 export const gameService = {
     searchGame: () =>
-        apiClient.post('/game/search'),
+        apiClient.post('/santase/search'),
 
     playCard: (cardId: string) =>
-        apiClient.post('/game/play-card', {cardId}),
+        apiClient.post('/santase/play-card', {cardId}),
 
     announce: (cardId: string) =>
-        apiClient.post('/game/announce', {cardId}),
+        apiClient.post('/santase/announce', {cardId}),
 
     replaceCard: () =>
-        apiClient.post('/game/replace-card'),
+        apiClient.post('/santase/replace-card'),
 
     closeDeck: () =>
-        apiClient.post('/game/close-deck'),
+        apiClient.post('/santase/close-deck'),
 
     finishDeal: () =>
-        apiClient.post('/game/finish-deal'),
+        apiClient.post('/santase/finish-deal'),
 
     getInitialState: () =>
-        apiClient.get(`/game/state`),
+        apiClient.get(`/santase/state`),
 
     surrender: () =>
-        apiClient.post(`/game/surrender`),
+        apiClient.post(`/santase/surrender`),
 
     inactivity: () =>
-        apiClient.post('/game/inactivity'),
+        apiClient.post('/santase/inactivity'),
 
     extendTime: () =>
-        apiClient.post('/game/extend-time')
+        apiClient.post('/santase/extend-time')
 };

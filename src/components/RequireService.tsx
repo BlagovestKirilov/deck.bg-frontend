@@ -20,7 +20,7 @@ interface Props {
 const RequireService: React.FC<Props> = ({ service, children }) => {
     const known = servicesService.lastKnown();
 
-    if (known !== null && !known.includes(service)) {
+    if (Array.isArray(known) && !known.includes(service)) {
         return <Navigate to="/" replace />;
     }
     return children;

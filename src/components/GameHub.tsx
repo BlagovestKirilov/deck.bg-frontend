@@ -56,7 +56,9 @@ const GameHub: React.FC = () => {
     // yet — the first visit in a browser — and then every card is drawn, since
     // the server turns away anything it is not offering anyway.
     const { services } = useAvailableServices();
-    const offered = services === null ? GAMES : GAMES.filter((game) => services.includes(game.key));
+    const offered = Array.isArray(services)
+        ? GAMES.filter((game) => services.includes(game.key))
+        : GAMES;
 
     // A game screen that was turned away leaves word here. It is said once,
     // out loud and briefly, and then the lobby is just the lobby again.
