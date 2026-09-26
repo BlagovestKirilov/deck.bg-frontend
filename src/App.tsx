@@ -1,5 +1,6 @@
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
+import RequireService from './components/RequireService';
 import { useAuthContext } from './context/AuthContext';
 import AuthPage from './components/AuthPage';
 import GameHub from './components/GameHub';
@@ -34,8 +35,22 @@ const App: React.FC = () => {
                 <Route path="/confirm-deletion" element={<ConfirmDeletion />} />
                 <Route path="/deletion-success" element={<DeletionSuccess />} />
                 <Route path="/" element={isAuthenticated ? <GameHub /> : <AuthPage />} />
-                <Route path="/play/santase" element={isAuthenticated ? <SantaseGame /> : <AuthPage />} />
-                <Route path="/play/tabla" element={isAuthenticated ? <TablaGame /> : <AuthPage />} />
+                <Route
+                    path="/play/santase"
+                    element={
+                        isAuthenticated
+                            ? <RequireService service="SANTASE"><SantaseGame /></RequireService>
+                            : <AuthPage />
+                    }
+                />
+                <Route
+                    path="/play/tabla"
+                    element={
+                        isAuthenticated
+                            ? <RequireService service="TABLA"><TablaGame /></RequireService>
+                            : <AuthPage />
+                    }
+                />
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </div>

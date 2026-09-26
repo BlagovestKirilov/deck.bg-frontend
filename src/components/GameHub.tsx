@@ -2,11 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../context/AuthContext';
 import { userService } from '../api/userService';
+import { takeUnavailableNote } from '../api/unavailable';
+import { rankIn, remember as rememberRank } from '../api/rankBaseline';
+import { useAvailableServices } from '../hooks/useAvailableServices';
 import { GameKey, GameStats } from '../types/user.types';
 import { RankMedal, rankName } from './RankBadge';
 import Brand from './ui/Brand';
 import Button from './ui/Button';
 import Modal from './ui/Modal';
+import Toast from './ui/Toast';
 import ProfilePage from './ProfilePage';
 import { SantaseArt, TablaArt } from './lobby/GameArt';
 
@@ -48,6 +52,16 @@ const GameHub: React.FC = () => {
     const [confirmLogout, setConfirmLogout] = useState(false);
     const username = user?.username ?? '';
 
+    // Which games are being offered to this player. Null while nothing is known
+    // yet — the first visit in a browser — and then every card is drawn, since
+    // the server turns away anything it is not offering anyway.
+    const { services } = useAvailableServices();
+    const offered = services === null ? GAMES : GAMES.filter((game) => services.includes(game.key));
+
+    // A game screen that was turned away leaves word here. It is said once,
+    // out loud and briefly, and then the lobby is just the lobby again.
+    const [turnedAwayFrom, setTurnedAwayFrom] = useState(takeUnavailableNote);
+
     // Each game is rated separately, so the picker shows the record for that
     // game rather than one account-wide number.
     const [stats, setStats] = useState<Partial<Record<GameKey, GameStats>> | null>(null);
@@ -57,7 +71,14 @@ const GameHub: React.FC = () => {
         userService
             .getProfile(controller.signal)
             .then((profile) => {
-                if (!controller.signal.aborted) setStats(profile.stats ?? {});
+                if (controller.signal.aborted) return;
+                setStats(profile.stats ?? {});
+
+                // The rank each game screen will compare against when a game of
+                // its own ends. Recorded here because this profile is already in
+                // hand: a game screen that fetched its own would be asking the
+                // server the same question twice within a few seconds.
+                GAMES.forEach((game) => rememberRank(game.key, rankIn(profile, game.key)));
             })
             .catch(() => {
                 // A missing record just means the cards show no rank line; the
@@ -106,8 +127,15 @@ const GameHub: React.FC = () => {
                     <h1 className="hub__title">Избери игра</h1>
                 </header>
 
+                {turnedAwayFrom && (
+                    <Toast tone="warning" onDone={() => setTurnedAwayFrom(null)}>
+                        {GAMES.find((game) => game.key === turnedAwayFrom)?.title ?? turnedAwayFrom} не е
+                        достъпна в момента. Опитай по-късно.
+                    </Toast>
+                )}
+
                 <ul className="hub__games">
-                    {GAMES.map(({ key, title, tagline, Art, path }) => (
+                    {offered.map(({ key, title, tagline, Art, path }) => (
                         <li key={key}>
                             <button type="button" className="game-pick" onClick={() => navigate(path)}>
                                 <span className="game-pick__art">

@@ -95,6 +95,13 @@ export const t = {
     },
 
     tap: 'var(--tap)',
+
+    /**
+     * How long a toast lives, in milliseconds, for the timer that removes it.
+     * The CSS animation is driven by --dur-toast; this is the same number,
+     * and the two are meant to be changed together.
+     */
+    toastMs: 4000,
 } as const;
 
 /** Suit colors for playing-card faces. Cards stay light — these sit on white. */

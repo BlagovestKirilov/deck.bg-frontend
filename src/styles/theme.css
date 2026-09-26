@@ -106,6 +106,9 @@
     --dur-fast: 140ms;
     --dur:      220ms;
     --dur-slow: 320ms;
+    /* How long a toast stays on screen before it takes itself away.
+       Long enough to read a sentence, short enough not to be in the way. */
+    --dur-toast: 4000ms;
     --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
     --ease-in:     cubic-bezier(0.55, 0, 1, 0.45);
     --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
@@ -463,6 +466,66 @@ code, kbd, samp { font-family: var(--font-mono); }
 .note--warning { background: var(--warning-wash); border-left-color: var(--warning); color: var(--warning); }
 .note--info    { background: var(--gold-wash);    border-left-color: var(--gold);    color: var(--gold); }
 
+/* A message that says its piece and goes. It sits across the middle of the
+   screen, where the eye already is, and a little above the geometric
+   centre — a box pinned at exactly half looks low.
+
+   The slot spans the screen and centres the message inside itself, so the
+   message is never measured; the deeper padding at the foot is what lifts
+   it. Done with the box, because the card below owns its own tilt and
+   scale and a transform here would have to account for both.
+
+   It takes no taps — there is nothing to dismiss, it leaves by itself — so
+   the cards underneath stay live the whole time it is up. */
+.toast-slot {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-toast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-4) var(--sp-4) 14vh;
+    pointer-events: none;
+}
+
+/* Card stock, not glass. The lobby is a table with things lying on it — the
+   sign-in form is a playing card — so a message arrives the same way: a small
+   card laid face-up, printed in the two inks a playing card is printed in.
+   The tilt is set as its own property, not inside transform, because the
+   entrance animates scale and the two would otherwise overwrite each other. */
+.toast {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    max-width: min(100%, 26rem);
+    padding: var(--sp-4) var(--sp-5);
+    /* ~5.5% of the width: the corner of a real card, as .play-card has it. */
+    border-radius: var(--r-lg);
+    background: var(--card);
+    color: var(--ink);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    line-height: 1.45;
+    /* Two even lines rather than a full one and an orphan: the message is
+       short enough that the browser can weigh the whole block. */
+    text-wrap: balance;
+    /* A card lying on cloth: a hard contact edge and a long soft falloff. */
+    box-shadow:
+        0 1px 0 rgba(0, 0, 0, 0.35),
+        0 2px 3px rgba(0, 0, 0, 0.25),
+        0 22px 44px -14px rgba(0, 0, 0, 0.7);
+    rotate: -1.2deg;
+    animation: toast-settle var(--dur-toast) var(--ease-out) forwards;
+}
+
+/* The mark is the card’s red ink. It carries the meaning that colour alone
+   would lose, so it stays even though the message reads on its own. */
+.toast__icon { flex-shrink: 0; margin-top: 2px; }
+.toast--warning .toast__icon,
+.toast--error   .toast__icon { color: var(--suit-red); }
+.toast--success .toast__icon { color: var(--felt-ink); }
+.toast--info    .toast__icon { color: var(--ink-2); }
+
 /* =====================================================================
    Modal
    ===================================================================== */
@@ -662,6 +725,18 @@ code, kbd, samp { font-family: var(--font-mono); }
     12%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     85%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
     100% { opacity: 0; transform: translate(-50%, -50%) scale(0.94); }
+}
+
+/* Settles in, holds, then lets go. It arrives where it already is rather
+   than travelling in from an edge — there is nowhere for something in the
+   middle of the screen to have come from. The percentages are of
+   --dur-toast, so the hold grows and shrinks with the token rather than
+   drifting out of proportion when that number changes. */
+@keyframes toast-settle {
+    0%   { opacity: 0; scale: 0.96; }
+    8%   { opacity: 1; scale: 1; }
+    88%  { opacity: 1; scale: 1; }
+    100% { opacity: 0; scale: 0.98; }
 }
 
 @keyframes shimmer-sweep {
@@ -916,6 +991,11 @@ code, kbd, samp { font-family: var(--font-mono); }
         scroll-behavior: auto !important;
     }
     .pcard--playable:hover { transform: none; }
+
+    /* A toast animates from nothing to nothing. Collapsed to 0.01ms it would
+       land on its final frame — gone — and the message would never be read.
+       It stays put instead, and is removed on its timer as always. */
+    .toast, .game-toast { animation: none; opacity: 1; }
 }
 
 /* Both header buttons keep the 44px minimum. `btn--sm` is 39px, which is fine

@@ -5,6 +5,8 @@ import {Stomp} from '@stomp/stompjs';
 import {useAuthContext} from '../context/AuthContext';
 import {gameService} from '../api/gameService';
 import {socketToken} from '../api/apiClient';
+import {noteUnavailable} from '../api/unavailable';
+import {rankIn, read as rankBefore, remember as rememberRank} from '../api/rankBaseline';
 import {userService} from '../api/userService';
 import {Card, GameState, Suit} from '../types/game.types';
 import {Rank} from '../types/user.types';
@@ -285,7 +287,6 @@ const SantaseGame: React.FC = () => {
     const [isConnected, setIsConnected] = useState<boolean>(false);
     const [showProfile, setShowProfile] = useState<boolean>(false);
     const prevGameStateRef = useRef<GameState | null>(null);
-    const profileFetchedRef = useRef<boolean>(false);
 
     // Turn timer state
     const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(20);
@@ -301,43 +302,27 @@ const SantaseGame: React.FC = () => {
     const [showRankUpModal, setShowRankUpModal] = useState<boolean>(false);
     const [rankUpNewRank, setRankUpNewRank] = useState<Rank | null>(null);
 
-    // Helper to fetch profile and update local state (used on initial load - no rank-up check)
-    const fetchProfileInitial = async () => {
-        try {
-            const profile = await userService.getProfile();
-
-            // Just save current rank to localStorage without checking for rank-up
-            try {
-                localStorage.setItem('lastSantaseRank', profile.rank);
-            } catch (e) {
-                console.warn('Could not access localStorage for rank persistence', e);
-            }
-        } catch (err) {
-            console.error('Error fetching profile:', err);
-        }
-    };
-
-    // Helper to refresh profile after game ends, update local state and localStorage, and show rank-up modal if rank improved
+    // Read the profile again once a game is over, and say so if that game
+    // moved the player up a rank. The rank it compares against was recorded
+    // by the lobby, from the profile it fetched to draw the cards.
     const refreshProfileAndCheckRank = async () => {
         try {
             const profile = await userService.getProfile();
-            // Rank is per game now; this screen is Santase.
-            const santase = profile.stats?.SANTASE;
+            const current = rankIn(profile, 'SANTASE');
+            const before = rankBefore('SANTASE');
 
-            try {
-                const current = santase?.rank ?? profile.rank;
-                const saved = (localStorage.getItem('lastSantaseRank') as Rank | null) || 'UNRANKED';
-                const savedVal = RANK_PRIORITY[saved] ?? 0;
-                const newVal = RANK_PRIORITY[current] ?? 0;
-                if (newVal > savedVal && !rankPopupShownRef.current) {
-                    rankPopupShownRef.current = true;
-                    setRankUpNewRank(current);
-                    setShowRankUpModal(true);
-                }
-                localStorage.setItem('lastSantaseRank', current);
-            } catch (e) {
-                console.warn('Could not access localStorage for rank persistence', e);
+            // No baseline means this browser never saw a rank before the game.
+            // Nothing is known, so nothing is claimed: the modal congratulates a
+            // promotion, and an unknown "before" cannot tell one from a first win.
+            const promoted = before !== null
+                && (RANK_PRIORITY[current] ?? 0) > (RANK_PRIORITY[before] ?? 0);
+
+            if (promoted && !rankPopupShownRef.current) {
+                rankPopupShownRef.current = true;
+                setRankUpNewRank(current);
+                setShowRankUpModal(true);
             }
+            rememberRank('SANTASE', current);
         } catch (err) {
             console.error('Error fetching profile:', err);
         }
@@ -356,16 +341,6 @@ const SantaseGame: React.FC = () => {
     const retryAttemptRef = useRef<number>(0);
     const connectionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const username = user?.username || "Играч";
-
-    // Fetch user profile (including rank) on mount
-    useEffect(() => {
-        // Prevent duplicate fetch in StrictMode
-        if (profileFetchedRef.current) return;
-        profileFetchedRef.current = true;
-
-        // Use initial fetch (no rank-up check) - rank-up should only show after games
-        fetchProfileInitial();
-    }, []);
 
     // Track turn start time for persistence across refreshes
     const lastTurnStateRef = useRef<boolean | null>(null);
@@ -1347,7 +1322,16 @@ const SantaseGame: React.FC = () => {
                         });
                     }
                 });
-                gameService.searchGame().catch(() => setIsSearching(false));
+                gameService.searchGame().catch((error: any) => {
+                    setIsSearching(false);
+                    // A 404 here is the server saying сантасе is not on offer —
+                    // switched off, or not for this account. The lobby explains
+                    // it; anything else is an ordinary failure to search.
+                    if (error?.response?.status === 404) {
+                        noteUnavailable('SANTASE');
+                        navigate('/', { replace: true });
+                    }
+                });
             }
         };
 
