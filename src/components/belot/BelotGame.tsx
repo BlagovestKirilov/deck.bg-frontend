@@ -244,24 +244,38 @@ const Opponent: React.FC<{
 );
 
 /** The cards on the table, each shown at the seat that played it. */
-const Trick: React.FC<{ state: BelotState }> = ({ state }) => (
-    <div className="belot__trick">
-        <p className="belot__contract">
-            <ContractMark contract={state.play!.contract} />
-            <span className="belot__count">{state.play!.trickNo}/8 ръце</span>
-        </p>
-        <div className="belot__played">
-            {state.play!.onTable.map((played) => (
-                <span
-                    key={`${played.seat}`}
-                    className={`belot__played-card belot__played-card--${placeOf(played.seat, state.yourSeat)}`}
-                >
-                    <BelotCardFace card={played.card} size="table" />
-                </span>
-            ))}
+const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
+    const play = state.play!;
+    const taker = play.wonBy
+        ? state.seats.find((seat) => seat.seat === play.wonBy)?.username
+        : null;
+
+    return (
+        <div className="belot__trick">
+            <p className="belot__contract">
+                <ContractMark contract={play.contract} />
+                <span className="belot__count">{play.trickNo}/8 ръце</span>
+            </p>
+            <div className="belot__played">
+                {play.onTable.map((played) => (
+                    <span
+                        key={played.seat}
+                        className={[
+                            'belot__played-card',
+                            `belot__played-card--${placeOf(played.seat, state.yourSeat)}`,
+                            play.wonBy === played.seat ? 'is-taken' : '',
+                        ].filter(Boolean).join(' ')}
+                    >
+                        <BelotCardFace card={played.card} size="table" />
+                    </span>
+                ))}
+            </div>
+            {/* Said as well as marked: the ring on the winning card is the
+                quick read, the name is the one that settles it. */}
+            {taker && <p className="belot__took">Ръката е на {taker}</p>}
         </div>
-    </div>
-);
+    );
+};
 
 /** What has been said, and what this player may say. */
 const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {

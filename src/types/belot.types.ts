@@ -63,7 +63,10 @@ export interface BelotPlayView {
     declarer: BelotSeatName;
     toAct: BelotSeatName;
     trickNo: number;
+    /** The trick in progress, or the one just finished until somebody leads. */
     onTable: BelotPlayedCard[];
+    /** Who took the trick on the table, once it is complete. */
+    wonBy: BelotSeatName | null;
     /** What this player may play now. Empty when it is not their turn. */
     yours: BelotCard[];
 }

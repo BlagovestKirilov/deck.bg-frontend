@@ -92,8 +92,13 @@
     flex: 1 1 auto;
     display: grid;
     grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
-    grid-template-rows: auto minmax(0, 1fr);
+    /* Both rows take what they need and the pair is centred as a block: with
+       a stretched second row the partner was stranded at the top of a tall
+       phone, a hand’s throw from the trick they were playing into. */
+    grid-template-rows: auto auto;
+    align-content: center;
     align-items: center;
+    row-gap: var(--sp-4);
     gap: var(--sp-2);
     min-height: 0;
     /* A table is a table, not a room: on a wide screen the seats stay a
@@ -220,9 +225,12 @@
 
 /* Each played card sits towards the seat that played it, so the trick reads
    as four people putting cards down rather than a row of four cards. */
+/* Narrower than it looks like it should be: the two side seats take the
+   rest of the row, and at 60vw the left and right cards of the trick were
+   landing on top of them. */
 .belot__played {
     position: relative;
-    width: min(60vw, 240px);
+    width: min(46vw, 210px);
     aspect-ratio: 1;
 }
 .belot__played-card { position: absolute; }
@@ -230,6 +238,19 @@
 .belot__played-card--partner { top: 0;    left: 50%; transform: translateX(-50%); }
 .belot__played-card--left    { left: 0;   top: 50%;  transform: translateY(-50%); }
 .belot__played-card--right   { right: 0;  top: 50%;  transform: translateY(-50%); }
+
+/* The card that took the trick, ringed in the table’s gold while the four
+   of them are still out. */
+.belot__played-card.is-taken .pcard {
+    box-shadow: 0 0 0 2px var(--gold), var(--sh-2);
+}
+
+.belot__took {
+    margin: 0;
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--gold);
+}
 
 .belot__calls {
     display: flex;
