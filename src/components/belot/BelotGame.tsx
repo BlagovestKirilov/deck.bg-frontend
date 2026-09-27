@@ -17,6 +17,7 @@ import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
+import BelotResult from './BelotResult';
 import BelotScoreSheet from './BelotScoreSheet';
 import { ContractMark } from './ContractMark';
 import '../../styles/belot.css';
@@ -206,6 +207,15 @@ const BelotGame: React.FC = () => {
             </section>
 
             {sheetOpen && <BelotScoreSheet state={state} onClose={() => setSheetOpen(false)} />}
+
+            {state.status === 'FINISHED' && state.winnerTeam && !sheetOpen && (
+                <BelotResult
+                    state={state}
+                    ourTeam={ourTeam}
+                    onLeave={() => navigate('/')}
+                    onAgain={() => { void belotService.search(); }}
+                />
+            )}
         </main>
     );
 };

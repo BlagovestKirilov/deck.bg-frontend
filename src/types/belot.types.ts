@@ -102,6 +102,8 @@ export interface BelotTurnView {
 export interface BelotState {
     gameId: string;
     status: BelotGameStatus;
+    /** Who took the game, once a pair passes 151. */
+    winnerTeam: BelotTeam | null;
     serverSeedHash: string;
     seats: BelotSeatView[];
     yourSeat: BelotSeatName | null;
