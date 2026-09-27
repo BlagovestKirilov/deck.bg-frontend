@@ -4,8 +4,10 @@ import { useAuthContext } from '../context/AuthContext';
 import { userService } from '../api/userService';
 import { takeUnavailableNote } from '../api/unavailable';
 import { rankIn, remember as rememberRank } from '../api/rankBaseline';
+import { belotService } from '../api/belotService';
 import { useAvailableServices } from '../hooks/useAvailableServices';
 import { GameKey, GameStats } from '../types/user.types';
+import { BelotProfile } from '../types/belot.types';
 import { RankMedal, rankName } from './RankBadge';
 import Brand from './ui/Brand';
 import Button from './ui/Button';
@@ -75,6 +77,11 @@ const GameHub: React.FC = () => {
     // game rather than one account-wide number.
     const [stats, setStats] = useState<Partial<Record<GameKey, GameStats>> | null>(null);
 
+    // Belot keeps its own record in its own schema, so it is asked
+    // separately — and only when belot is being offered at all, which for
+    // now is a handful of testers.
+    const [belot, setBelot] = useState<BelotProfile | null>(null);
+
     useEffect(() => {
         const controller = new AbortController();
         userService
@@ -95,6 +102,23 @@ const GameHub: React.FC = () => {
             });
         return () => controller.abort();
     }, []);
+
+    const offersBelot = offered.some((game) => game.key === 'BELOT');
+
+    useEffect(() => {
+        if (!offersBelot) return undefined;
+
+        const controller = new AbortController();
+        belotService.profile(controller.signal)
+            .then((profile) => {
+                if (!controller.signal.aborted) setBelot(profile);
+            })
+            .catch(() => {
+                // An older server, or none reachable: the card simply shows no
+                // record, which is what a player with no games would see anyway.
+            });
+        return () => controller.abort();
+    }, [offersBelot]);
 
     // screen--flow, not the pinned .screen: the hub scrolls the document, which
     // is what lets a phone pull down to refresh.
@@ -153,7 +177,9 @@ const GameHub: React.FC = () => {
                                 <span className="game-pick__text">
                                     <span className="game-pick__name">{title}</span>
                                     <span className="game-pick__rule">{tagline}</span>
-                                    {stats?.[key] && <GameRecord stats={stats[key]!} />}
+                                    {key === 'BELOT'
+                                        ? belot && belot.games > 0 && <BelotRecord profile={belot} />
+                                        : stats?.[key] && <GameRecord stats={stats[key]!} />}
                                 </span>
                             </button>
                         </li>
@@ -201,5 +227,15 @@ const GameRecord: React.FC<{ stats: GameStats }> = ({ stats }) => {
         </span>
     );
 };
+
+/**
+ * Belot’s line on its card. No medal: there is no belot rank to wear one
+ * for, and borrowing сантасе’s would say something untrue.
+ */
+const BelotRecord: React.FC<{ profile: BelotProfile }> = ({ profile }) => (
+    <span className="hub-record">
+        {profile.wins} {profile.wins === 1 ? 'победа' : 'победи'} от {profile.games}
+    </span>
+);
 
 export default GameHub;

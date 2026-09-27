@@ -148,3 +148,15 @@ export interface BelotState {
     eastWestScore: number;
     hangingPoints: number;
 }
+
+/**
+ * A player's belot record.
+ *
+ * No rank: belot has no rating yet, because how a 2v2 result should move two
+ * partners is still an open question on the server side.
+ */
+export interface BelotProfile {
+    games: number;
+    wins: number;
+    losses: number;
+}
