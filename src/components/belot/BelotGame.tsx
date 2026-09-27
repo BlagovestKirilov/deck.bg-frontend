@@ -4,6 +4,7 @@ import { useAuthContext } from '../../context/AuthContext';
 import { belotService } from '../../api/belotService';
 import { noteUnavailable } from '../../api/unavailable';
 import { useBelotTable } from '../../hooks/useBelotTable';
+import { useCountdown } from '../../hooks/useCountdown';
 import {
     BelotBidView,
     BelotContract,
@@ -64,6 +65,10 @@ const BelotGame: React.FC = () => {
 
     const { state, isConnected, unavailable } = useBelotTable(username);
 
+    // One clock for the screen: the seat that is being waited for shows it,
+    // and it is the server’s deadline rather than a timer of our own.
+    const secondsLeft = useCountdown(state?.turn?.deadline);
+
     const seats = useMemo(() => {
         const byPlace = new Map<Place, BelotSeatView>();
         state?.seats.forEach((seat) => byPlace.set(placeOf(seat.seat, state.yourSeat), seat));
@@ -120,7 +125,14 @@ const BelotGame: React.FC = () => {
 
             <div className="belot__table">
                 {(['partner', 'left', 'right'] as Place[]).map((place) => (
-                    <Opponent key={place} place={place} seat={seats.get(place)} toAct={toAct} state={state} />
+                    <Opponent
+                        key={place}
+                        place={place}
+                        seat={seats.get(place)}
+                        toAct={toAct}
+                        secondsLeft={secondsLeft}
+                        state={state}
+                    />
                 ))}
 
                 <div className="belot__middle">
@@ -135,7 +147,11 @@ const BelotGame: React.FC = () => {
                     <p className="belot__you">
                         {you.username}
                         {state.dealerSeat === you.seat && <span className="belot__tag">раздава</span>}
-                        {toAct === you.seat && <span className="belot__tag belot__tag--turn">ваш ред</span>}
+                        {toAct === you.seat && (
+                            <span className="belot__tag belot__tag--turn">
+                                ваш ред{secondsLeft !== null && ` · ${secondsLeft}с`}
+                            </span>
+                        )}
                     </p>
                 )}
                 <div className="belot__cards">
@@ -161,8 +177,9 @@ const Opponent: React.FC<{
     place: Place;
     seat?: BelotSeatView;
     toAct: BelotSeatName | null;
+    secondsLeft: number | null;
     state: BelotState;
-}> = ({ place, seat, toAct, state }) => (
+}> = ({ place, seat, toAct, secondsLeft, state }) => (
     <div className={`belot__seat belot__seat--${place} ${seat && toAct === seat.seat ? 'is-turn' : ''}`}>
         <span className="belot__name">{seat?.username ?? '—'}</span>
         <span className="belot__backs" aria-label={`${seat?.cardsLeft ?? 0} карти`}>
@@ -170,6 +187,11 @@ const Opponent: React.FC<{
                 <span key={i} className="belot__back" aria-hidden="true" />
             ))}
         </span>
+        {seat && toAct === seat.seat && secondsLeft !== null && (
+            <span className="belot__clock" aria-label={`остават ${secondsLeft} секунди`}>
+                {secondsLeft}с
+            </span>
+        )}
         {seat && state.dealerSeat === seat.seat && <span className="belot__tag">раздава</span>}
     </div>
 );

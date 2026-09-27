@@ -68,6 +68,18 @@ export interface BelotPlayView {
     yours: BelotCard[];
 }
 
+/**
+ * Who the table is waiting for, and until when.
+ *
+ * `deadline` is an ISO moment rather than a number of seconds: a tab that was
+ * asleep in the background wakes up counting towards the same instant the
+ * server is, instead of resuming a countdown that stopped when it slept.
+ */
+export interface BelotTurnView {
+    seat: BelotSeatName;
+    deadline: string | null;
+}
+
 /** One seat's view of the table — the only private part is `yourHand`. */
 export interface BelotState {
     gameId: string;
@@ -81,6 +93,7 @@ export interface BelotState {
     yourHand: BelotCard[];
     bidding: BelotBiddingView | null;
     play: BelotPlayView | null;
+    turn: BelotTurnView | null;
     northSouthScore: number;
     eastWestScore: number;
     hangingPoints: number;

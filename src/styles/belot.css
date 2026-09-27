@@ -104,6 +104,14 @@
 }
 .belot__tag--turn { background: var(--accent-wash); color: var(--accent-bright); }
 
+/* The seconds a seat has left. Shown only on whoever is being waited for,
+   because a clock on four seats at once is four things to ignore. */
+.belot__clock {
+    font-variant-numeric: tabular-nums;
+    font-weight: 700;
+    color: var(--gold);
+}
+
 /* ---- the middle: the trick, or the bidding ---- */
 
 .belot__trick,
