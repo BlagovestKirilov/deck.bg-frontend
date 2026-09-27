@@ -36,10 +36,16 @@ export function useBelotTable(username: string): Table {
     const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const closedByUs = useRef(false);
 
-    const connect = useCallback(() => {
+    const connect = useCallback(async () => {
         if (!username || closedByUs.current) return;
 
-        const token = socketToken();
+        // socketToken() is async — it renews the access token when it is close
+        // to expiring. Calling it without awaiting sent the literal string
+        // "[object Promise]" as the bearer, the CONNECT frame was refused, and
+        // the socket reconnected every two seconds forever.
+        const token = await socketToken();
+        if (closedByUs.current) return;
+
         const client = Stomp.over(() => new SockJS(`${API_BASE_URL}/ws-game`));
         client.debug = () => undefined;
         clientRef.current = client;
@@ -64,7 +70,7 @@ export function useBelotTable(username: string): Table {
             setIsConnected(false);
             if (closedByUs.current) return;
             if (reconnectRef.current) clearTimeout(reconnectRef.current);
-            reconnectRef.current = setTimeout(connect, RECONNECT_DELAY_MS);
+            reconnectRef.current = setTimeout(() => { void connect(); }, RECONNECT_DELAY_MS);
         };
 
         client.connect({ Authorization: `Bearer ${token}` }, onConnected, onError);
@@ -72,7 +78,7 @@ export function useBelotTable(username: string): Table {
 
     useEffect(() => {
         closedByUs.current = false;
-        connect();
+        void connect();
 
         return () => {
             closedByUs.current = true;
