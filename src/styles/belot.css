@@ -518,3 +518,88 @@
     font-size: var(--fs-sm);
     color: var(--text-2);
 }
+
+/* =====================================================================
+   The table before it is full
+
+   Four places rather than a count: a player who can see three empty
+   chairs and the names in the taken ones knows what is being waited for,
+   and can see their own name is already down.
+   ===================================================================== */
+
+.belot--waiting { justify-content: flex-start; }
+
+.waiting {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-3);
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    text-align: center;
+}
+
+.waiting__title {
+    margin: 0;
+    font-family: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
+    font-size: var(--fs-2xl);
+    font-weight: 800;
+    color: var(--text-1);
+}
+.waiting__count {
+    margin: 0;
+    font-family: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    color: var(--gold);
+    font-variant-numeric: tabular-nums;
+}
+
+.waiting__seats {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-2);
+    width: 100%;
+    margin: var(--sp-2) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.waiting__seat {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: var(--tap);
+    padding: var(--sp-2) var(--sp-4);
+    border: 1px dashed var(--line);
+    border-radius: var(--r-md);
+    color: var(--text-3);
+    font-size: var(--fs-sm);
+}
+/* A taken place is solid and carries a card; an empty one is an outline.
+   The difference is the whole content of this screen. */
+.waiting__seat.is-taken {
+    border-style: solid;
+    border-color: var(--line-gold);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-1);
+    font-weight: 700;
+}
+.waiting__seat .card-back {
+    width: 22px;
+    height: 32px;
+    border-radius: 3px;
+}
+.waiting__you { font-weight: 400; color: var(--text-3); }
+.waiting__free { font-style: italic; }
+
+.waiting__note {
+    margin: var(--sp-2) 0 0;
+    max-width: 34ch;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-body);
+    color: var(--text-3);
+}

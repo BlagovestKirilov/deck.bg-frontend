@@ -113,17 +113,7 @@ const BelotGame: React.FC = () => {
     }
 
     if (state.status === 'WAITING') {
-        const waiting = state.seats.length;
-        return (
-            <StatusScreen
-                tone="info"
-                icon="cards"
-                title="Чакаме още играчи"
-                message={`${waiting} от 4 на масата.`}
-                secondaryLabel="Игри"
-                onSecondary={() => navigate('/')}
-            />
-        );
+        return <Waiting state={state} onLeave={() => navigate('/')} />;
     }
 
     const you = seats.get('you');
@@ -331,5 +321,58 @@ const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
 function scoreOf(state: BelotState, team: BelotTeam): number {
     return team === 'NORTH_SOUTH' ? state.northSouthScore : state.eastWestScore;
 }
+
+/**
+ * The table before it is full.
+ *
+ * Shows the four places rather than a count: a player who can see three
+ * empty chairs and the names in the taken ones knows exactly what is being
+ * waited for, and knows their own name is already down.
+ */
+const Waiting: React.FC<{ state: BelotState; onLeave: () => void }> = ({ state, onLeave }) => {
+    const taken = state.seats.length;
+    const seats = ORDER.map((seat) => state.seats.find((sitting) => sitting.seat === seat) ?? null);
+
+    return (
+        <main className="screen belot belot--waiting">
+            <header className="belot__bar">
+                <Button variant="ghost" size="sm" icon="arrowLeft" onClick={onLeave}>Игри</Button>
+            </header>
+
+            <div className="waiting">
+                <h1 className="waiting__title">Масата се пълни</h1>
+                <p className="waiting__count">{taken} от 4</p>
+
+                <ul className="waiting__seats">
+                    {seats.map((seat, place) => (
+                        <li
+                            key={seat?.seat ?? `empty-${place}`}
+                            className={seat ? 'waiting__seat is-taken' : 'waiting__seat'}
+                        >
+                            {seat ? (
+                                <>
+                                    <span className="card-back" aria-hidden="true" />
+                                    <span className="waiting__who">
+                                        {seat.username}
+                                        {seat.seat === state.yourSeat && (
+                                            <span className="waiting__you"> — вие</span>
+                                        )}
+                                    </span>
+                                </>
+                            ) : (
+                                <span className="waiting__free">свободно място</span>
+                            )}
+                        </li>
+                    ))}
+                </ul>
+
+                <p className="waiting__note">
+                    Белот се играе от четирима. Щом седне и четвъртият, раздаваме — 
+                    можете да оставите играта отворена.
+                </p>
+            </div>
+        </main>
+    );
+};
 
 export default BelotGame;
