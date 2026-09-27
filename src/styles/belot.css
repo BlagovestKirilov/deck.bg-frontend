@@ -2,20 +2,30 @@
    Belot — four seats, one of them yours
 
    The table is turned so the player is always at the bottom and their
-   partner opposite. Everything here is laid out around that: a three-by-three
-   grid with the trick in the middle, which is the shape of the table seen
-   from the one chair that matters.
+   partner opposite. Everything is laid out around that: a three-by-three
+   grid with the trick in the middle, which is the table seen from the one
+   chair that matters.
 
-   Tokens only, as everywhere else: colour, spacing, radius and motion come
-   from theme.css.
+   What is paper is drawn as paper. A belot table has two objects on it —
+   cards and a ruled score sheet — and both are printed on the same cream
+   stock in the same two inks. Anything that is neither is furniture, and
+   furniture stays quiet: felt, a gold hairline, nothing else.
+
+   Tokens only: colour, spacing, radius and motion come from theme.css.
    ===================================================================== */
 
 .belot {
+    /* The lobby's faces. Without this the table inherits the body font and
+       reads like a different product from the room it is sitting in. */
+    --belot-display: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
+    --belot-body: 'Sofia Sans', var(--font-body);
+
     display: flex;
     flex-direction: column;
     gap: var(--sp-2);
     padding: calc(var(--sa-top) + var(--sp-2)) var(--sp-3) calc(var(--sa-bottom) + var(--sp-3));
     background: var(--felt);
+    font-family: var(--belot-body);
 }
 
 .belot__bar {
@@ -26,31 +36,71 @@
     flex: 0 0 auto;
 }
 
-.belot__score {
-    display: flex;
-    align-items: baseline;
-    gap: var(--sp-2);
-    margin: 0;
-    font-size: var(--fs-sm);
-    font-weight: 700;
-    color: var(--text-2);
-}
-.belot__hanging { color: var(--gold); }
+/* ---- the score, as the sheet it is kept on ----
+   Belot is scored in two ruled columns, ours and theirs, and a player reads
+   the rule between them as much as the numbers. So the running score is that
+   rule, rather than a row of values joined by dots. */
 
-/* The table: partner at the top, opponents at the sides, the trick between. */
+.belot__score {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: baseline;
+    gap: 0 var(--sp-4);
+    padding: var(--sp-1) var(--sp-3);
+    border: 0;
+    border-radius: var(--r-md);
+    background: transparent;
+    color: var(--text-1);
+    font: inherit;
+    text-align: center;
+    cursor: pointer;
+}
+.belot__score:hover { background: rgba(255, 255, 255, 0.05); }
+
+/* The rule down the middle of the sheet. */
+.belot__score > :nth-child(2) {
+    border-left: 1px solid var(--line-gold);
+    padding-left: var(--sp-4);
+}
+
+.belot__side {
+    display: block;
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--text-3);
+}
+.belot__points {
+    display: block;
+    font-family: var(--belot-display);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Hanging points belong to neither column yet, so they sit under the rule. */
+.belot__hanging {
+    grid-column: 1 / -1;
+    padding-top: 2px;
+    font-size: var(--fs-xs);
+    color: var(--gold);
+}
+
+/* ---- the table ---- */
+
 .belot__table {
     flex: 1 1 auto;
-    /* A table is a table, not a room: on a wide screen the seats stay a
-       card's throw apart rather than retreating to the window edges. */
-    width: 100%;
-    max-width: 720px;
-    margin: 0 auto;
     display: grid;
     grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
     grid-template-rows: auto minmax(0, 1fr);
     align-items: center;
     gap: var(--sp-2);
     min-height: 0;
+    /* A table is a table, not a room: on a wide screen the seats stay a
+       card's throw apart rather than retreating to the window edges. */
+    width: 100%;
+    max-width: 720px;
+    margin: 0 auto;
 }
 
 .belot__seat--partner { grid-column: 2; grid-row: 1; justify-self: center; }
@@ -66,14 +116,21 @@
     padding: var(--sp-2);
     border-radius: var(--r-md);
     font-size: var(--fs-xs);
-    color: var(--text-2);
 }
-/* Whose turn it is, said with a ring rather than only a colour. */
+
+/* Your partner is named in the ink you are, the opponents in the muted one.
+   Which two of the four are with you is the first thing a belot player needs
+   and the last thing worth a label. */
+.belot__seat--partner .belot__name { color: var(--text-1); }
+.belot__seat--left .belot__name,
+.belot__seat--right .belot__name { color: var(--text-3); }
+
+/* Whose turn it is, said with a ring as well as a colour. */
 .belot__seat.is-turn {
     background: var(--gold-wash);
     box-shadow: inset 0 0 0 1px var(--line-gold);
-    color: var(--text-1);
 }
+.belot__seat.is-turn .belot__name { color: var(--text-1); }
 
 .belot__name {
     max-width: 10ch;
@@ -83,32 +140,36 @@
     font-weight: 700;
 }
 
-/* A fan of backs: how many cards they hold, which is public at a real table. */
-.belot__backs { display: flex; }
-.belot__back {
-    width: 10px;
-    height: 16px;
-    margin-left: -5px;
-    border-radius: 2px;
-    background: var(--surface-3);
-    box-shadow: inset 0 0 0 1px var(--line-strong);
+/* A fan of real backs — the same printed card the rest of the table uses. */
+/* Overlapped by a third rather than a half: at a half, five cards read as
+   one card with a thick edge. */
+.belot__backs { display: flex; height: 30px; }
+.belot__backs .card-back {
+    width: 18px;
+    height: 30px;
+    margin-left: -12px;
+    border-radius: 3px;
+    box-shadow: -1px 0 0 rgba(0, 0, 0, 0.35);
 }
-.belot__back:first-child { margin-left: 0; }
+.belot__backs .card-back:first-child { margin-left: 0; }
 
 .belot__tag {
     padding: 1px var(--sp-2);
     border-radius: var(--r-pill);
-    background: var(--surface-2);
+    background: rgba(255, 255, 255, 0.06);
     font-size: var(--fs-xs);
     color: var(--text-3);
 }
 .belot__tag--turn { background: var(--accent-wash); color: var(--accent-bright); }
 
-/* The seconds a seat has left. Shown only on whoever is being waited for,
-   because a clock on four seats at once is four things to ignore. */
+/* The seconds a seat has left. Only on whoever is being waited for: a clock
+   on four seats at once is four things to ignore. */
 .belot__clock {
+    font-family: var(--belot-display);
+    font-size: var(--fs-lg);
+    font-weight: 800;
     font-variant-numeric: tabular-nums;
-    font-weight: 700;
+    line-height: 1;
     color: var(--gold);
 }
 
@@ -123,11 +184,38 @@
     text-align: center;
 }
 
+/* The contract is printed, not stated: a chip of card stock with the suit in
+   the ink that suit is printed in. */
 .belot__contract {
+    display: inline-flex;
+    align-items: baseline;
+    gap: var(--sp-2);
     margin: 0;
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    color: var(--ink-2);
     font-size: var(--fs-sm);
     font-weight: 700;
-    color: var(--text-2);
+    box-shadow: var(--sh-1);
+}
+.belot__suit { font-size: var(--fs-lg); line-height: 1; }
+.belot__suit--red { color: var(--suit-red); }
+.belot__suit--black { color: var(--ink); }
+.belot__doubled { color: var(--suit-red); }
+
+/* Nobody has bid yet: felt, not paper — there is no contract to print. */
+.belot__contract--none {
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-3);
+    font-weight: 600;
+}
+
+.belot__count {
+    font-size: var(--fs-xs);
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
 }
 
 /* Each played card sits towards the seat that played it, so the trick reads
@@ -150,21 +238,44 @@
     gap: var(--sp-2);
 }
 
-/* A call is a real button at a thumb-sized target, like every other control. */
+/* A call is a real button at a thumb-sized target. Naming a suit is printed
+   on card stock in that suit's ink, because that is what naming a suit means
+   here; the two calls that name no suit are spoken rather than printed, so
+   they stay on the felt. */
 .belot__call {
     min-height: var(--tap);
     padding: 0 var(--sp-4);
-    border: 1px solid var(--line-gold);
-    border-radius: var(--r-pill);
-    background: var(--surface-2);
-    color: var(--text-1);
+    border: 1px solid transparent;
+    border-radius: var(--r-sm);
+    background: var(--card);
+    color: var(--ink);
     font: inherit;
     font-weight: 700;
     cursor: pointer;
-    transition: background-color var(--dur-fast) var(--ease-out);
+    box-shadow: var(--sh-1);
+    transition: transform var(--dur-fast) var(--ease-out);
 }
-.belot__call:hover { background: var(--surface-3); }
-.belot__call--pass { border-color: var(--line); color: var(--text-2); }
+.belot__call:hover { transform: translateY(-1px); }
+.belot__call:active { transform: none; }
+
+.belot__call--spoken {
+    background: transparent;
+    border-color: var(--line-gold);
+    color: var(--text-1);
+    box-shadow: none;
+}
+.belot__call--pass {
+    background: transparent;
+    border-color: var(--line);
+    color: var(--text-3);
+    box-shadow: none;
+}
+/* Doubling is the loud call, and the only loud thing on this screen. */
+.belot__call--double {
+    background: var(--accent);
+    color: var(--text-on-accent);
+    box-shadow: var(--glow-accent);
+}
 
 .belot__waiting {
     display: flex;
@@ -202,4 +313,118 @@
 @media (min-width: 560px) {
     .belot__cards { gap: var(--sp-1); padding-left: 0; }
     .belot__cards > * { margin-left: 0; }
+}
+
+/* =====================================================================
+   The score sheet
+
+   A sheet of paper, ruled down the middle: our column and theirs. One line
+   per hand, with the contract printed in the column of the side that called
+   it — so who called what needs no arrow and no label, only its place on
+   the page.
+   ===================================================================== */
+
+.sheet {
+    padding: var(--sp-4);
+    border-radius: var(--r-md);
+    background: var(--card);
+    color: var(--ink);
+    font-family: 'Sofia Sans', var(--font-body);
+}
+
+.sheet__grid {
+    display: grid;
+    grid-template-columns: 2.5ch 1fr 1fr;
+    align-items: baseline;
+    gap: var(--sp-2) var(--sp-3);
+}
+
+.sheet__head {
+    padding-bottom: var(--sp-2);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--ink-3);
+    text-align: right;
+}
+/* The rule sits under the two columns that have a name. Carrying it over
+   the empty corner as well left a stray inch of line above nothing. */
+.sheet__head--named { border-bottom: 1px solid var(--ink-line); }
+
+/* The rule down the page runs on the second column, between the two. */
+.sheet__cell--theirs,
+.sheet__head--theirs {
+    border-left: 1px solid var(--ink-line);
+    padding-left: var(--sp-3);
+}
+
+.sheet__number {
+    font-family: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
+    font-size: var(--fs-sm);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+.sheet__cell {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+    text-align: right;
+}
+
+.sheet__points {
+    font-family: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
+    font-size: var(--fs-lg);
+    font-weight: 800;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+/* A side that took nothing gets a stroke, not a nought: a nought is a number
+   somebody wrote down, and nothing was written here. */
+.sheet__none { color: var(--ink-3); }
+
+/* What the cards were worth, under what was written down. The gap between
+   those two is what an argument at the table is usually about. */
+.sheet__raw {
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
+/* What was called, and what became of it. Each word is kept whole: "без
+   коз" broken across two lines stops being a phrase. */
+.sheet__called {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: baseline;
+    gap: 2px 6px;
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--ink-2);
+}
+.sheet__called > * { white-space: nowrap; }
+.sheet__called .belot__suit { font-size: var(--fs-sm); }
+
+/* Red is kept for the one word that means the contract failed. A contra is
+   loud but it is not a failure, so it stays in the ordinary ink. */
+.sheet__inside { color: var(--suit-red); }
+
+.sheet__totals {
+    margin-top: var(--sp-3);
+    padding-top: var(--sp-3);
+    /* The double rule under the last hand, as it is drawn on paper. */
+    border-top: 3px double var(--ink-line);
+}
+
+.sheet__hanging {
+    margin: var(--sp-3) 0 0;
+    font-size: var(--fs-sm);
+    color: var(--ink-2);
+}
+
+.sheet__empty {
+    margin: 0;
+    font-size: var(--fs-sm);
+    color: var(--ink-3);
 }

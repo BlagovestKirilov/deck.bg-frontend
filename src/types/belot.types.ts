@@ -68,6 +68,24 @@ export interface BelotPlayView {
     yours: BelotCard[];
 }
 
+export type BelotDealResult = 'MADE' | 'INSIDE' | 'HANGING';
+
+/** One line of the score sheet: a hand that has been played and counted. */
+export interface BelotDealRow {
+    dealNumber: number;
+    contract: BelotContract;
+    declarer: BelotSeatName;
+    /** The side that called it — which column the contract is printed in. */
+    callerTeam: BelotTeam;
+    doubling: BelotDoubling;
+    /** Card points taken. Different from what was written down, deliberately. */
+    callerPoints: number | null;
+    opponentPoints: number | null;
+    callerScore: number | null;
+    opponentScore: number | null;
+    result: BelotDealResult;
+}
+
 /**
  * Who the table is waiting for, and until when.
  *
@@ -94,6 +112,8 @@ export interface BelotState {
     bidding: BelotBiddingView | null;
     play: BelotPlayView | null;
     turn: BelotTurnView | null;
+    /** Every hand counted so far, oldest first. */
+    sheet: BelotDealRow[];
     northSouthScore: number;
     eastWestScore: number;
     hangingPoints: number;

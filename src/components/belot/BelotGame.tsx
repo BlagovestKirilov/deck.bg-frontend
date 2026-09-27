@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthContext } from '../../context/AuthContext';
 import { belotService } from '../../api/belotService';
@@ -10,25 +10,32 @@ import {
     BelotContract,
     BelotSeatName,
     BelotSeatView,
+    BelotTeam,
     BelotState,
 } from '../../types/belot.types';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
+import BelotScoreSheet from './BelotScoreSheet';
+import { ContractMark } from './ContractMark';
 import '../../styles/belot.css';
 
 /** Play runs counter-clockwise, so the seat after yours sits to your right. */
 const ORDER: BelotSeatName[] = ['NORTH', 'WEST', 'SOUTH', 'EAST'];
 
-const CONTRACT_LABEL: Record<BelotContract, string> = {
-    CLUBS: '♣ спатия',
-    DIAMONDS: '♦ каро',
-    HEARTS: '♥ купа',
-    SPADES: '♠ пика',
+/** What a call is called, when it has to be a word rather than a glyph. */
+const CALL_WORD: Record<BelotContract, string> = {
+    CLUBS: 'спатия',
+    DIAMONDS: 'каро',
+    HEARTS: 'купа',
+    SPADES: 'пика',
     NO_TRUMPS: 'без коз',
     ALL_TRUMPS: 'всичко коз',
 };
+
+/** The two calls that name no suit are spoken, not printed. */
+const NAMES_A_SUIT: BelotContract[] = ['CLUBS', 'DIAMONDS', 'HEARTS', 'SPADES'];
 
 /** Where each seat is drawn, once the table is turned so you are at the bottom. */
 type Place = 'you' | 'right' | 'partner' | 'left';
@@ -39,12 +46,21 @@ function placeOf(seat: BelotSeatName, you: BelotSeatName | null): Place {
     return (['you', 'right', 'partner', 'left'] as Place[])[steps];
 }
 
-function labelOf(bid: BelotBidView): string {
+/** How a call is drawn: printed on card stock, or spoken on the felt. */
+function callClass(bid: BelotBidView): string {
+    if (bid.kind === 'PASS') return 'belot__call belot__call--pass';
+    if (bid.kind !== 'BID') return 'belot__call belot__call--double';
+    return bid.contract && NAMES_A_SUIT.includes(bid.contract)
+        ? 'belot__call'
+        : 'belot__call belot__call--spoken';
+}
+
+function callLabel(bid: BelotBidView): string {
     switch (bid.kind) {
         case 'PASS': return 'Пас';
         case 'CONTRA': return 'Контра';
         case 'RECONTRA': return 'Реконтра';
-        case 'BID': return bid.contract ? CONTRACT_LABEL[bid.contract] : 'Обявявам';
+        case 'BID': return bid.contract ? CALL_WORD[bid.contract] : 'Обявявам';
     }
 }
 
@@ -68,6 +84,8 @@ const BelotGame: React.FC = () => {
     // One clock for the screen: the seat that is being waited for shows it,
     // and it is the server’s deadline rather than a timer of our own.
     const secondsLeft = useCountdown(state?.turn?.deadline);
+
+    const [sheetOpen, setSheetOpen] = useState(false);
 
     const seats = useMemo(() => {
         const byPlace = new Map<Place, BelotSeatView>();
@@ -108,6 +126,8 @@ const BelotGame: React.FC = () => {
 
     const you = seats.get('you');
     const toAct = state.play?.toAct ?? state.bidding?.toAct ?? null;
+    const ourTeam = state.seats.find((seat) => seat.seat === state.yourSeat)?.team ?? 'NORTH_SOUTH';
+    const theirTeam = ourTeam === 'NORTH_SOUTH' ? 'EAST_WEST' : 'NORTH_SOUTH';
 
     return (
         <main className="screen belot">
@@ -115,12 +135,24 @@ const BelotGame: React.FC = () => {
                 <Button variant="ghost" size="sm" icon="arrowLeft" onClick={() => navigate('/')}>
                     Игри
                 </Button>
-                <p className="belot__score">
-                    <span>Ние {state.northSouthScore}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>Те {state.eastWestScore}</span>
-                    {state.hangingPoints > 0 && <span className="belot__hanging">висящи {state.hangingPoints}</span>}
-                </p>
+                <button
+                    type="button"
+                    className="belot__score"
+                    onClick={() => setSheetOpen(true)}
+                    aria-label="Виж резултата ръка по ръка"
+                >
+                    <span>
+                        <span className="belot__side">ние</span>
+                        <span className="belot__points">{scoreOf(state, ourTeam)}</span>
+                    </span>
+                    <span>
+                        <span className="belot__side">те</span>
+                        <span className="belot__points">{scoreOf(state, theirTeam)}</span>
+                    </span>
+                    {state.hangingPoints > 0 && (
+                        <span className="belot__hanging">висящи {state.hangingPoints}</span>
+                    )}
+                </button>
             </header>
 
             <div className="belot__table">
@@ -148,9 +180,12 @@ const BelotGame: React.FC = () => {
                         {you.username}
                         {state.dealerSeat === you.seat && <span className="belot__tag">раздава</span>}
                         {toAct === you.seat && (
-                            <span className="belot__tag belot__tag--turn">
-                                ваш ред{secondsLeft !== null && ` · ${secondsLeft}с`}
-                            </span>
+                            <>
+                                <span className="belot__tag belot__tag--turn">ваш ред</span>
+                                {secondsLeft !== null && (
+                                    <span className="belot__clock">{secondsLeft}с</span>
+                                )}
+                            </>
                         )}
                     </p>
                 )}
@@ -169,6 +204,8 @@ const BelotGame: React.FC = () => {
                     })}
                 </div>
             </section>
+
+            {sheetOpen && <BelotScoreSheet state={state} onClose={() => setSheetOpen(false)} />}
         </main>
     );
 };
@@ -184,7 +221,7 @@ const Opponent: React.FC<{
         <span className="belot__name">{seat?.username ?? '—'}</span>
         <span className="belot__backs" aria-label={`${seat?.cardsLeft ?? 0} карти`}>
             {Array.from({ length: seat?.cardsLeft ?? 0 }).map((_, i) => (
-                <span key={i} className="belot__back" aria-hidden="true" />
+                <span key={i} className="card-back" aria-hidden="true" />
             ))}
         </span>
         {seat && toAct === seat.seat && secondsLeft !== null && (
@@ -200,7 +237,8 @@ const Opponent: React.FC<{
 const Trick: React.FC<{ state: BelotState }> = ({ state }) => (
     <div className="belot__trick">
         <p className="belot__contract">
-            {CONTRACT_LABEL[state.play!.contract]} · ръка {state.dealNumber} · ръцете {state.play!.trickNo}/8
+            <ContractMark contract={state.play!.contract} />
+            <span className="belot__count">{state.play!.trickNo}/8 ръце</span>
         </p>
         <div className="belot__played">
             {state.play!.onTable.map((played) => (
@@ -224,11 +262,19 @@ const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
 
     return (
         <div className="belot__bidding">
-            <p className="belot__contract">
-                {bidding.highestBid
-                    ? `${CONTRACT_LABEL[bidding.highestBid]}${bidding.doubling !== 'NONE' ? ` · ${bidding.doubling === 'CONTRA' ? 'контра' : 'реконтра'}` : ''}`
-                    : 'Още никой не е обявил'}
-            </p>
+            {bidding.highestBid ? (
+                <p className="belot__contract">
+                    <ContractMark contract={bidding.highestBid} />
+                    <span>{CALL_WORD[bidding.highestBid]}</span>
+                    {bidding.doubling !== 'NONE' && (
+                        <span className="belot__doubled">
+                            {bidding.doubling === 'CONTRA' ? 'контра' : 'реконтра'}
+                        </span>
+                    )}
+                </p>
+            ) : (
+                <p className="belot__contract belot__contract--none">Още никой не е обявил</p>
+            )}
 
             {yours.length > 0 ? (
                 <div className="belot__calls">
@@ -236,10 +282,13 @@ const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
                         <button
                             key={`${bid.kind}-${bid.contract ?? ''}`}
                             type="button"
-                            className={`belot__call ${bid.kind === 'PASS' ? 'belot__call--pass' : ''}`}
+                            className={callClass(bid)}
                             onClick={() => { void belotService.bid(bid.kind, bid.contract ?? undefined); }}
                         >
-                            {labelOf(bid)}
+                            {bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract) && (
+                                <ContractMark contract={bid.contract} />
+                            )}{' '}
+                            {callLabel(bid)}
                         </button>
                     ))}
                 </div>
@@ -252,5 +301,9 @@ const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
         </div>
     );
 };
+
+function scoreOf(state: BelotState, team: BelotTeam): number {
+    return team === 'NORTH_SOUTH' ? state.northSouthScore : state.eastWestScore;
+}
 
 export default BelotGame;
