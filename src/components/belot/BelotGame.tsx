@@ -15,6 +15,7 @@ import {
 } from '../../types/belot.types';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
+import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
 import BelotDeclarations from './BelotDeclarations';
@@ -88,6 +89,7 @@ const BelotGame: React.FC = () => {
     const secondsLeft = useCountdown(state?.turn?.deadline);
 
     const [sheetOpen, setSheetOpen] = useState(false);
+    const [confirmGiveUp, setConfirmGiveUp] = useState(false);
 
     const seats = useMemo(() => {
         const byPlace = new Map<Place, BelotSeatView>();
@@ -118,6 +120,7 @@ const BelotGame: React.FC = () => {
 
     const you = seats.get('you');
     const toAct = state.play?.toAct ?? state.bidding?.toAct ?? null;
+    const partner = seats.get('partner');
     const ourTeam = state.seats.find((seat) => seat.seat === state.yourSeat)?.team ?? 'NORTH_SOUTH';
     const theirTeam = ourTeam === 'NORTH_SOUTH' ? 'EAST_WEST' : 'NORTH_SOUTH';
 
@@ -145,6 +148,11 @@ const BelotGame: React.FC = () => {
                         <span className="belot__hanging">висящи {state.hangingPoints}</span>
                     )}
                 </button>
+                {state.status !== 'FINISHED' && (
+                    <Button variant="ghost" size="sm" onClick={() => setConfirmGiveUp(true)}>
+                        Предай
+                    </Button>
+                )}
             </header>
 
             <div className="belot__table">
@@ -199,6 +207,37 @@ const BelotGame: React.FC = () => {
             </section>
 
             {sheetOpen && <BelotScoreSheet state={state} onClose={() => setSheetOpen(false)} />}
+
+            {confirmGiveUp && (
+                <Modal
+                    title="Да предадеш ли играта?"
+                    width="narrow"
+                    className="belot sheet"
+                    onClose={() => setConfirmGiveUp(false)}
+                    actions={
+                        <>
+                            <Button variant="ghost" onClick={() => setConfirmGiveUp(false)}>
+                                Продължи играта
+                            </Button>
+                            {/* Danger, because it ends the game for two people. */}
+                            <Button
+                                variant="danger"
+                                onClick={() => {
+                                    setConfirmGiveUp(false);
+                                    void belotService.surrender();
+                                }}
+                            >
+                                Предай
+                            </Button>
+                        </>
+                    }
+                >
+                    <p className="sheet__text">
+                        Белотът се играе по двойки, затова играта се предава за двама:
+                        {partner ? ` ${partner.username} губи заедно с теб.` : ' съотборникът ти губи заедно с теб.'}
+                    </p>
+                </Modal>
+            )}
 
             {state.status === 'FINISHED' && state.winnerTeam && !sheetOpen && (
                 <BelotResult

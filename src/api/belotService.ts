@@ -22,6 +22,14 @@ export const belotService = {
     play: (card: BelotCard) => apiClient.post('/belot/play', { card }),
 
     /**
+     * Give up the game — for the pair, not for one seat. Belot is scored per
+     * pair, so there is no result that ends for two of the four.
+     *
+     * Safe to call twice: a table that is already over is left alone.
+     */
+    surrender: () => apiClient.post('/belot/surrender'),
+
+    /**
      * This player's belot record.
      *
      * Its own endpoint: belot keeps its own tables, so the profile page and
