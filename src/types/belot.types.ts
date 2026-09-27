@@ -6,6 +6,8 @@
  * so a rename on that side fails there rather than here, silently.
  */
 
+import { Rank } from './user.types';
+
 export type BelotSuit = 'CLUBS' | 'DIAMONDS' | 'HEARTS' | 'SPADES';
 
 export type BelotRank = 'SEVEN' | 'EIGHT' | 'NINE' | 'TEN' | 'JACK' | 'QUEEN' | 'KING' | 'ACE';
@@ -34,6 +36,8 @@ export interface BelotSeatView {
     seat: BelotSeatName;
     team: BelotTeam;
     username: string;
+    /** How many cards are still in that hand — a count, never the cards. */
+    cardsLeft: number;
 }
 
 export interface BelotBidView {
@@ -152,11 +156,16 @@ export interface BelotState {
 /**
  * A player's belot record.
  *
- * No rank: belot has no rating yet, because how a 2v2 result should move two
- * partners is still an open question on the server side.
+ * Same shape as a santase or табла record, and on the same rank ladder: a
+ * belot result moves both partners of a pair equally, and the badge it earns
+ * means what it means everywhere else. The rating behind it is not sent —
+ * players are shown where they stand, not the number that decided it.
  */
 export interface BelotProfile {
     games: number;
     wins: number;
     losses: number;
+    rank: Rank;
+    /** Games still needed before a rank is given at all. */
+    placementGamesRemaining: number;
 }

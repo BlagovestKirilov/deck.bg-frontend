@@ -330,12 +330,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                             {gameCards.map((game) => (
                                 <GameStatsCard key={game.key} title={game.title} stats={game.stats} />
                             ))}
-                            {belot && (
-                                <GameStatsCard
-                                    title="Белот"
-                                    stats={{ wins: belot.wins, losses: belot.losses }}
-                                />
-                            )}
+                            {belot && <GameStatsCard title="Белот" stats={belot} />}
                         </div>
 
                         <div className="profile__actions">

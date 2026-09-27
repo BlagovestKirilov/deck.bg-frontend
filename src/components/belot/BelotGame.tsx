@@ -104,7 +104,7 @@ const BelotGame: React.FC = () => {
     if (!state) {
         return (
             <StatusScreen
-                tone="info"
+                tone="neutral"
                 icon="cards"
                 title={isConnected ? 'Търси се маса' : 'Свързване…'}
                 message="Белот се играе от четирима. Щом седнат и четиримата, раздаваме."

@@ -178,7 +178,7 @@ const GameHub: React.FC = () => {
                                     <span className="game-pick__name">{title}</span>
                                     <span className="game-pick__rule">{tagline}</span>
                                     {key === 'BELOT'
-                                        ? belot && belot.games > 0 && <BelotRecord profile={belot} />
+                                        ? belot && <GameRecord stats={belot} />
                                         : stats?.[key] && <GameRecord stats={stats[key]!} />}
                                 </span>
                             </button>
@@ -213,6 +213,9 @@ const GameHub: React.FC = () => {
 /**
  * The rank line on a game card. Purely presentational — the card itself is the
  * button, so this must not contain one.
+ *
+ * Belot goes through here too: its record is kept in another schema and asked
+ * for separately, but it is the same ladder, so it reads the same on the card.
  */
 const GameRecord: React.FC<{ stats: GameStats }> = ({ stats }) => {
     const { rank, placementGamesRemaining } = stats;
@@ -227,15 +230,5 @@ const GameRecord: React.FC<{ stats: GameStats }> = ({ stats }) => {
         </span>
     );
 };
-
-/**
- * Belot’s line on its card. No medal: there is no belot rank to wear one
- * for, and borrowing сантасе’s would say something untrue.
- */
-const BelotRecord: React.FC<{ profile: BelotProfile }> = ({ profile }) => (
-    <span className="hub-record">
-        {profile.wins} {profile.wins === 1 ? 'победа' : 'победи'} от {profile.games}
-    </span>
-);
 
 export default GameHub;
