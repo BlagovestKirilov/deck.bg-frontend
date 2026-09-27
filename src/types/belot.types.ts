@@ -101,6 +101,29 @@ export interface BelotTurnView {
     deadline: string | null;
 }
 
+export type BelotDeclarationKind = 'TERZ' | 'QUARTE' | 'QUINTE' | 'CARRE' | 'BELOTE';
+
+/** Something a player holds that is worth announcing. */
+export interface BelotDeclarationView {
+    seat: BelotSeatName;
+    kind: BelotDeclarationKind;
+    suit: BelotSuit;
+    topRank: BelotRank;
+    points: number;
+}
+
+/**
+ * What the table announced this deal, and what it came to.
+ *
+ * Both sides are listed but usually only one scores: the better sequence
+ * cancels the other's outright, which is the rule players argue about.
+ */
+export interface BelotDeclarationsView {
+    shown: BelotDeclarationView[];
+    northSouthPoints: number;
+    eastWestPoints: number;
+}
+
 /** One seat's view of the table — the only private part is `yourHand`. */
 export interface BelotState {
     gameId: string;
@@ -117,6 +140,8 @@ export interface BelotState {
     bidding: BelotBiddingView | null;
     play: BelotPlayView | null;
     turn: BelotTurnView | null;
+    /** What was announced this deal, once the first trick is complete. */
+    declarations: BelotDeclarationsView | null;
     /** Every hand counted so far, oldest first. */
     sheet: BelotDealRow[];
     northSouthScore: number;

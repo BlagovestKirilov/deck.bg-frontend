@@ -245,6 +245,40 @@
     box-shadow: 0 0 0 2px var(--gold), var(--sh-2);
 }
 
+/* What the table announced. Set small and quiet: it matters for a few
+   seconds on the first trick and then only as a reminder of where the
+   points came from. */
+.belot__announced {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin: var(--sp-2) 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--fs-xs);
+    color: var(--text-2);
+}
+.belot__announced li {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-2);
+}
+.belot__announced .belot__suit { font-size: var(--fs-sm); }
+/* The lobby prints suits on card stock; here they sit on felt, where the
+   card-black ink disappears. */
+.belot__announced .belot__suit--black { color: var(--text-1); }
+.belot__announced-points { font-weight: 700; color: var(--gold); }
+.belot__announced-who { color: var(--text-3); }
+
+/* A sequence beaten by a better one scores nothing, and says so: struck
+   through, because a silent zero reads as the server having lost it. */
+.belot__announced li.is-cancelled { color: var(--text-3); }
+.belot__announced li.is-cancelled .belot__announced-points { color: var(--text-3); }
+/* The words are struck, the suit is not: a line drawn through a heart
+   reads as a defaced card rather than a cancelled announcement. */
+.belot__announced li.is-cancelled > span:not(.belot__suit) { text-decoration: line-through; }
+
 .belot__took {
     margin: 0;
     font-size: var(--fs-sm);

@@ -17,6 +17,7 @@ import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
+import BelotDeclarations from './BelotDeclarations';
 import BelotResult from './BelotResult';
 import BelotScoreSheet from './BelotScoreSheet';
 import { ContractMark } from './ContractMark';
@@ -172,6 +173,7 @@ const BelotGame: React.FC = () => {
                     {state.play
                         ? <Trick state={state} />
                         : <Bidding state={state} />}
+                    <BelotDeclarations state={state} ourTeam={ourTeam} />
                 </div>
             </div>
 
