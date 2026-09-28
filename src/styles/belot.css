@@ -20,6 +20,11 @@
     --belot-display: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
     --belot-body: 'Sofia Sans', var(--font-body);
 
+    /* The middle of the table: where the four cards of a trick meet, and the
+       space the auction panel is laid down on. One token, because the two
+       must be the same square or the seats move between them. */
+    --belot-square: clamp(146px, 42vw, 250px);
+
     display: flex;
     flex-direction: column;
     /* .screen centres its child, which left every row here as wide as its own
@@ -92,6 +97,30 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* What was called and by whom, under the two columns it will be written in.
+   It is on the plate rather than on the table because it holds for the whole
+   hand, and a player checks it more often than anything else here. */
+.belot__declared {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-2);
+    padding-top: 2px;
+    border-top: 1px solid var(--ink-line);
+    font-size: var(--fs-xs);
+    line-height: 1.4;
+}
+.belot__declared .belot__suit { font-size: var(--fs-md); }
+.belot__declared-by {
+    max-width: 12ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--ink-3);
+}
+.belot__doubled { font-weight: 800; color: var(--suit-red); }
+
 /* Hanging points belong to neither column yet, so they sit under the rule,
    in the red the sheet keeps for a hand that did not come off. */
 .belot__hanging {
@@ -122,6 +151,9 @@
     row-gap: var(--sp-4);
     gap: var(--sp-2);
     min-height: 0;
+    /* The bidding panel is laid over the middle of this, so it needs a box
+       to be laid over. */
+    position: relative;
     /* A table is a table, not a room: on a wide screen the seats stay a
        card's throw apart rather than retreating to the window edges. */
     width: 100%;
@@ -133,6 +165,19 @@
 .belot__seat--left    { grid-column: 1; grid-row: 2; justify-self: center; }
 .belot__seat--right   { grid-column: 3; grid-row: 2; justify-self: center; }
 .belot__middle        { grid-column: 2; grid-row: 2; align-self: center; }
+
+/* The middle keeps the trick's own square whether a trick is out or not, so
+   the four seats sit in the same places all hand — during the auction they
+   used to close in on an empty middle and then be pushed back out again when
+   the first card was played. */
+.belot__middle {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--belot-square);
+    min-height: var(--belot-square);
+}
 
 .belot__seat {
     display: flex;
@@ -170,31 +215,36 @@
     font-weight: 700;
 }
 
-/* A fan of real backs — the same printed card the rest of the table uses. */
-/* Overlapped by a third rather than a half: at a half, five cards read as
-   one card with a thick edge. Held at the fan's own height whether there are
-   eight cards left or none, so the seat does not shrink as the deal runs. */
+/* A held hand: real backs, each turned a few degrees off the last, pivoting
+   on the corner a hand is held by. Overlapped by a third rather than a half —
+   at a half, five cards read as one card with a thick edge. The fan keeps its
+   height whether eight cards are left or none, so the seat does not shrink as
+   the deal runs out. */
 .belot__backs {
     display: flex;
     justify-content: center;
-    height: 34px;
+    height: 38px;
+    padding-top: 4px;
 }
 .belot__backs .card-back {
     width: 20px;
-    height: 34px;
+    height: 32px;
     margin-left: -13px;
     border-radius: 3px;
     box-shadow: -1px 0 0 rgba(0, 0, 0, 0.35);
+    transform-origin: 50% 150%;
 }
 .belot__backs .card-back:first-child { margin-left: 0; }
 
-/* What this seat said in the auction, on the same stock the calls are made
-   on. A pass is the one call worth nothing, so it is written on the felt. */
+/* What this seat said, drawn as speech: a bubble with a tail pointing back
+   at the player who said it. A call belongs to somebody, and a row of chips
+   that all look the same does not say whose is whose. */
 .belot__said {
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    padding: 1px var(--sp-2);
+    padding: 2px var(--sp-2);
     border-radius: var(--r-sm);
     background: var(--card);
     color: var(--ink);
@@ -203,11 +253,31 @@
     line-height: 1.4;
     box-shadow: var(--sh-1);
 }
+/* The tail. Drawn as a square turned on its corner and tucked behind the
+   bubble, so it takes the bubble's own colour whatever that is. */
+.belot__said::after {
+    content: '';
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    background: inherit;
+    transform: rotate(45deg);
+}
+/* Each bubble sits under the hand that said it, so the tail points up at it.
+   Yours is the exception: it sits above your cards and points down at them. */
+.belot__seat      .belot__said::after { top: -3px; left: 50%; margin-left: -4px; }
+.belot__hand-head .belot__said::after { bottom: -3px; left: 50%; margin-left: -4px; }
+
+/* A pass is the one call worth nothing, so it is spoken on the felt rather
+   than printed. Its tail would be a hole in an outline, so it has none. */
 .belot__said--pass {
     background: transparent;
     color: var(--text-3);
     box-shadow: inset 0 0 0 1px var(--line);
 }
+.belot__said--pass::after { display: none; }
+
+/* Doubling is the loud call, and the only loud thing on this screen. */
 .belot__said--contra,
 .belot__said--recontra {
     background: var(--accent);
@@ -263,7 +333,6 @@
 .belot__suit { font-size: var(--fs-lg); line-height: 1; }
 .belot__suit--red { color: var(--suit-red); }
 .belot__suit--black { color: var(--ink); }
-.belot__doubled { color: var(--suit-red); }
 
 /* Nobody has bid yet: felt, not paper — there is no contract to print. */
 .belot__contract--none {
@@ -278,6 +347,19 @@
     color: var(--text-3);
     font-variant-numeric: tabular-nums;
 }
+/* How far through the hand the table is, in the one corner of the square no
+   card is ever put on. */
+.belot__count--corner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    margin: 0;
+    padding: 2px var(--sp-2);
+    border-radius: var(--r-pill);
+    background: rgba(4, 13, 8, 0.5);
+    font-weight: 700;
+}
 
 /* Each played card sits towards the seat that played it, so the trick reads
    as four people putting cards down rather than a row of four cards. */
@@ -286,21 +368,8 @@
    landing on top of them. */
 .belot__played {
     position: relative;
-    width: clamp(170px, 48vw, 272px);
+    width: var(--belot-square);
     aspect-ratio: 1;
-}
-
-/* The contract, parked in the one corner of the square no card is ever put
-   on. Above the square it pushed the whole table off centre by its own
-   height; in the corner it costs nothing and is read in the same glance as
-   the cards. */
-.belot__contract--corner {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1;
-    padding: 2px var(--sp-2);
-    gap: var(--sp-1);
 }
 .belot__played-card { position: absolute; }
 .belot__played-card--you     { bottom: 0; left: 50%; transform: translateX(-50%); }
@@ -356,72 +425,94 @@
     color: var(--gold);
 }
 
-/* Set out as the calls are ranked: the four suits on one line, the two that
-   beat all of them under it, and the answers last and apart. */
-.belot__calls {
+/* ---- what you may call ----
+
+   Eight places in two columns, the way the calls are made at a table: the
+   suits down the left in the order they beat one another, and beside them the
+   two that beat all four, then the two answers to those. The panel is the
+   same eight places every round — a call that is not available is dimmed
+   rather than taken out, so nothing moves under a thumb that is already on
+   its way, and a player can see what contra is worth before it is theirs to
+   say. Pass runs the full width underneath, because it is the call made most
+   often and the one nobody should have to aim at. */
+
+/* Laid down under the table rather than on top of it: over the middle it
+   covered all three of the other players, and what they have called is half
+   of what a call is chosen on. Here it is also where the thumb already is. */
+.belot__bidding {
+    width: min(100%, 320px);
+    margin: 0 auto var(--sp-3);
+}
+
+.belot__ladder {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-1);
+    margin-bottom: var(--sp-1);
+}
+
+.belot__call {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--sp-2);
-}
-.belot__calls-row {
-    display: flex;
-    flex-wrap: wrap;
     justify-content: center;
-    gap: var(--sp-2);
-}
-.belot__calls-row--answers {
-    margin-top: var(--sp-1);
-    padding-top: var(--sp-3);
-    border-top: 1px solid var(--line);
-    width: 100%;
-}
-
-/* A call is a real button at a thumb-sized target. Naming a suit is printed
-   on card stock in that suit's ink, because that is what naming a suit means
-   here; the two calls that name no suit are spoken rather than printed, so
-   they stay on the felt. */
-.belot__call {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    gap: 2px;
     min-width: var(--tap);
     min-height: var(--tap);
-    padding: 0 var(--sp-4);
+    padding: var(--sp-1) var(--sp-2);
     border: 1px solid transparent;
     border-radius: var(--r-sm);
     background: var(--card);
     color: var(--ink);
     font: inherit;
     font-weight: 700;
+    line-height: 1;
     cursor: pointer;
     box-shadow: var(--sh-1);
-    transition: transform var(--dur-fast) var(--ease-out);
+    transition: transform var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out);
 }
-/* A suit is called by its own glyph, so the glyph is the button's face and is
-   set at the size a face needs rather than at label size. */
-.belot__call .belot__suit { font-size: var(--fs-2xl); }
-.belot__call:hover { transform: translateY(-1px); }
-.belot__call:active { transform: none; }
+/* A call is made by its glyph, so the glyph is the button's face and the word
+   under it is the caption — which is also the order they are said in. */
+.belot__call .belot__suit { font-size: var(--fs-xl); }
+.belot__call-word { font-size: var(--fs-xs); font-weight: 600; color: var(--ink-2); }
 
-.belot__call--spoken {
-    background: transparent;
-    border-color: var(--line-gold);
-    color: var(--text-1);
+.belot__call:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--sh-2); }
+.belot__call:active:not(:disabled) { transform: none; }
+
+/* Not yours to say yet. Still in its place, still legible, plainly not a
+   button — a call that vanishes teaches nothing about when it comes back. */
+.belot__call:disabled {
+    opacity: 0.32;
     box-shadow: none;
+    cursor: default;
 }
-.belot__call--pass {
-    background: transparent;
-    border-color: var(--line);
-    color: var(--text-3);
-    box-shadow: none;
-}
+
 /* Doubling is the loud call, and the only loud thing on this screen. */
 .belot__call--double {
     background: var(--accent);
     color: var(--text-on-accent);
     box-shadow: var(--glow-accent);
 }
+.belot__call--double .belot__call-word { color: var(--text-on-accent); }
+.belot__multiplier {
+    font-family: var(--belot-display);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* Pass: the width of the panel, and on the felt rather than the card stock,
+   because passing is declining to call rather than making one. */
+.belot__call--pass {
+    width: 100%;
+    background: transparent;
+    border-color: var(--line-gold);
+    color: var(--text-1);
+    font-size: var(--fs-md);
+    box-shadow: none;
+}
+.belot__call--pass:hover:not(:disabled) { background: var(--gold-wash); box-shadow: none; }
 
 /* ---- your own hand ---- */
 
@@ -719,4 +810,11 @@
     font-size: var(--fs-sm);
     line-height: var(--lh-body);
     color: var(--text-3);
+}
+
+/* A short screen — a phone in a case, or a browser with its bars showing.
+   The middle gives up its room first: nothing is played into it during the
+   auction, and during a hand four smaller cards still read. */
+@media (max-height: 740px) {
+    .belot { --belot-square: clamp(120px, 32vw, 180px); }
 }

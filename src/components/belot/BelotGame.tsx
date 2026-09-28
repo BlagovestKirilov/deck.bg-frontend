@@ -6,6 +6,7 @@ import { noteUnavailable } from '../../api/unavailable';
 import { useBelotTable } from '../../hooks/useBelotTable';
 import { useCountdown } from '../../hooks/useCountdown';
 import {
+    BelotBidKind,
     BelotBidView,
     BelotContract,
     BelotSeatName,
@@ -36,11 +37,30 @@ const CALL_WORD: Record<BelotContract, string> = {
     ALL_TRUMPS: 'всичко коз',
 };
 
-/** The two calls that name no suit are spoken, not printed. */
-const NAMES_A_SUIT: BelotContract[] = ['CLUBS', 'DIAMONDS', 'HEARTS', 'SPADES'];
+/**
+ * Every call there is, in the order they beat one another, laid out in the
+ * two columns a Bulgarian table calls them in: the suits down the left, and
+ * the two that beat all four suits — then the two answers to them — down the
+ * right. The same eight places whoever is bidding, so a player learns where
+ * their call is rather than reading a row that is a different length each
+ * time round.
+ */
+const LADDER: { kind: BelotBidKind; contract: BelotContract | null; multiplier?: string }[] = [
+    { kind: 'BID', contract: 'CLUBS' },
+    { kind: 'BID', contract: 'NO_TRUMPS' },
+    { kind: 'BID', contract: 'DIAMONDS' },
+    { kind: 'BID', contract: 'ALL_TRUMPS' },
+    { kind: 'BID', contract: 'HEARTS' },
+    { kind: 'CONTRA', contract: null, multiplier: '×2' },
+    { kind: 'BID', contract: 'SPADES' },
+    { kind: 'RECONTRA', contract: null, multiplier: '×4' },
+];
 
 /** Under this many seconds the clock is the thing to look at, so it turns red. */
 const URGENT_SECONDS = 6;
+
+/** How far each card in a held hand is turned from the one before it. */
+const FAN_DEGREES = 4;
 
 /** Where each seat is drawn, once the table is turned so you are at the bottom. */
 type Place = 'you' | 'right' | 'partner' | 'left';
@@ -49,15 +69,6 @@ function placeOf(seat: BelotSeatName, you: BelotSeatName | null): Place {
     if (!you) return 'partner';
     const steps = (ORDER.indexOf(seat) - ORDER.indexOf(you) + ORDER.length) % ORDER.length;
     return (['you', 'right', 'partner', 'left'] as Place[])[steps];
-}
-
-/** How a call is drawn: printed on card stock, or spoken on the felt. */
-function callClass(bid: BelotBidView): string {
-    if (bid.kind === 'PASS') return 'belot__call belot__call--pass';
-    if (bid.kind !== 'BID') return 'belot__call belot__call--double';
-    return bid.contract && NAMES_A_SUIT.includes(bid.contract)
-        ? 'belot__call'
-        : 'belot__call belot__call--spoken';
 }
 
 function callLabel(bid: BelotBidView): string {
@@ -131,6 +142,14 @@ const BelotGame: React.FC = () => {
 
     const you = seats.get('you');
     const toAct = state.play?.toAct ?? state.bidding?.toAct ?? null;
+
+    // What has been called and by whom, kept on the score plate from the
+    // moment it is said until the hand is over. It is the one fact a player
+    // checks most often and the one they cannot work out from the table.
+    const contract = state.play?.contract ?? state.bidding?.highestBid ?? null;
+    const declarerSeat = state.play?.declarer ?? state.bidding?.bidder ?? null;
+    const declarer = state.seats.find((seat) => seat.seat === declarerSeat)?.username;
+    const doubling = state.bidding?.doubling ?? 'NONE';
     const partner = seats.get('partner');
     const ourTeam = state.seats.find((seat) => seat.seat === state.yourSeat)?.team ?? 'NORTH_SOUTH';
     const theirTeam = ourTeam === 'NORTH_SOUTH' ? 'EAST_WEST' : 'NORTH_SOUTH';
@@ -154,9 +173,20 @@ const BelotGame: React.FC = () => {
                         <span className="belot__points">{scoreOf(state, ourTeam)}</span>
                     </span>
                     <span className="belot__score-col">
-                        <span className="belot__side">те</span>
+                        <span className="belot__side">вие</span>
                         <span className="belot__points">{scoreOf(state, theirTeam)}</span>
                     </span>
+                    {contract && (
+                        <span className="belot__declared">
+                            <ContractMark contract={contract} />
+                            {doubling !== 'NONE' && (
+                                <span className="belot__doubled">
+                                    {doubling === 'CONTRA' ? '×2' : '×4'}
+                                </span>
+                            )}
+                            {declarer && <span className="belot__declared-by">{declarer}</span>}
+                        </span>
+                    )}
                     {state.hangingPoints > 0 && (
                         <span className="belot__hanging">висящи {state.hangingPoints}</span>
                     )}
@@ -181,14 +211,18 @@ const BelotGame: React.FC = () => {
                 ))}
 
                 <div className="belot__middle">
-                    {state.play
-                        ? <Trick state={state} />
-                        : <Bidding state={state} />}
+                    {state.play && <Trick state={state} />}
                     <BelotDeclarations state={state} ourTeam={ourTeam} />
                 </div>
             </div>
 
             <section className="belot__hand" aria-label="Вашите карти">
+                {/* The auction is answered with the hand in view, under the
+                    table rather than on top of it: what the other three have
+                    called is half of what a call is chosen on, and a panel in
+                    the middle of the table covers all three of them. */}
+                <Bidding state={state} />
+
                 {/* One clock for the table, and it sits with the hand it is
                     counting down. Four seats each showing their own was four
                     numbers to ignore and one to find. */}
@@ -286,31 +320,46 @@ const Opponent: React.FC<{
 }> = ({ place, seat, toAct, lastCall, state }) => (
     <div className={`belot__seat belot__seat--${place} ${seat && toAct === seat.seat ? 'is-turn' : ''}`}>
         <span className="belot__name">{seat?.username ?? 'свободно'}</span>
-        <span className="belot__backs" aria-label={`${seat?.cardsLeft ?? 0} карти`}>
-            {Array.from({ length: seat?.cardsLeft ?? 0 }).map((_, i) => (
-                <span key={i} className="card-back" aria-hidden="true" />
-            ))}
-        </span>
+        <Fan cards={seat?.cardsLeft ?? 0} />
         {lastCall && <CallChip bid={lastCall} />}
         {seat && state.dealerSeat === seat.seat && <span className="belot__tag">раздава</span>}
     </div>
 );
 
 /**
- * What a seat said, kept at that seat for as long as the auction runs.
+ * What somebody is still holding, as the hand it is.
  *
- * A named suit is its glyph, the way it is printed on the card that was
- * called; everything else is the word, the way it is said out loud.
+ * Turned a few degrees each, the way cards sit in a hand, rather than stacked
+ * square — eight square backs overlapping read as one thick card.
  */
-const CallChip: React.FC<{ bid: BelotBidView }> = ({ bid }) => {
-    const suited = bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract);
+const Fan: React.FC<{ cards: number }> = ({ cards }) => (
+    <span className="belot__backs" aria-label={`${cards} карти`}>
+        {Array.from({ length: cards }).map((_, i) => (
+            <span
+                key={i}
+                className="card-back"
+                aria-hidden="true"
+                style={{ transform: `rotate(${(i - (cards - 1) / 2) * FAN_DEGREES}deg)` }}
+            />
+        ))}
+    </span>
+);
 
-    return (
-        <span className={`belot__said belot__said--${bid.kind.toLowerCase()}`}>
-            {suited ? <ContractMark contract={bid.contract!} /> : callLabel(bid)}
-        </span>
-    );
-};
+/**
+ * What a seat said, in a bubble pointing at the table from that seat.
+ *
+ * A call is spoken, so it is drawn as speech: it belongs to the player who
+ * made it and it is gone when the auction is. A contract is its glyph, the
+ * way it is printed on the cards; a pass and a contra are the words, the way
+ * they are said.
+ */
+const CallChip: React.FC<{ bid: BelotBidView }> = ({ bid }) => (
+    <span className={`belot__said belot__said--${bid.kind.toLowerCase()}`}>
+        {bid.kind === 'BID' && bid.contract
+            ? <ContractMark contract={bid.contract} />
+            : callLabel(bid)}
+    </span>
+);
 
 /**
  * Who the table is waiting for, and for how much longer.
@@ -363,13 +412,10 @@ const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
         <div className="belot__trick">
             <div className="belot__played">
                 {/* The four cards land at the four edges, so the corner is the
-                    one part of the square nothing is ever put on. What was
-                    called goes there rather than above the square, where it
-                    pushed the table a card's height off centre. */}
-                <p className="belot__contract belot__contract--corner">
-                    <ContractMark contract={play.contract} />
-                    <span className="belot__count">{play.trickNo}/8</span>
-                </p>
+                    one part of the square nothing is ever put on. How far
+                    through the hand the table is goes there — the contract
+                    itself is on the score plate, where it stays all hand. */}
+                <p className="belot__count belot__count--corner">{play.trickNo}/8</p>
                 {play.onTable.map((played) => (
                     <span
                         key={played.seat}
@@ -393,67 +439,58 @@ const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
 };
 
 /**
- * What has been said, and what this player may say.
+ * What this player may call.
  *
- * The calls are laid out the way they are ranked rather than in one wrapping
- * row: the four suits together on their own line, the two that beat all of
- * them under it, and the answers — pass, contra — last and apart. A player
- * choosing a call is choosing along that ladder, so the buttons are set out
- * as the ladder.
+ * Every call is on screen, in its own place, whether it can be made or not:
+ * the four suits, the two that beat them, and the two answers. A call that is
+ * not available is dimmed rather than removed, so the panel is the same eight
+ * places every time and a player can see what contra would cost before it is
+ * theirs to say. Pass runs the width of the panel, because it is the call
+ * made most often and the one nobody should have to aim at.
  */
 const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
     const bidding = state.bidding;
-    if (!bidding) return null;
+    if (!bidding || bidding.yours.length === 0) return null;
 
-    const suits = bidding.yours.filter(
-        (bid) => bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract));
-    const spoken = bidding.yours.filter(
-        (bid) => bid.kind === 'BID' && bid.contract && !NAMES_A_SUIT.includes(bid.contract));
-    const answers = bidding.yours.filter((bid) => bid.kind !== 'BID');
+    const offered = (kind: BelotBidKind, contract: BelotContract | null) =>
+        bidding.yours.find((bid) => bid.kind === kind && (bid.contract ?? null) === contract);
 
-    const call = (bid: BelotBidView) => (
-        <button
-            key={`${bid.kind}-${bid.contract ?? ''}`}
-            type="button"
-            className={callClass(bid)}
-            aria-label={bid.kind === 'BID' ? `Обяви ${callLabel(bid)}` : callLabel(bid)}
-            onClick={() => { void belotService.bid(bid.kind, bid.contract ?? undefined); }}
-        >
-            {bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract) ? (
-                <ContractMark contract={bid.contract} />
-            ) : (
-                callLabel(bid)
-            )}
-        </button>
-    );
+    const say = (kind: BelotBidKind, contract: BelotContract | null) => {
+        void belotService.bid(kind, contract ?? undefined);
+    };
 
     return (
         <div className="belot__bidding">
-            {bidding.highestBid ? (
-                <p className="belot__contract">
-                    <ContractMark contract={bidding.highestBid} />
-                    <span>{CALL_WORD[bidding.highestBid]}</span>
-                    {bidding.doubling !== 'NONE' && (
-                        <span className="belot__doubled">
-                            {bidding.doubling === 'CONTRA' ? 'контра' : 'реконтра'}
-                        </span>
-                    )}
-                </p>
-            ) : (
-                <p className="belot__contract belot__contract--none">Още никой не е обявил</p>
-            )}
+            <div className="belot__ladder">
+                {LADDER.map((rung) => {
+                    const word = rung.contract ? CALL_WORD[rung.contract]
+                        : rung.kind === 'CONTRA' ? 'контра' : 'реконтра';
 
-            {bidding.yours.length > 0 && (
-                <div className="belot__calls">
-                    {suits.length > 0 && <div className="belot__calls-row">{suits.map(call)}</div>}
-                    {spoken.length > 0 && <div className="belot__calls-row">{spoken.map(call)}</div>}
-                    {answers.length > 0 && (
-                        <div className="belot__calls-row belot__calls-row--answers">
-                            {answers.map(call)}
-                        </div>
-                    )}
-                </div>
-            )}
+                    return (
+                        <button
+                            key={`${rung.kind}-${rung.contract ?? ''}`}
+                            type="button"
+                            className={`belot__call ${rung.contract ? '' : 'belot__call--double'}`}
+                            disabled={!offered(rung.kind, rung.contract)}
+                            onClick={() => say(rung.kind, rung.contract)}
+                        >
+                            {rung.contract
+                                ? <ContractMark contract={rung.contract} />
+                                : <span className="belot__multiplier">{rung.multiplier}</span>}
+                            <span className="belot__call-word">{word}</span>
+                        </button>
+                    );
+                })}
+            </div>
+
+            <button
+                type="button"
+                className="belot__call belot__call--pass"
+                disabled={!offered('PASS', null)}
+                onClick={() => say('PASS', null)}
+            >
+                Пас
+            </button>
         </div>
     );
 };
