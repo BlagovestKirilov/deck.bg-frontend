@@ -15,6 +15,7 @@ import {
     BelotState,
 } from '../../types/belot.types';
 import Button from '../ui/Button';
+import Icon from '../ui/Icon';
 import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
@@ -22,6 +23,7 @@ import BelotDeclarations from './BelotDeclarations';
 import BelotResult from './BelotResult';
 import BelotScoreSheet from './BelotScoreSheet';
 import { ContractMark } from './ContractMark';
+import { sortedHand } from './handOrder';
 import '../../styles/belot.css';
 
 /** Play runs counter-clockwise, so the seat after yours sits to your right. */
@@ -156,10 +158,11 @@ const BelotGame: React.FC = () => {
 
     return (
         <main className="screen belot">
+            {/* The sheet on the left where it is kept at a table, and the one
+                way off the table on the right. There is no third thing up
+                here: leaving a hand of belot is conceding it, and a door
+                marked otherwise would be a lie about what it does. */}
             <header className="belot__bar">
-                <Button variant="ghost" size="sm" icon="arrowLeft" onClick={() => navigate('/')}>
-                    Игри
-                </Button>
                 {/* The score is kept on paper at a real table, so it is paper
                     here too — and tapping the sheet opens the sheet. */}
                 <button
@@ -192,9 +195,14 @@ const BelotGame: React.FC = () => {
                     )}
                 </button>
                 {state.status !== 'FINISHED' && (
-                    <Button variant="ghost" size="sm" onClick={() => setConfirmGiveUp(true)}>
-                        Предай
-                    </Button>
+                    <button
+                        type="button"
+                        className="round-btn round-btn--danger"
+                        onClick={() => setConfirmGiveUp(true)}
+                        aria-label="Предай играта и излез"
+                    >
+                        <Icon name="x" size={20} />
+                    </button>
                 )}
             </header>
 
@@ -244,7 +252,7 @@ const BelotGame: React.FC = () => {
                     />
                 </div>
                 <div className="belot__cards">
-                    {state.yourHand.map((card) => {
+                    {sortedHand(state.yourHand, contract).map((card) => {
                         const playable = (state.play?.yours ?? []).some(
                             (legal) => legal.suit === card.suit && legal.rank === card.rank);
                         return (
