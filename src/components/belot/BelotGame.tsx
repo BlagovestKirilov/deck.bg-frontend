@@ -258,7 +258,7 @@ const BelotGame: React.FC = () => {
                                 <CallChip bid={lastCalls.get(you.seat)!} />
                             )}
                             <Announced said={announced.get(you.seat)} />
-                            {state.dealerSeat === you.seat && <span className="belot__tag">раздава</span>}
+                            {state.dealerSeat === you.seat && <Dealer />}
                         </p>
                     )}
                     <TurnClock
@@ -345,11 +345,13 @@ const Opponent: React.FC<{
     state: BelotState;
 }> = ({ place, seat, toAct, lastCall, announced, state }) => (
     <div className={`belot__seat belot__seat--${place} ${seat && toAct === seat.seat ? 'is-turn' : ''}`}>
-        <span className="belot__name">{seat?.username ?? 'свободно'}</span>
+        <span className="belot__who">
+            <span className="belot__name">{seat?.username ?? 'свободно'}</span>
+            {seat && state.dealerSeat === seat.seat && <Dealer />}
+        </span>
         <Fan cards={seat?.cardsLeft ?? 0} />
         {lastCall && <CallChip bid={lastCall} />}
         <Announced said={announced} />
-        {seat && state.dealerSeat === seat.seat && <span className="belot__tag">раздава</span>}
     </div>
 );
 
@@ -374,6 +376,18 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
             />
         ))}
     </span>
+);
+
+/**
+ * Who is dealing, as the marker that sits by their elbow at a table.
+ *
+ * A round counter rather than the word: it holds for the whole hand and is
+ * read once, so it does not want the same room as what somebody has just
+ * announced. As a word on a line of its own it put three labels under one
+ * player and turned the seat into a list.
+ */
+const Dealer: React.FC = () => (
+    <span className="belot__dealer" role="img" aria-label="раздава">Р</span>
 );
 
 /**

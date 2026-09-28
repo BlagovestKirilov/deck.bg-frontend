@@ -227,9 +227,6 @@
     padding: var(--sp-2) var(--sp-3);
     border-radius: var(--r-md);
     font-size: var(--fs-xs);
-    /* The plate is as wide as its widest part and no wider, so three of them
-       do not push the trick square off the middle of the table. */
-    max-width: 13ch;
 }
 
 /* Your partner is named in the ink you are, the opponents in the muted one.
@@ -245,6 +242,33 @@
     box-shadow: inset 0 0 0 1px var(--line-gold);
 }
 .belot__seat.is-turn .belot__name { color: var(--text-1); }
+
+/* Name and dealer marker on one line, because they are one fact about the
+   player. The marker used to be a word on a line of its own under the cards,
+   which put three labels in a column under one seat. */
+.belot__who {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-1);
+    max-width: 100%;
+}
+
+/* Sits by their elbow for the whole hand and is read once, so it is a
+   counter rather than a label competing with what was just announced. */
+.belot__dealer {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--gold-wash);
+    box-shadow: inset 0 0 0 1px var(--line-gold);
+    color: var(--gold);
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1;
+}
 
 .belot__name {
     max-width: 10ch;
@@ -297,7 +321,9 @@
 }
 .belot__seat--left .belot__backs .card-back,
 .belot__seat--right .belot__backs .card-back {
-    margin-top: -28px;
+    width: 30px;
+    height: 44px;
+    margin-top: -32px;
     transform: translateX(calc(var(--fan-step, 0) * 1.2px));
     box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.35);
 }
@@ -484,21 +510,25 @@
  * while the hand was still being played — and, since the answer is worked out
  * from the cards, gave away some of those too.
  */
+/* One row, running a little wider than the seat if it has to: two words side
+   by side are two things a player announced, and stacked they are a list of
+   options somebody is expected to choose from. */
 .belot__announced {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
     gap: 3px;
 }
 .belot__announced-call {
-    padding: 1px var(--sp-2);
+    padding: 0 6px;
     border-radius: var(--r-pill);
     background: var(--gold-wash);
     box-shadow: inset 0 0 0 1px var(--line-gold);
-    font-size: var(--fs-xs);
+    font-size: 11px;
     font-weight: 700;
     color: var(--gold-bright);
-    line-height: 1.4;
+    line-height: 1.5;
+    white-space: nowrap;
 }
 
 .belot__took {
