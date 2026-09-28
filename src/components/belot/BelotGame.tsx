@@ -443,7 +443,7 @@ const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
         <div className="belot__trick">
             {/* How far through the hand the table is. The contract itself is on
                 the score plate, where it stays for the whole hand. */}
-            <p className="belot__count belot__count--trick">{play.trickNo}/8</p>
+            <p className="belot__count belot__count--trick">ръка {play.trickNo}/8</p>
             <div className="belot__played">
                 {play.onTable.map((played) => (
                     <span

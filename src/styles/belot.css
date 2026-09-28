@@ -421,9 +421,10 @@
    corner to spare, and it sits above them. */
 .belot__count--trick {
     margin: 0;
-    padding: 2px var(--sp-2);
+    padding: 2px var(--sp-3);
     border-radius: var(--r-pill);
-    background: rgba(4, 13, 8, 0.5);
+    background: rgba(4, 13, 8, 0.62);
+    color: var(--text-2);
     font-weight: 700;
 }
 
@@ -438,21 +439,37 @@
    the trick read as four people putting cards down in different rooms. The
    seats are still spread by --belot-spread and --belot-depth; the cards are
    not. */
+/* One card, and the other three pushed off it towards the chairs they came
+   from. Sized in cards rather than in pixels, so the pile is the same shape
+   at every screen size.
+ *
+ * Each is turned a few degrees as well. Four cards laid out square read as a
+ * broken grid — a slot missing wherever somebody has not played yet; turned,
+ * they read as four cards thrown onto a table, which is what they are, and
+ * the corner index of each one stays clear of its neighbours. */
 .belot__played {
     position: relative;
-    width: calc(var(--belot-card) * 2.05);
-    height: calc(var(--belot-card) * 2.05 * 103 / 71);
+    width: var(--belot-card);
+    height: calc(var(--belot-card) * 103 / 71);
+    /* The box is one card, but three of the four hang off it by better than
+       half a card each way. The margin is that overhang: without it the trick
+       counter above sat under the card from the seat opposite, and the line
+       underneath sat under your own. */
+    margin: calc(var(--belot-card) * 103 / 71 * 0.55) calc(var(--belot-card) * 0.6);
 }
-.belot__played-card { position: absolute; }
-.belot__played-card--you     { bottom: 0; left: 50%; transform: translateX(-50%); }
-.belot__played-card--partner { top: 0;    left: 50%; transform: translateX(-50%); }
-.belot__played-card--left    { left: 0;   top: 50%;  transform: translateY(-50%); }
-.belot__played-card--right   { right: 0;  top: 50%;  transform: translateY(-50%); }
+.belot__played-card {
+    position: absolute;
+    inset: 0;
+    transition: transform var(--dur) var(--ease-out);
+}
+.belot__played-card--partner { transform: translateY(-52%) rotate(-5deg); }
+.belot__played-card--you     { transform: translateY(52%)  rotate(4deg); }
+.belot__played-card--left    { transform: translateX(-56%) rotate(-8deg); }
+.belot__played-card--right   { transform: translateX(56%)  rotate(7deg); }
 
-/* The card that took the trick, ringed in the table’s gold while the four
-   of them are still out. */
-/* Lifted to the top of the pile as well: a ring under two other cards is a
-   ring nobody sees. */
+/* The card that took the trick, ringed in the table’s gold while the four of
+   them are still out, and lifted to the top of the pile — a ring under two
+   other cards is a ring nobody sees. */
 .belot__played-card.is-taken { z-index: 2; }
 .belot__played-card.is-taken .pcard {
     box-shadow: 0 0 0 2px var(--gold), var(--sh-2);
