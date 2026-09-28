@@ -61,9 +61,6 @@ const LADDER: { kind: BelotBidKind; contract: BelotContract | null; multiplier?:
 /** Under this many seconds the clock is the thing to look at, so it turns red. */
 const URGENT_SECONDS = 6;
 
-/** How far each card in a held hand is turned from the one before it. */
-const FAN_DEGREES = 4;
-
 /** Where each seat is drawn, once the table is turned so you are at the bottom. */
 type Place = 'you' | 'right' | 'partner' | 'left';
 
@@ -359,8 +356,12 @@ const Opponent: React.FC<{
 /**
  * What somebody is still holding, as the hand it is.
  *
- * Turned a few degrees each, the way cards sit in a hand, rather than stacked
- * square — eight square backs overlapping read as one thick card.
+ * Each card carries only its place in the fan, counted out from the middle:
+ * --fan-step is -3.5 for the leftmost of eight and 3.5 for the last. What a
+ * seat does with that is the stylesheet's business, because the player
+ * opposite and the two either side of you hold their cards differently — and
+ * a transform written in here would win against the stylesheet whatever it
+ * said, being an inline style.
  */
 const Fan: React.FC<{ cards: number }> = ({ cards }) => (
     <span className="belot__backs" aria-label={`${cards} карти`}>
@@ -369,7 +370,7 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
                 key={i}
                 className="card-back"
                 aria-hidden="true"
-                style={{ transform: `rotate(${(i - (cards - 1) / 2) * FAN_DEGREES}deg)` }}
+                style={{ '--fan-step': i - (cards - 1) / 2 } as React.CSSProperties}
             />
         ))}
     </span>
@@ -440,12 +441,10 @@ const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
 
     return (
         <div className="belot__trick">
+            {/* How far through the hand the table is. The contract itself is on
+                the score plate, where it stays for the whole hand. */}
+            <p className="belot__count belot__count--trick">{play.trickNo}/8</p>
             <div className="belot__played">
-                {/* The four cards land at the four edges, so the corner is the
-                    one part of the square nothing is ever put on. How far
-                    through the hand the table is goes there — the contract
-                    itself is on the score plate, where it stays all hand. */}
-                <p className="belot__count belot__count--corner">{play.trickNo}/8</p>
                 {play.onTable.map((played) => (
                     <span
                         key={played.seat}

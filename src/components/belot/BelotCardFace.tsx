@@ -32,12 +32,12 @@ type Size = 'hand' | 'table';
  */
 const SIZE: Record<Size, { width: string; corner: string; pip: string }> = {
     hand: {
-        width: 'clamp(54px, 15.5vw, 86px)',
+        width: 'var(--belot-card-hand)',
         corner: 'clamp(0.82rem, 3vw, 1.25rem)',
         pip: 'clamp(1.45rem, 5.4vw, 2.3rem)',
     },
     table: {
-        width: 'clamp(46px, 12.5vw, 72px)',
+        width: 'var(--belot-card)',
         corner: 'clamp(0.72rem, 2.5vw, 1.05rem)',
         pip: 'clamp(1.2rem, 4.4vw, 1.9rem)',
     },
