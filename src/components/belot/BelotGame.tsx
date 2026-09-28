@@ -19,7 +19,7 @@ import Icon from '../ui/Icon';
 import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
-import BelotDeclarations from './BelotDeclarations';
+import Announced, { announcementsBySeat } from './BelotDeclarations';
 import BelotResult from './BelotResult';
 import BelotScoreSheet from './BelotScoreSheet';
 import { ContractMark } from './ContractMark';
@@ -121,6 +121,10 @@ const BelotGame: React.FC = () => {
         state?.seats.forEach((seat) => byPlace.set(placeOf(seat.seat, state.yourSeat), seat));
         return byPlace;
     }, [state]);
+
+    // What each seat has announced this hand, kept at the seat that announced
+    // it — a терца is called out from a chair, not printed on the table.
+    const announced = useMemo(() => state ? announcementsBySeat(state) : new Map(), [state]);
 
     // What each seat said last, kept at the seat that said it. An auction read
     // as four chips around the table is the auction; read as one line naming
@@ -226,13 +230,13 @@ const BelotGame: React.FC = () => {
                         seat={seats.get(place)}
                         toAct={toAct}
                         lastCall={seats.get(place) && lastCalls.get(seats.get(place)!.seat)}
+                        announced={seats.get(place) && announced.get(seats.get(place)!.seat)}
                         state={state}
                     />
                 ))}
 
                 <div className="belot__middle">
                     {state.play && <Trick state={state} />}
-                    <BelotDeclarations state={state} ourTeam={ourTeam} />
                 </div>
             </div>
 
@@ -256,6 +260,7 @@ const BelotGame: React.FC = () => {
                             {lastCalls.get(you.seat) && (
                                 <CallChip bid={lastCalls.get(you.seat)!} />
                             )}
+                            <Announced said={announced.get(you.seat)} />
                             {state.dealerSeat === you.seat && <span className="belot__tag">раздава</span>}
                         </p>
                     )}
@@ -339,12 +344,14 @@ const Opponent: React.FC<{
     seat?: BelotSeatView;
     toAct: BelotSeatName | null;
     lastCall?: BelotBidView;
+    announced?: string[];
     state: BelotState;
-}> = ({ place, seat, toAct, lastCall, state }) => (
+}> = ({ place, seat, toAct, lastCall, announced, state }) => (
     <div className={`belot__seat belot__seat--${place} ${seat && toAct === seat.seat ? 'is-turn' : ''}`}>
         <span className="belot__name">{seat?.username ?? 'свободно'}</span>
         <Fan cards={seat?.cardsLeft ?? 0} />
         {lastCall && <CallChip bid={lastCall} />}
+        <Announced said={announced} />
         {seat && state.dealerSeat === seat.seat && <span className="belot__tag">раздава</span>}
     </div>
 );

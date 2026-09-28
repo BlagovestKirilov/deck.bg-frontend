@@ -1,63 +1,61 @@
 import React from 'react';
-import { BelotDeclarationKind, BelotState, BelotTeam } from '../../types/belot.types';
-import { ContractMark } from './ContractMark';
+import { BelotDeclarationKind, BelotSeatName, BelotState } from '../../types/belot.types';
 
-/** What each kind is called at a table. A carré is named after its rank. */
+/**
+ * What each one is called out as at a table.
+ *
+ * Not the textbook names: a Bulgarian table says терца, петдесет, сто and
+ * каре, and those are what a player is listening for. The lengths of the
+ * sequences are how the engine thinks about them, not how anyone says them.
+ */
 const KIND_WORD: Record<BelotDeclarationKind, string> = {
     TERZ: 'терца',
-    QUARTE: 'квинта от четири',
-    QUINTE: 'квинта',
+    QUARTE: 'петдесет',
+    QUINTE: 'сто',
     CARRE: 'каре',
     BELOTE: 'белот',
 };
 
-interface Props {
-    state: BelotState;
-    ourTeam: BelotTeam;
+/**
+ * Who announced what, in the order the server listed it.
+ *
+ * Kept per seat rather than as one list, because an announcement belongs to
+ * the player who made it: it is said out loud and the table hears it from
+ * that chair.
+ */
+export function announcementsBySeat(state: BelotState): Map<BelotSeatName, string[]> {
+    const bySeat = new Map<BelotSeatName, string[]>();
+
+    state.declarations?.shown.forEach((declaration) => {
+        const said = bySeat.get(declaration.seat) ?? [];
+        said.push(KIND_WORD[declaration.kind]);
+        bySeat.set(declaration.seat, said);
+    });
+
+    return bySeat;
 }
 
 /**
- * What the table announced this deal.
+ * What one seat announced, next to that seat.
  *
- * Shown from the first trick, which is when it is called out at a table.
- * Every announcement is listed even when it scores nothing, because a
- * sequence cancelled by a better one is the thing a player most wants to see
- * — a silent zero reads as the server having lost it.
+ * Only what was said — "терца", not "терца in diamonds up to the king, worth
+ * twenty, cancelled". At a table you announce that you have one and the table
+ * takes your word for it; which of two terces is the better one is settled
+ * when the cards are down, and the sheet has it afterwards. Showing the
+ * winner mid-hand gave away both the answer and the cards behind it.
  */
-const BelotDeclarations: React.FC<Props> = ({ state, ourTeam }) => {
-    const declarations = state.declarations;
-    if (!declarations || declarations.shown.length === 0) {
+const Announced: React.FC<{ said?: string[] }> = ({ said }) => {
+    if (!said || said.length === 0) {
         return null;
     }
 
-    const ours = ourTeam === 'NORTH_SOUTH'
-        ? declarations.northSouthPoints
-        : declarations.eastWestPoints;
-    const theirs = ourTeam === 'NORTH_SOUTH'
-        ? declarations.eastWestPoints
-        : declarations.northSouthPoints;
-
     return (
-        <ul className="belot__announced">
-            {declarations.shown.map((declaration) => {
-                const who = state.seats.find((seat) => seat.seat === declaration.seat);
-                const mine = who?.team === ourTeam;
-                const counted = mine ? ours > 0 : theirs > 0;
-
-                return (
-                    <li
-                        key={`${declaration.seat}-${declaration.kind}-${declaration.suit}`}
-                        className={counted ? '' : 'is-cancelled'}
-                    >
-                        <ContractMark contract={declaration.suit} />
-                        <span>{KIND_WORD[declaration.kind]}</span>
-                        <span className="belot__announced-points">{declaration.points}</span>
-                        <span className="belot__announced-who">{who?.username}</span>
-                    </li>
-                );
-            })}
-        </ul>
+        <span className="belot__announced">
+            {said.map((word, i) => (
+                <span key={`${word}-${i}`} className="belot__announced-call">{word}</span>
+            ))}
+        </span>
     );
 };
 
-export default BelotDeclarations;
+export default Announced;

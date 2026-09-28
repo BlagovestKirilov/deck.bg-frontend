@@ -30,7 +30,12 @@
      * that is the width; on a desktop window it is the height, and sizing on
      * width alone left the four of them huddled in the top half of a tall
      * window with a hand's depth of empty felt under them. */
-    --belot-square: clamp(146px, min(44vw, 44vh), 420px);
+    --belot-square: clamp(146px, min(44vw, 40vh), 380px);
+
+    /* How wide the table is, wherever it is being looked at. The bar and the
+       hand are laid to the same width, so the whole thing reads as one table
+       rather than as things pinned to the corners of a window. */
+    --belot-table: min(100%, 720px);
 
     font-family: var(--belot-body);
 }
@@ -55,12 +60,18 @@
     background: var(--felt);
 }
 
+/* As wide as the table underneath it and no wider. On a desktop window the
+   sheet and the way out were a metre apart at opposite edges of the glass,
+   with the table they belong to sitting in the middle. */
 .belot__bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-3);
     flex: 0 0 auto;
+    width: 100%;
+    max-width: var(--belot-table);
+    margin: 0 auto;
 }
 
 /* ---- the score, as the sheet it is kept on ----
@@ -175,7 +186,7 @@
     /* A table is a table, not a room: on a wide screen the seats stay a
        card's throw apart rather than retreating to the window edges. */
     width: 100%;
-    max-width: 640px;
+    max-width: var(--belot-table);
     margin: 0 auto;
 }
 
@@ -401,39 +412,31 @@
     box-shadow: 0 0 0 2px var(--gold), var(--sh-2);
 }
 
-/* What the table announced. Set small and quiet: it matters for a few
-   seconds on the first trick and then only as a reminder of where the
-   points came from. */
+/* What a seat announced, under the seat that announced it.
+ *
+ * The word and nothing else. A терца is called out at a table and taken on
+ * trust; whose is the better one is settled when the cards are down, and the
+ * sheet says so afterwards. It used to be listed in the middle of the felt
+ * with its points and a line through the loser, which gave away the answer
+ * while the hand was still being played — and, since the answer is worked out
+ * from the cards, gave away some of those too.
+ */
 .belot__announced {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 2px;
-    margin: var(--sp-2) 0 0;
-    padding: 0;
-    list-style: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+}
+.belot__announced-call {
+    padding: 1px var(--sp-2);
+    border-radius: var(--r-pill);
+    background: var(--gold-wash);
+    box-shadow: inset 0 0 0 1px var(--line-gold);
     font-size: var(--fs-xs);
-    color: var(--text-2);
+    font-weight: 700;
+    color: var(--gold-bright);
+    line-height: 1.4;
 }
-.belot__announced li {
-    display: flex;
-    align-items: baseline;
-    gap: var(--sp-2);
-}
-.belot__announced .belot__suit { font-size: var(--fs-sm); }
-/* The lobby prints suits on card stock; here they sit on felt, where the
-   card-black ink disappears. */
-.belot__announced .belot__suit--black { color: var(--text-1); }
-.belot__announced-points { font-weight: 700; color: var(--gold); }
-.belot__announced-who { color: var(--text-3); }
-
-/* A sequence beaten by a better one scores nothing, and says so: struck
-   through, because a silent zero reads as the server having lost it. */
-.belot__announced li.is-cancelled { color: var(--text-3); }
-.belot__announced li.is-cancelled .belot__announced-points { color: var(--text-3); }
-/* The words are struck, the suit is not: a line drawn through a heart
-   reads as a defaced card rather than a cancelled announcement. */
-.belot__announced li.is-cancelled > span:not(.belot__suit) { text-decoration: line-through; }
 
 .belot__took {
     margin: 0;
@@ -534,7 +537,12 @@
 
 /* ---- your own hand ---- */
 
-.belot__hand { flex: 0 0 auto; }
+.belot__hand {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: var(--belot-table);
+    margin: 0 auto;
+}
 
 /* Your name on one side, the clock on the other, on the line the hand hangs
    from. Both keep their place whoever is being waited for. */
