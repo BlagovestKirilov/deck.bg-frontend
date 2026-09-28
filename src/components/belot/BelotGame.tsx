@@ -67,9 +67,19 @@ const FAN_DEGREES = 4;
 /** Where each seat is drawn, once the table is turned so you are at the bottom. */
 type Place = 'you' | 'right' | 'partner' | 'left';
 
+/**
+ * Where a seat is drawn, counting round from the chair this player is in.
+ *
+ * With no chair of their own — a reload whose state came back before the seat
+ * did, or a table this player is not sitting at — the table is turned as if
+ * they were in the south one. Anything is better than the answer this used to
+ * give, which was "partner" for all four of them: the map is keyed by place,
+ * so the four of them overwrote each other and the whole table was drawn as
+ * one player standing in the middle.
+ */
 function placeOf(seat: BelotSeatName, you: BelotSeatName | null): Place {
-    if (!you) return 'partner';
-    const steps = (ORDER.indexOf(seat) - ORDER.indexOf(you) + ORDER.length) % ORDER.length;
+    const from = you ?? 'SOUTH';
+    const steps = (ORDER.indexOf(seat) - ORDER.indexOf(from) + ORDER.length) % ORDER.length;
     return (['you', 'right', 'partner', 'left'] as Place[])[steps];
 }
 
@@ -142,7 +152,9 @@ const BelotGame: React.FC = () => {
         return <Waiting state={state} onLeave={() => navigate('/')} />;
     }
 
-    const you = seats.get('you');
+    // Only when there is a chair to be in. Without one the bottom of the
+    // table is somebody else's, and naming them as you would be a lie.
+    const you = state.yourSeat ? seats.get('you') : undefined;
     const toAct = state.play?.toAct ?? state.bidding?.toAct ?? null;
 
     // What has been called and by whom, kept on the score plate from the
@@ -235,6 +247,9 @@ const BelotGame: React.FC = () => {
                     counting down. Four seats each showing their own was four
                     numbers to ignore and one to find. */}
                 <div className="belot__hand-head">
+                    {!state.yourSeat && (
+                        <p className="belot__you">Гледате маса, на която не седите.</p>
+                    )}
                     {you && (
                         <p className="belot__you">
                             <span className="belot__you-name">{you.username}</span>

@@ -14,6 +14,8 @@
    Tokens only: colour, spacing, radius and motion come from theme.css.
    ===================================================================== */
 
+/* The tokens and the faces, which the belot dialogs borrow as well as the
+   table — so they are not tied to the table's own layout below. */
 .belot {
     /* The lobby's faces. Without this the table inherits the body font and
        reads like a different product from the room it is sitting in. */
@@ -25,16 +27,27 @@
        must be the same square or the seats move between them. */
     --belot-square: clamp(146px, 42vw, 250px);
 
+    font-family: var(--belot-body);
+}
+
+/* Two classes, not one, and deliberately.
+ *
+ * `.screen` and `.belot` sit on the same element with the same specificity,
+ * so the one that wins is whichever stylesheet the bundler put last — and it
+ * put this one first, because App.tsx imports BelotGame above index.css.
+ * `.screen` was therefore still centring every row of the table and paying
+ * out its own padding, which is why the score sheet sat in the middle of the
+ * bar. Naming both classes settles it wherever the file lands.
+ */
+.screen.belot {
     display: flex;
     flex-direction: column;
-    /* .screen centres its child, which left every row here as wide as its own
-       longest line — so a long username in the clock row made that row wider
-       than the phone instead of being shortened inside it. */
+    /* Rows as wide as the table, not as wide as their own longest line. */
     align-items: stretch;
+    justify-content: flex-start;
     gap: var(--sp-2);
     padding: calc(var(--sa-top) + var(--sp-2)) var(--sp-3) calc(var(--sa-bottom) + var(--sp-3));
     background: var(--felt);
-    font-family: var(--belot-body);
 }
 
 .belot__bar {
@@ -735,7 +748,7 @@
    and can see their own name is already down.
    ===================================================================== */
 
-.belot--waiting { justify-content: flex-start; }
+.screen.belot--waiting { justify-content: flex-start; }
 
 .waiting {
     flex: 1 1 auto;
