@@ -88,6 +88,13 @@ export interface BelotDealRow {
     /** Card points taken. Different from what was written down, deliberately. */
     callerPoints: number | null;
     opponentPoints: number | null;
+    /**
+     * What the announcements were worth, counted out of the card points they
+     * are already inside. A терца is called at the table and then disappears
+     * into a total, and it is the hand a player asks about afterwards.
+     */
+    callerDeclarations: number;
+    opponentDeclarations: number;
     callerScore: number | null;
     opponentScore: number | null;
     result: BelotDealResult;

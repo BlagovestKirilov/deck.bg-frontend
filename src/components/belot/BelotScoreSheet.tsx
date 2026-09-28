@@ -69,13 +69,23 @@ const Line: React.FC<{ row: BelotDealRow; ours: BelotTeam }> = ({ row, ours }) =
 
     const written = (mine: boolean) => (mine ? row.callerScore : row.opponentScore) ?? 0;
     const raw = (mine: boolean) => (mine ? row.callerPoints : row.opponentPoints) ?? 0;
+    const announced = (mine: boolean) => mine ? row.callerDeclarations : row.opponentDeclarations;
 
     const cell = (mine: boolean, theirs: boolean) => (
         <span className={`sheet__cell ${theirs ? 'sheet__cell--theirs' : ''}`}>
             <span className={`sheet__points ${written(mine) === 0 ? 'sheet__none' : ''}`}>
                 {written(mine) === 0 ? '–' : written(mine)}
             </span>
-            <span className="sheet__raw">{raw(mine)}</span>
+            {/* The announcements, counted out of the card points they are
+                already inside: 97 with 20 of it announced is a different hand
+                from 97 taken with the cards, and it is the one that gets
+                argued about. */}
+            <span className="sheet__raw">
+                {raw(mine)}
+                {announced(mine) > 0 && (
+                    <span className="sheet__announced"> от тях {announced(mine)} обявени</span>
+                )}
+            </span>
             {((calledByUs && !theirs) || (!calledByUs && theirs)) && (
                 <span className="sheet__called">
                     <ContractMark contract={row.contract} />
