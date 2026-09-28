@@ -20,44 +20,80 @@ const RANK = {
     ACE: { glyph: 'A', name: 'асо' },
 } as const;
 
+type Size = 'hand' | 'table';
+
+/**
+ * How big a card is drawn, and how big the ink on it is.
+ *
+ * Eight cards are held rather than six, so a belot hand cannot be as wide as a
+ * santase one — but the face is set to the card, not to a fixed point size, so
+ * a smaller card carries the same printed proportions rather than the same
+ * glyph shrunk against a growing margin.
+ */
+const SIZE: Record<Size, { width: string; corner: string; pip: string }> = {
+    hand: {
+        width: 'clamp(54px, 15.5vw, 86px)',
+        corner: 'clamp(0.82rem, 3vw, 1.25rem)',
+        pip: 'clamp(1.45rem, 5.4vw, 2.3rem)',
+    },
+    table: {
+        width: 'clamp(46px, 12.5vw, 72px)',
+        corner: 'clamp(0.72rem, 2.5vw, 1.05rem)',
+        pip: 'clamp(1.2rem, 4.4vw, 1.9rem)',
+    },
+};
+
 interface Props {
     card: BelotCard;
     /** Given when the card can be played: it becomes a real button. */
     onPlay?: () => void;
     /** Dealt but not playable this turn — dimmed, and not a button. */
     muted?: boolean;
-    size?: 'hand' | 'table';
+    size?: Size;
 }
 
 /**
  * One card, in the deck's own two inks.
  *
- * Wears the table's existing `.pcard` clothes rather than a belot-only set —
- * a card is a card across the three games, and a second visual language for
- * the same object is a second thing to keep in step.
+ * The same face santase prints: index top-left, the suit large in the middle,
+ * and the index again upside down in the far corner — which is what makes a
+ * card readable from either end and is the reason real cards are printed that
+ * way. Wears the table's existing `.pcard` clothes rather than a belot-only
+ * set, because a card is a card across the three games.
  */
 const BelotCardFace: React.FC<Props> = ({ card, onPlay, muted = false, size = 'hand' }) => {
     const suit = SUIT[card.suit];
     const rank = RANK[card.rank];
     const label = `${rank.name} ${suit.name}`;
+    const scale = SIZE[size];
 
     const className = ['pcard', onPlay ? 'pcard--playable' : '', muted ? 'pcard--blocked' : '']
         .filter(Boolean)
         .join(' ');
 
     const style: React.CSSProperties = {
-        width: size === 'hand' ? 'clamp(46px, 13vw, 78px)' : 'clamp(38px, 10vw, 62px)',
+        width: scale.width,
         aspectRatio: '71 / 103',
         color: suit.color,
     };
 
     const face = (
         <>
-            <span className="pcard__corner" style={{ alignSelf: 'flex-start' }}>
+            <span className="pcard__corner" style={{ alignSelf: 'flex-start', fontSize: scale.corner }}>
                 <span>{rank.glyph}</span>
                 <span>{suit.symbol}</span>
             </span>
-            <span className="pcard__pip" aria-hidden="true">{suit.symbol}</span>
+            <span className="pcard__pip" style={{ fontSize: scale.pip }} aria-hidden="true">
+                {suit.symbol}
+            </span>
+            <span
+                className="pcard__corner"
+                style={{ alignSelf: 'flex-end', fontSize: scale.corner, transform: 'rotate(180deg)' }}
+                aria-hidden="true"
+            >
+                <span>{rank.glyph}</span>
+                <span>{suit.symbol}</span>
+            </span>
         </>
     );
 

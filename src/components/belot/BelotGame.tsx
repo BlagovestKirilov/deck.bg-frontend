@@ -14,7 +14,6 @@ import {
     BelotState,
 } from '../../types/belot.types';
 import Button from '../ui/Button';
-import Icon from '../ui/Icon';
 import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
@@ -39,6 +38,9 @@ const CALL_WORD: Record<BelotContract, string> = {
 
 /** The two calls that name no suit are spoken, not printed. */
 const NAMES_A_SUIT: BelotContract[] = ['CLUBS', 'DIAMONDS', 'HEARTS', 'SPADES'];
+
+/** Under this many seconds the clock is the thing to look at, so it turns red. */
+const URGENT_SECONDS = 6;
 
 /** Where each seat is drawn, once the table is turned so you are at the bottom. */
 type Place = 'you' | 'right' | 'partner' | 'left';
@@ -97,6 +99,15 @@ const BelotGame: React.FC = () => {
         return byPlace;
     }, [state]);
 
+    // What each seat said last, kept at the seat that said it. An auction read
+    // as four chips around the table is the auction; read as one line naming
+    // the best call so far, it is a summary of one.
+    const lastCalls = useMemo(() => {
+        const bySeat = new Map<BelotSeatName, BelotBidView>();
+        state?.bidding?.said.forEach((bid) => bySeat.set(bid.seat, bid));
+        return bySeat;
+    }, [state]);
+
     if (unavailable) {
         noteUnavailable('BELOT');
         navigate('/', { replace: true });
@@ -130,17 +141,19 @@ const BelotGame: React.FC = () => {
                 <Button variant="ghost" size="sm" icon="arrowLeft" onClick={() => navigate('/')}>
                     Игри
                 </Button>
+                {/* The score is kept on paper at a real table, so it is paper
+                    here too — and tapping the sheet opens the sheet. */}
                 <button
                     type="button"
                     className="belot__score"
                     onClick={() => setSheetOpen(true)}
                     aria-label="Виж резултата ръка по ръка"
                 >
-                    <span>
+                    <span className="belot__score-col">
                         <span className="belot__side">ние</span>
                         <span className="belot__points">{scoreOf(state, ourTeam)}</span>
                     </span>
-                    <span>
+                    <span className="belot__score-col">
                         <span className="belot__side">те</span>
                         <span className="belot__points">{scoreOf(state, theirTeam)}</span>
                     </span>
@@ -162,7 +175,7 @@ const BelotGame: React.FC = () => {
                         place={place}
                         seat={seats.get(place)}
                         toAct={toAct}
-                        secondsLeft={secondsLeft}
+                        lastCall={seats.get(place) && lastCalls.get(seats.get(place)!.seat)}
                         state={state}
                     />
                 ))}
@@ -176,20 +189,26 @@ const BelotGame: React.FC = () => {
             </div>
 
             <section className="belot__hand" aria-label="Вашите карти">
-                {you && (
-                    <p className="belot__you">
-                        {you.username}
-                        {state.dealerSeat === you.seat && <span className="belot__tag">раздава</span>}
-                        {toAct === you.seat && (
-                            <>
-                                <span className="belot__tag belot__tag--turn">ваш ред</span>
-                                {secondsLeft !== null && (
-                                    <span className="belot__clock">{secondsLeft}с</span>
-                                )}
-                            </>
-                        )}
-                    </p>
-                )}
+                {/* One clock for the table, and it sits with the hand it is
+                    counting down. Four seats each showing their own was four
+                    numbers to ignore and one to find. */}
+                <div className="belot__hand-head">
+                    {you && (
+                        <p className="belot__you">
+                            <span className="belot__you-name">{you.username}</span>
+                            {lastCalls.get(you.seat) && (
+                                <CallChip bid={lastCalls.get(you.seat)!} />
+                            )}
+                            {state.dealerSeat === you.seat && <span className="belot__tag">раздава</span>}
+                        </p>
+                    )}
+                    <TurnClock
+                        state={state}
+                        toAct={toAct}
+                        yours={!!you && toAct === you.seat}
+                        secondsLeft={secondsLeft}
+                    />
+                </div>
                 <div className="belot__cards">
                     {state.yourHand.map((card) => {
                         const playable = (state.play?.yours ?? []).some(
@@ -251,28 +270,87 @@ const BelotGame: React.FC = () => {
     );
 };
 
+/**
+ * Somebody else at the table.
+ *
+ * The same plate whether they are your partner or against you; which of the
+ * two they are is said by the ink their name is set in, because a player needs
+ * that at a glance and it is not worth a word.
+ */
 const Opponent: React.FC<{
     place: Place;
     seat?: BelotSeatView;
     toAct: BelotSeatName | null;
-    secondsLeft: number | null;
+    lastCall?: BelotBidView;
     state: BelotState;
-}> = ({ place, seat, toAct, secondsLeft, state }) => (
+}> = ({ place, seat, toAct, lastCall, state }) => (
     <div className={`belot__seat belot__seat--${place} ${seat && toAct === seat.seat ? 'is-turn' : ''}`}>
-        <span className="belot__name">{seat?.username ?? '—'}</span>
+        <span className="belot__name">{seat?.username ?? 'свободно'}</span>
         <span className="belot__backs" aria-label={`${seat?.cardsLeft ?? 0} карти`}>
             {Array.from({ length: seat?.cardsLeft ?? 0 }).map((_, i) => (
                 <span key={i} className="card-back" aria-hidden="true" />
             ))}
         </span>
-        {seat && toAct === seat.seat && secondsLeft !== null && (
-            <span className="belot__clock" aria-label={`остават ${secondsLeft} секунди`}>
-                {secondsLeft}с
-            </span>
-        )}
+        {lastCall && <CallChip bid={lastCall} />}
         {seat && state.dealerSeat === seat.seat && <span className="belot__tag">раздава</span>}
     </div>
 );
+
+/**
+ * What a seat said, kept at that seat for as long as the auction runs.
+ *
+ * A named suit is its glyph, the way it is printed on the card that was
+ * called; everything else is the word, the way it is said out loud.
+ */
+const CallChip: React.FC<{ bid: BelotBidView }> = ({ bid }) => {
+    const suited = bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract);
+
+    return (
+        <span className={`belot__said belot__said--${bid.kind.toLowerCase()}`}>
+            {suited ? <ContractMark contract={bid.contract!} /> : callLabel(bid)}
+        </span>
+    );
+};
+
+/**
+ * Who the table is waiting for, and for how much longer.
+ *
+ * Always on screen, so the row does not jump when the turn comes round to
+ * this player — only what it says changes. Borrowed whole from santase: the
+ * same pill, the same dot, the same red under the last few seconds.
+ */
+const TurnClock: React.FC<{
+    state: BelotState;
+    toAct: BelotSeatName | null;
+    yours: boolean;
+    secondsLeft: number | null;
+}> = ({ state, toAct, yours, secondsLeft }) => {
+    const urgent = yours && secondsLeft !== null && secondsLeft <= URGENT_SECONDS;
+    const waitingFor = state.seats.find((seat) => seat.seat === toAct)?.username;
+
+    return (
+        <span
+            className={`turn-pill ${urgent ? 'turn-pill--urgent' : ''}`}
+            role="status"
+            aria-live="polite"
+        >
+            <span
+                className="turn-pill__dot"
+                style={{
+                    background: yours
+                        ? (urgent ? 'var(--danger)' : 'var(--success)')
+                        : 'var(--text-3)',
+                }}
+            />
+            {yours ? <span>Ваш ред</span> : waitingFor
+                ? <span className="belot__waiting-for">Чакаме {waitingFor}</span>
+                : <span>Раздаваме</span>}
+            {secondsLeft !== null && (
+                <span className="belot__clock tabular">{secondsLeft}с</span>
+            )}
+        </span>
+    );
+};
 
 /** The cards on the table, each shown at the seat that played it. */
 const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
@@ -283,11 +361,15 @@ const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
 
     return (
         <div className="belot__trick">
-            <p className="belot__contract">
-                <ContractMark contract={play.contract} />
-                <span className="belot__count">{play.trickNo}/8 ръце</span>
-            </p>
             <div className="belot__played">
+                {/* The four cards land at the four edges, so the corner is the
+                    one part of the square nothing is ever put on. What was
+                    called goes there rather than above the square, where it
+                    pushed the table a card's height off centre. */}
+                <p className="belot__contract belot__contract--corner">
+                    <ContractMark contract={play.contract} />
+                    <span className="belot__count">{play.trickNo}/8</span>
+                </p>
                 {play.onTable.map((played) => (
                     <span
                         key={played.seat}
@@ -302,18 +384,48 @@ const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
                 ))}
             </div>
             {/* Said as well as marked: the ring on the winning card is the
-                quick read, the name is the one that settles it. */}
-            {taker && <p className="belot__took">Ръката е на {taker}</p>}
+                quick read, the name is the one that settles it. The line keeps
+                its height while the trick is still out, so the hand below does
+                not hop up and down once per trick. */}
+            <p className="belot__took">{taker ? `Ръката е на ${taker}` : ' '}</p>
         </div>
     );
 };
 
-/** What has been said, and what this player may say. */
+/**
+ * What has been said, and what this player may say.
+ *
+ * The calls are laid out the way they are ranked rather than in one wrapping
+ * row: the four suits together on their own line, the two that beat all of
+ * them under it, and the answers — pass, contra — last and apart. A player
+ * choosing a call is choosing along that ladder, so the buttons are set out
+ * as the ladder.
+ */
 const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
     const bidding = state.bidding;
     if (!bidding) return null;
 
-    const yours = bidding.yours;
+    const suits = bidding.yours.filter(
+        (bid) => bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract));
+    const spoken = bidding.yours.filter(
+        (bid) => bid.kind === 'BID' && bid.contract && !NAMES_A_SUIT.includes(bid.contract));
+    const answers = bidding.yours.filter((bid) => bid.kind !== 'BID');
+
+    const call = (bid: BelotBidView) => (
+        <button
+            key={`${bid.kind}-${bid.contract ?? ''}`}
+            type="button"
+            className={callClass(bid)}
+            aria-label={bid.kind === 'BID' ? `Обяви ${callLabel(bid)}` : callLabel(bid)}
+            onClick={() => { void belotService.bid(bid.kind, bid.contract ?? undefined); }}
+        >
+            {bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract) ? (
+                <ContractMark contract={bid.contract} />
+            ) : (
+                callLabel(bid)
+            )}
+        </button>
+    );
 
     return (
         <div className="belot__bidding">
@@ -331,27 +443,16 @@ const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
                 <p className="belot__contract belot__contract--none">Още никой не е обявил</p>
             )}
 
-            {yours.length > 0 ? (
+            {bidding.yours.length > 0 && (
                 <div className="belot__calls">
-                    {yours.map((bid) => (
-                        <button
-                            key={`${bid.kind}-${bid.contract ?? ''}`}
-                            type="button"
-                            className={callClass(bid)}
-                            onClick={() => { void belotService.bid(bid.kind, bid.contract ?? undefined); }}
-                        >
-                            {bid.kind === 'BID' && bid.contract && NAMES_A_SUIT.includes(bid.contract) && (
-                                <ContractMark contract={bid.contract} />
-                            )}{' '}
-                            {callLabel(bid)}
-                        </button>
-                    ))}
+                    {suits.length > 0 && <div className="belot__calls-row">{suits.map(call)}</div>}
+                    {spoken.length > 0 && <div className="belot__calls-row">{spoken.map(call)}</div>}
+                    {answers.length > 0 && (
+                        <div className="belot__calls-row belot__calls-row--answers">
+                            {answers.map(call)}
+                        </div>
+                    )}
                 </div>
-            ) : (
-                <p className="belot__waiting">
-                    <Icon name="clock" size={18} />
-                    Чакаме {state.seats.find((seat) => seat.seat === bidding.toAct)?.username}
-                </p>
             )}
         </div>
     );

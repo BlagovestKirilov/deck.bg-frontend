@@ -22,6 +22,10 @@
 
     display: flex;
     flex-direction: column;
+    /* .screen centres its child, which left every row here as wide as its own
+       longest line — so a long username in the clock row made that row wider
+       than the phone instead of being shortened inside it. */
+    align-items: stretch;
     gap: var(--sp-2);
     padding: calc(var(--sa-top) + var(--sp-2)) var(--sp-3) calc(var(--sa-bottom) + var(--sp-3));
     background: var(--felt);
@@ -41,36 +45,46 @@
    the rule between them as much as the numbers. So the running score is that
    rule, rather than a row of values joined by dots. */
 
+/* Printed on the same stock as the sheet it opens, and shaped like it: two
+   columns with the rule between them. On felt it is the one bright object in
+   the bar, which is right — it is the only thing up there that changes. */
 .belot__score {
     display: grid;
     grid-template-columns: auto auto;
     align-items: baseline;
-    gap: 0 var(--sp-4);
+    gap: 0 var(--sp-3);
+    min-height: var(--tap);
     padding: var(--sp-1) var(--sp-3);
     border: 0;
-    border-radius: var(--r-md);
-    background: transparent;
-    color: var(--text-1);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    color: var(--ink);
     font: inherit;
     text-align: center;
     cursor: pointer;
+    box-shadow: var(--sh-1);
+    transition: transform var(--dur-fast) var(--ease-out),
+                box-shadow var(--dur-fast) var(--ease-out);
 }
-.belot__score:hover { background: rgba(255, 255, 255, 0.05); }
+.belot__score:hover { transform: translateY(-1px); box-shadow: var(--sh-2); }
+.belot__score:active { transform: none; }
 
-/* The rule down the middle of the sheet. */
-.belot__score > :nth-child(2) {
-    border-left: 1px solid var(--line-gold);
-    padding-left: var(--sp-4);
+.belot__score-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    padding: 0 var(--sp-2);
 }
+/* The rule down the middle of the sheet. */
+.belot__score-col + .belot__score-col { border-left: 1px solid var(--ink-line); }
 
 .belot__side {
-    display: block;
     font-size: var(--fs-xs);
     font-weight: 600;
-    color: var(--text-3);
+    color: var(--ink-3);
 }
 .belot__points {
-    display: block;
     font-family: var(--belot-display);
     font-size: var(--fs-xl);
     font-weight: 800;
@@ -78,12 +92,15 @@
     font-variant-numeric: tabular-nums;
 }
 
-/* Hanging points belong to neither column yet, so they sit under the rule. */
+/* Hanging points belong to neither column yet, so they sit under the rule,
+   in the red the sheet keeps for a hand that did not come off. */
 .belot__hanging {
     grid-column: 1 / -1;
     padding-top: 2px;
+    border-top: 1px solid var(--ink-line);
     font-size: var(--fs-xs);
-    color: var(--gold);
+    font-weight: 700;
+    color: var(--suit-red);
 }
 
 /* ---- the table ---- */
@@ -91,7 +108,11 @@
 .belot__table {
     flex: 1 1 auto;
     display: grid;
-    grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+    /* The two side columns are equal and the middle takes what it needs, so
+       the trick square sits on the table's centre line. Sized the other way
+       round — sides auto, middle 1fr — a dealer tag under one seat made that
+       column wider than the other and pushed the whole trick off centre. */
+    grid-template-columns: minmax(72px, 1fr) minmax(0, auto) minmax(72px, 1fr);
     /* Both rows take what they need and the pair is centred as a block: with
        a stretched second row the partner was stranded at the top of a tall
        phone, a hand’s throw from the trick they were playing into. */
@@ -104,13 +125,13 @@
     /* A table is a table, not a room: on a wide screen the seats stay a
        card's throw apart rather than retreating to the window edges. */
     width: 100%;
-    max-width: 720px;
+    max-width: 600px;
     margin: 0 auto;
 }
 
-.belot__seat--partner { grid-column: 2; grid-row: 1; justify-self: center; }
-.belot__seat--left    { grid-column: 1; grid-row: 2; }
-.belot__seat--right   { grid-column: 3; grid-row: 2; }
+.belot__seat--partner { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
+.belot__seat--left    { grid-column: 1; grid-row: 2; justify-self: center; }
+.belot__seat--right   { grid-column: 3; grid-row: 2; justify-self: center; }
 .belot__middle        { grid-column: 2; grid-row: 2; align-self: center; }
 
 .belot__seat {
@@ -118,9 +139,13 @@
     flex-direction: column;
     align-items: center;
     gap: var(--sp-1);
-    padding: var(--sp-2);
+    /* Room for the turn ring to sit off the name rather than on it. */
+    padding: var(--sp-2) var(--sp-3);
     border-radius: var(--r-md);
     font-size: var(--fs-xs);
+    /* The plate is as wide as its widest part and no wider, so three of them
+       do not push the trick square off the middle of the table. */
+    max-width: 13ch;
 }
 
 /* Your partner is named in the ink you are, the opponents in the muted one.
@@ -147,16 +172,48 @@
 
 /* A fan of real backs — the same printed card the rest of the table uses. */
 /* Overlapped by a third rather than a half: at a half, five cards read as
-   one card with a thick edge. */
-.belot__backs { display: flex; height: 30px; }
+   one card with a thick edge. Held at the fan's own height whether there are
+   eight cards left or none, so the seat does not shrink as the deal runs. */
+.belot__backs {
+    display: flex;
+    justify-content: center;
+    height: 34px;
+}
 .belot__backs .card-back {
-    width: 18px;
-    height: 30px;
-    margin-left: -12px;
+    width: 20px;
+    height: 34px;
+    margin-left: -13px;
     border-radius: 3px;
     box-shadow: -1px 0 0 rgba(0, 0, 0, 0.35);
 }
 .belot__backs .card-back:first-child { margin-left: 0; }
+
+/* What this seat said in the auction, on the same stock the calls are made
+   on. A pass is the one call worth nothing, so it is written on the felt. */
+.belot__said {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px var(--sp-2);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    color: var(--ink);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    line-height: 1.4;
+    box-shadow: var(--sh-1);
+}
+.belot__said--pass {
+    background: transparent;
+    color: var(--text-3);
+    box-shadow: inset 0 0 0 1px var(--line);
+}
+.belot__said--contra,
+.belot__said--recontra {
+    background: var(--accent);
+    color: var(--text-on-accent);
+    box-shadow: none;
+}
 
 .belot__tag {
     padding: 1px var(--sp-2);
@@ -165,10 +222,9 @@
     font-size: var(--fs-xs);
     color: var(--text-3);
 }
-.belot__tag--turn { background: var(--accent-wash); color: var(--accent-bright); }
 
-/* The seconds a seat has left. Only on whoever is being waited for: a clock
-   on four seats at once is four things to ignore. */
+/* The seconds left. One on the screen, next to the name of whoever they
+   belong to: a clock at all four seats was four things to ignore. */
 .belot__clock {
     font-family: var(--belot-display);
     font-size: var(--fs-lg);
@@ -230,8 +286,21 @@
    landing on top of them. */
 .belot__played {
     position: relative;
-    width: min(46vw, 210px);
+    width: clamp(170px, 48vw, 272px);
     aspect-ratio: 1;
+}
+
+/* The contract, parked in the one corner of the square no card is ever put
+   on. Above the square it pushed the whole table off centre by its own
+   height; in the corner it costs nothing and is read in the same glance as
+   the cards. */
+.belot__contract--corner {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    padding: 2px var(--sp-2);
+    gap: var(--sp-1);
 }
 .belot__played-card { position: absolute; }
 .belot__played-card--you     { bottom: 0; left: 50%; transform: translateX(-50%); }
@@ -281,16 +350,31 @@
 
 .belot__took {
     margin: 0;
+    min-height: 1.4em;
     font-size: var(--fs-sm);
     font-weight: 700;
     color: var(--gold);
 }
 
+/* Set out as the calls are ranked: the four suits on one line, the two that
+   beat all of them under it, and the answers last and apart. */
 .belot__calls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+}
+.belot__calls-row {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: var(--sp-2);
+}
+.belot__calls-row--answers {
+    margin-top: var(--sp-1);
+    padding-top: var(--sp-3);
+    border-top: 1px solid var(--line);
+    width: 100%;
 }
 
 /* A call is a real button at a thumb-sized target. Naming a suit is printed
@@ -298,6 +382,10 @@
    here; the two calls that name no suit are spoken rather than printed, so
    they stay on the felt. */
 .belot__call {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: var(--tap);
     min-height: var(--tap);
     padding: 0 var(--sp-4);
     border: 1px solid transparent;
@@ -310,6 +398,9 @@
     box-shadow: var(--sh-1);
     transition: transform var(--dur-fast) var(--ease-out);
 }
+/* A suit is called by its own glyph, so the glyph is the button's face and is
+   set at the size a face needs rather than at label size. */
+.belot__call .belot__suit { font-size: var(--fs-2xl); }
 .belot__call:hover { transform: translateY(-1px); }
 .belot__call:active { transform: none; }
 
@@ -332,43 +423,69 @@
     box-shadow: var(--glow-accent);
 }
 
-.belot__waiting {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-2);
-    margin: 0;
-    font-size: var(--fs-sm);
-    color: var(--text-3);
-}
-
 /* ---- your own hand ---- */
 
 .belot__hand { flex: 0 0 auto; }
+
+/* Your name on one side, the clock on the other, on the line the hand hangs
+   from. Both keep their place whoever is being waited for. */
+.belot__hand-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin: 0 0 var(--sp-2);
+    min-height: var(--tap);
+}
 
 .belot__you {
     display: flex;
     align-items: center;
     gap: var(--sp-2);
-    margin: 0 0 var(--sp-2);
+    margin: 0;
+    /* Gives way first: the clock is a fixed width and the name is not, so a
+       long one is shortened rather than pushing the row off the screen. */
+    flex: 1 1 auto;
+    min-width: 0;
     font-size: var(--fs-sm);
     font-weight: 700;
     color: var(--text-1);
 }
 
-/* The cards overlap the way a held hand does, and spread out when there is
-   room. The last one is always whole. */
+.belot__hand-head .turn-pill { flex: 0 1 auto; min-width: 0; }
+.belot__hand-head .belot__clock { font-size: var(--fs-lg); }
+
+/* Names are the one piece of text here somebody else chose the length of. */
+.belot__you-name,
+.belot__waiting-for {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.belot__you-name { max-width: 14ch; }
+.belot__waiting-for { max-width: 16ch; }
+
+/* Eight cards, held. They overlap the way a fanned hand does and spread out
+   when there is room; the last one is always whole. */
 .belot__cards {
     display: flex;
     justify-content: center;
-    padding-left: var(--sp-4);
+    padding-left: var(--sp-5);
 }
-.belot__cards > * { margin-left: calc(var(--sp-4) * -1); }
+.belot__cards > * { margin-left: calc(var(--sp-5) * -1); }
 .belot__cards > *:first-child { margin-left: 0; }
 
 @media (min-width: 560px) {
     .belot__cards { gap: var(--sp-1); padding-left: 0; }
     .belot__cards > * { margin-left: 0; }
 }
+
+/* A belot card is held eight at a time rather than six, so the printed
+   margin comes in with it — the same face on a narrower card, not the same
+   face with less of it showing. */
+.belot .pcard { padding: clamp(3px, 1.1vw, 7px); }
 
 /* =====================================================================
    The score sheet
