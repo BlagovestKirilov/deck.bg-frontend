@@ -22,20 +22,21 @@
     --belot-display: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
     --belot-body: 'Sofia Sans', var(--font-body);
 
-    /* The middle of the table: where the four cards of a trick meet, and the
-       space the auction panel is laid down on. One token, because the two
-       must be the same square or the seats move between them.
-     *
-     * Sized against whichever of the two the screen has less of. On a phone
-     * that is the width; on a desktop window it is the height, and sizing on
-     * width alone left the four of them huddled in the top half of a tall
-     * window with a hand's depth of empty felt under them. */
-    --belot-square: clamp(146px, min(44vw, 40vh), 380px);
+    /* The middle of the table: where the four cards of a trick meet.
+       Sized against whichever of width and height the screen has less of, so
+       it fills a phone held upright and a desktop window alike. */
+    /* How far apart the four cards of a trick land: across, and away from
+       you. Two tokens rather than one square, because a screen is not square
+       and a table is not either — you sit at the long side of one. Held to a
+       square, a wide window was mostly felt and a tall one was felt above and
+       below; each dimension now takes what that screen has of it. */
+    --belot-spread: clamp(180px, 56vw, 900px);
+    --belot-depth: clamp(150px, 38vh, 460px);
 
-    /* How wide the table is, wherever it is being looked at. The bar and the
-       hand are laid to the same width, so the whole thing reads as one table
-       rather than as things pinned to the corners of a window. */
-    --belot-table: min(100%, 720px);
+    /* The table takes the window it is given. The two side seats are pulled
+       in against the middle rather than left at the edges of it, so a wide
+       screen buys a bigger table instead of a longer walk to the players. */
+    --belot-table: 100%;
 
     font-family: var(--belot-body);
 }
@@ -170,7 +171,7 @@
        the trick square sits on the table's centre line. Sized the other way
        round — sides auto, middle 1fr — a dealer tag under one seat made that
        column wider than the other and pushed the whole trick off centre. */
-    grid-template-columns: minmax(72px, 1fr) minmax(0, auto) minmax(72px, 1fr);
+    grid-template-columns: minmax(56px, 1fr) minmax(0, auto) minmax(56px, 1fr);
     /* Both rows take what they need and the pair is centred as a block: with
        a stretched second row the partner was stranded at the top of a tall
        phone, a hand’s throw from the trick they were playing into. */
@@ -191,8 +192,10 @@
 }
 
 .belot__seat--partner { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
-.belot__seat--left    { grid-column: 1; grid-row: 2; justify-self: center; }
-.belot__seat--right   { grid-column: 3; grid-row: 2; justify-self: center; }
+/* Against the middle, not adrift in the column: the table grows with the
+   window and the players stay a card's throw from the cards. */
+.belot__seat--left    { grid-column: 1; grid-row: 2; justify-self: end; }
+.belot__seat--right   { grid-column: 3; grid-row: 2; justify-self: start; }
 .belot__middle        { grid-column: 2; grid-row: 2; align-self: center; }
 
 /* The middle keeps the trick's own square whether a trick is out or not, so
@@ -204,8 +207,8 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-width: var(--belot-square);
-    min-height: var(--belot-square);
+    min-width: var(--belot-spread);
+    min-height: var(--belot-depth);
 }
 
 .belot__seat {
@@ -264,6 +267,29 @@
     transform-origin: 50% 150%;
 }
 .belot__backs .card-back:first-child { margin-left: 0; }
+
+/* The two players either side of you are seen side-on, so their cards are:
+   the fan runs down instead of across and each back lies on its long edge.
+   Your partner, opposite, holds theirs square to you and keeps the ordinary
+   fan. Each side pivots on the edge nearest the table, which is the corner a
+   hand is actually held by. */
+.belot__seat--left .belot__backs,
+.belot__seat--right .belot__backs {
+    flex-direction: column;
+    justify-content: center;
+    height: auto;
+    padding: 0 var(--sp-1);
+}
+.belot__seat--left .belot__backs .card-back,
+.belot__seat--right .belot__backs .card-back {
+    width: 34px;
+    height: 22px;
+    margin: -14px 0 0;
+}
+.belot__seat--left .belot__backs .card-back:first-child,
+.belot__seat--right .belot__backs .card-back:first-child { margin-top: 0; }
+.belot__seat--left .belot__backs .card-back { transform-origin: 150% 50%; }
+.belot__seat--right .belot__backs .card-back { transform-origin: -50% 50%; }
 
 /* What this seat said, drawn as speech: a bubble with a tail pointing back
    at the player who said it. A call belongs to somebody, and a row of chips
@@ -397,8 +423,8 @@
    landing on top of them. */
 .belot__played {
     position: relative;
-    width: var(--belot-square);
-    aspect-ratio: 1;
+    width: var(--belot-spread);
+    height: var(--belot-depth);
 }
 .belot__played-card { position: absolute; }
 .belot__played-card--you     { bottom: 0; left: 50%; transform: translateX(-50%); }
@@ -845,5 +871,5 @@
    The middle gives up its room first: nothing is played into it during the
    auction, and during a hand four smaller cards still read. */
 @media (max-height: 740px) {
-    .screen.belot { --belot-square: clamp(120px, min(32vw, 30vh), 200px); }
+    .screen.belot { --belot-depth: clamp(110px, 26vh, 200px); }
 }
