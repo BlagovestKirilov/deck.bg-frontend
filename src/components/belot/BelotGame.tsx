@@ -8,6 +8,7 @@ import { useCountdown } from '../../hooks/useCountdown';
 import {
     BelotBidKind,
     BelotBidView,
+    BelotCard,
     BelotContract,
     BelotSeatName,
     BelotSeatView,
@@ -232,18 +233,17 @@ const BelotGame: React.FC = () => {
                     />
                 ))}
 
+                {/* The middle of the felt, which is where both of these are
+                    put down at a table. The three other players sit at the
+                    edges of the screen, so the bid panel laid here covers
+                    none of them — which is what kept it out of the middle
+                    while they were sitting close in around it. */}
                 <div className="belot__middle">
-                    {state.play && <Trick state={state} />}
+                    {state.play ? <Trick state={state} /> : <Bidding state={state} />}
                 </div>
             </div>
 
             <section className="belot__hand" aria-label="Вашите карти">
-                {/* The auction is answered with the hand in view, under the
-                    table rather than on top of it: what the other three have
-                    called is half of what a call is chosen on, and a panel in
-                    the middle of the table covers all three of them. */}
-                <Bidding state={state} />
-
                 {/* One clock for the table, and it sits with the hand it is
                     counting down. Four seats each showing their own was four
                     numbers to ignore and one to find. */}
@@ -268,20 +268,7 @@ const BelotGame: React.FC = () => {
                         secondsLeft={secondsLeft}
                     />
                 </div>
-                <div className="belot__cards">
-                    {sortedHand(state.yourHand, contract).map((card) => {
-                        const playable = (state.play?.yours ?? []).some(
-                            (legal) => legal.suit === card.suit && legal.rank === card.rank);
-                        return (
-                            <BelotCardFace
-                                key={`${card.suit}-${card.rank}`}
-                                card={card}
-                                muted={!!state.play && !playable}
-                                onPlay={playable ? () => { void belotService.play(card); } : undefined}
-                            />
-                        );
-                    })}
-                </div>
+                <Held cards={sortedHand(state.yourHand, contract)} state={state} />
             </section>
 
             {sheetOpen && <BelotScoreSheet state={state} onClose={() => setSheetOpen(false)} />}
@@ -345,13 +332,17 @@ const Opponent: React.FC<{
     state: BelotState;
 }> = ({ place, seat, toAct, lastCall, announced, state }) => (
     <div className={`belot__seat belot__seat--${place} ${seat && toAct === seat.seat ? 'is-turn' : ''}`}>
-        <span className="belot__who">
-            <span className="belot__name">{seat?.username ?? 'свободно'}</span>
-            {seat && state.dealerSeat === seat.seat && <Dealer />}
-        </span>
+        {/* Behind the plate and partly under it, the way somebody's hand is
+            half hidden behind the person holding it. */}
         <Fan cards={seat?.cardsLeft ?? 0} />
+        <div className="belot__plate">
+            <span className="belot__who">
+                <span className="belot__name">{seat?.username ?? 'свободно'}</span>
+                {seat && state.dealerSeat === seat.seat && <Dealer />}
+            </span>
+            <Announced said={announced} />
+        </div>
         {lastCall && <CallChip bid={lastCall} />}
-        <Announced said={announced} />
     </div>
 );
 
@@ -389,6 +380,41 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
 const Dealer: React.FC = () => (
     <span className="belot__dealer" role="img" aria-label="раздава">Р</span>
 );
+
+/**
+ * Your own hand, held the way a hand is held: fanned from a point below the
+ * bottom of the screen, so the cards lie on an arc rather than a shelf.
+ *
+ * The turn and the drop of each card are on a wrapper rather than on the card
+ * itself. The card lifts when it can be played, and a lift written into the
+ * same transform as the fan's turn would have cancelled one or the other.
+ */
+const Held: React.FC<{ cards: BelotCard[]; state: BelotState }> = ({ cards, state }) => {
+    const middle = (cards.length - 1) / 2;
+
+    return (
+        <div className="belot__cards">
+            {cards.map((card, i) => {
+                const step = i - middle;
+                const playable = (state.play?.yours ?? []).some(
+                    (legal) => legal.suit === card.suit && legal.rank === card.rank);
+                return (
+                    <span
+                        key={`${card.suit}-${card.rank}`}
+                        className="belot__held"
+                        style={{ '--fan-step': step, '--fan-arc': step * step } as React.CSSProperties}
+                    >
+                        <BelotCardFace
+                            card={card}
+                            muted={!!state.play && !playable}
+                            onPlay={playable ? () => { void belotService.play(card); } : undefined}
+                        />
+                    </span>
+                );
+            })}
+        </div>
+    );
+};
 
 /**
  * What a seat said, in a bubble pointing at the table from that seat.

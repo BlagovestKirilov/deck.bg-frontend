@@ -22,28 +22,26 @@
     --belot-display: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
     --belot-body: 'Sofia Sans', var(--font-body);
 
-    /* The middle of the table: where the four cards of a trick meet.
-       Sized against whichever of width and height the screen has less of, so
-       it fills a phone held upright and a desktop window alike. */
-    /* How big a card is on this screen. One token each for the two sizes,
-       because the pile the trick lands in is measured in cards — two of them
-       across, overlapping a little, the way four cards thrown into the middle
-       of a table actually lie. */
-    --belot-card: clamp(46px, 12.5vw, 72px);
-    --belot-card-hand: clamp(54px, 15.5vw, 86px);
+    /* How big a card is on this screen: one token each for a card on the
+       table and a card in your hand. The pile a trick lands in is measured
+       in the first; the arc your hand is held in, in the second. */
+    --belot-card: clamp(46px, 12.5vw, 76px);
+    --belot-card-hand: clamp(62px, 18vw, 108px);
 
-    /* How far apart the four cards of a trick land: across, and away from
-       you. Two tokens rather than one square, because a screen is not square
-       and a table is not either — you sit at the long side of one. Held to a
-       square, a wide window was mostly felt and a tall one was felt above and
-       below; each dimension now takes what that screen has of it. */
-    --belot-spread: clamp(180px, 56vw, 900px);
-    --belot-depth: clamp(150px, 38vh, 460px);
+    /* A back in somebody else's hand: smaller than a card on the table,
+       because it is further away. */
+    --belot-back-w: calc(var(--belot-card) * 0.62);
+    --belot-back-h: calc(var(--belot-back-w) * 103 / 71);
 
-    /* The table takes the window it is given. The two side seats are pulled
-       in against the middle rather than left at the edges of it, so a wide
-       screen buys a bigger table instead of a longer walk to the players. */
-    --belot-table: 100%;
+    /* How far in from the left and right edges the two side players sit.
+       Close: their hands hang off the edge of the screen, the way the hand
+       of somebody sitting beside a real table is half out of your eyeline. */
+    --belot-edge: clamp(14px, 3.5vw, 44px);
+
+    /* The strip along the top that belongs to the player opposite: half a
+       back for the fan to rise into, and a plate. The trick is centred in
+       what is left, so it never lands on top of them. */
+    --belot-top: calc(var(--belot-back-h) * 0.5 + 64px);
 
     font-family: var(--belot-body);
 }
@@ -68,18 +66,16 @@
     background: var(--felt);
 }
 
-/* As wide as the table underneath it and no wider. On a desktop window the
-   sheet and the way out were a metre apart at opposite edges of the glass,
-   with the table they belong to sitting in the middle. */
+/* The score sheet at the top-left corner and the way out at the top-right,
+   with the player opposite between them. */
 .belot__bar {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--sp-3);
     flex: 0 0 auto;
-    width: 100%;
-    max-width: var(--belot-table);
-    margin: 0 auto;
+    position: relative;
+    z-index: 2;
 }
 
 /* ---- the score, as the sheet it is kept on ----
@@ -169,64 +165,67 @@
     color: var(--suit-red);
 }
 
-/* ---- the table ---- */
+/* ---- the table ----
+
+   Four sides of a table, and the screen is the table. The player opposite
+   sits at the top edge, the two either side at the left and right edges, and
+   you are the bottom one. They used to be pulled in around the trick, which
+   left felt at the edges and players crowding the middle; at a table the
+   middle is for the cards and the players are round the outside of it. */
 
 .belot__table {
-    flex: 1 1 auto;
-    display: grid;
-    /* The two side columns are equal and the middle takes what it needs, so
-       the trick square sits on the table's centre line. Sized the other way
-       round — sides auto, middle 1fr — a dealer tag under one seat made that
-       column wider than the other and pushed the whole trick off centre. */
-    grid-template-columns: minmax(56px, 1fr) minmax(0, auto) minmax(56px, 1fr);
-    /* Both rows take what they need and the pair is centred as a block: with
-       a stretched second row the partner was stranded at the top of a tall
-       phone, a hand’s throw from the trick they were playing into. */
-    grid-template-rows: auto auto;
-    align-content: center;
-    align-items: center;
-    row-gap: var(--sp-4);
-    gap: var(--sp-2);
-    min-height: 0;
-    /* The bidding panel is laid over the middle of this, so it needs a box
-       to be laid over. */
     position: relative;
-    /* A table is a table, not a room: on a wide screen the seats stay a
-       card's throw apart rather than retreating to the window edges. */
-    width: 100%;
-    max-width: var(--belot-table);
-    margin: 0 auto;
-}
-
-.belot__seat--partner { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
-/* Against the middle, not adrift in the column: the table grows with the
-   window and the players stay a card's throw from the cards. */
-.belot__seat--left    { grid-column: 1; grid-row: 2; justify-self: end; }
-.belot__seat--right   { grid-column: 3; grid-row: 2; justify-self: start; }
-.belot__middle        { grid-column: 2; grid-row: 2; align-self: center; }
-
-/* The middle keeps the trick's own square whether a trick is out or not, so
-   the four seats sit in the same places all hand — during the auction they
-   used to close in on an empty middle and then be pushed back out again when
-   the first card was played. */
-.belot__middle {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-width: var(--belot-spread);
-    min-height: var(--belot-depth);
+    flex: 1 1 auto;
+    min-height: calc(var(--belot-card) * 103 / 71 * 2.6);
+    /* Out to the screen's own edges rather than to the padding, so a hand
+       that hangs off the side is cut by the edge of the glass and not by an
+       invisible line twelve pixels in from it. */
+    margin-inline: calc(var(--sp-3) * -1);
+    /* Cut at the sides, where the two hands run off the screen. Not at the
+       top: the fan of the player opposite reaches up into the bar, and
+       clipping that would cut the tops off the cards. */
+    overflow-x: clip;
+    overflow-y: visible;
 }
 
 .belot__seat {
+    position: absolute;
+    display: grid;
+    place-items: center;
+    font-size: var(--fs-xs);
+}
+/* The hand and the plate share one cell, so the plate sits on the hand rather
+   than under it. */
+.belot__seat > .belot__backs,
+.belot__seat > .belot__plate { grid-area: 1 / 1; }
+
+.belot__seat--partner { top: calc(var(--belot-back-h) * 0.5); left: 50%; transform: translateX(-50%); }
+.belot__seat--left    { left: var(--belot-edge); top: 50%; transform: translateY(-50%); }
+.belot__seat--right   { right: var(--belot-edge); top: 50%; transform: translateY(-50%); }
+
+.belot__middle {
+    position: absolute;
+    inset: var(--belot-top) 0 0;
+    display: grid;
+    place-items: center;
+    pointer-events: none;
+}
+.belot__middle > * { pointer-events: auto; }
+
+/* The name, on a plate laid over the hand. Dark and plain: it has to read on
+   top of the red of the backs, and it is furniture; the cards are the thing
+   to look at. */
+.belot__plate {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: var(--sp-1);
-    /* Room for the turn ring to sit off the name rather than on it. */
-    padding: var(--sp-2) var(--sp-3);
+    gap: 3px;
+    padding: var(--sp-1) var(--sp-3);
     border-radius: var(--r-md);
-    font-size: var(--fs-xs);
+    background: rgba(4, 13, 8, 0.86);
+    box-shadow: inset 0 0 0 1px var(--line), var(--sh-2);
 }
 
 /* Your partner is named in the ink you are, the opponents in the muted one.
@@ -234,18 +233,16 @@
    and the last thing worth a label. */
 .belot__seat--partner .belot__name { color: var(--text-1); }
 .belot__seat--left .belot__name,
-.belot__seat--right .belot__name { color: var(--text-3); }
+.belot__seat--right .belot__name { color: var(--text-2); }
 
 /* Whose turn it is, said with a ring as well as a colour. */
-.belot__seat.is-turn {
-    background: var(--gold-wash);
-    box-shadow: inset 0 0 0 1px var(--line-gold);
+.belot__seat.is-turn .belot__plate {
+    box-shadow: inset 0 0 0 2px var(--gold), var(--glow-gold);
 }
 .belot__seat.is-turn .belot__name { color: var(--text-1); }
 
 /* Name and dealer marker on one line, because they are one fact about the
-   player. The marker used to be a word on a line of its own under the cards,
-   which put three labels in a column under one seat. */
+   player. */
 .belot__who {
     display: flex;
     align-items: center;
@@ -278,57 +275,34 @@
     font-weight: 700;
 }
 
-/* A held hand: real backs, kept at a card's proportions wherever they are.
- *
- * The player opposite holds theirs square to you, so that fan turns a couple
- * of degrees a card and spreads across. The two either side hold theirs edge
- * on to you, so theirs run down the screen — but they are still printed the
- * way a card is printed, and squashing the back into a landscape box turned
- * eight cards into one torn red strip. They stack instead, offset a hair each
- * so the pile has a hand's unevenness in it.
- *
- * Every fan keeps its height whether eight cards are left or none, so a seat
- * does not shrink as the deal runs out.
- */
+/* ---- the hands you cannot see ----
+
+   One fan for all three, held the same way: backs turned a few degrees each
+   about a point below them, so the tops spread and the bottoms gather. The
+   fan is then turned to face the table (upright for the player opposite, on
+   its side for the two either side) and pushed out from behind the plate
+   towards the edge of the screen, where it runs off. Every back keeps a
+   card's own proportions, because that is what a card is. */
+
 .belot__backs {
     display: flex;
     justify-content: center;
-    align-items: center;
-    min-height: 40px;
+    align-items: flex-end;
 }
 .belot__backs .card-back {
-    width: 26px;
-    height: 38px;
-    border-radius: 3px;
-    box-shadow: -1px 0 0 rgba(0, 0, 0, 0.35);
+    width: var(--belot-back-w);
+    height: var(--belot-back-h);
+    margin-left: calc(var(--belot-card) * -0.46);
+    border-radius: 4px;
+    box-shadow: -1px 0 2px rgba(0, 0, 0, 0.45);
+    transform-origin: 50% 230%;
+    transform: rotate(calc(var(--fan-step, 0) * 7deg));
 }
+.belot__backs .card-back:first-child { margin-left: 0; }
 
-/* Across, and turned: the hand your partner is holding up opposite you. */
-.belot__seat--partner .belot__backs .card-back,
-.belot__hand-head .belot__backs .card-back {
-    margin-left: -17px;
-    transform-origin: 50% 160%;
-    transform: rotate(calc(var(--fan-step, 0) * 3deg));
-}
-.belot__seat--partner .belot__backs .card-back:first-child,
-.belot__hand-head .belot__backs .card-back:first-child { margin-left: 0; }
-
-/* Down, and squared: the two hands you are looking at the edge of. */
-.belot__seat--left .belot__backs,
-.belot__seat--right .belot__backs {
-    flex-direction: column;
-    min-height: 0;
-}
-.belot__seat--left .belot__backs .card-back,
-.belot__seat--right .belot__backs .card-back {
-    width: 30px;
-    height: 44px;
-    margin-top: -32px;
-    transform: translateX(calc(var(--fan-step, 0) * 1.2px));
-    box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.35);
-}
-.belot__seat--left .belot__backs .card-back:first-child,
-.belot__seat--right .belot__backs .card-back:first-child { margin-top: 0; }
+.belot__seat--partner > .belot__backs { transform: translateY(-46%); }
+.belot__seat--left    > .belot__backs { transform: translateX(-44%) rotate(-90deg); }
+.belot__seat--right   > .belot__backs { transform: translateX(44%) rotate(90deg); }
 
 /* What this seat said, drawn as speech: a bubble with a tail pointing back
    at the player who said it. A call belongs to somebody, and a row of chips
@@ -359,7 +333,18 @@
 }
 /* Each bubble sits under the hand that said it, so the tail points up at it.
    Yours is the exception: it sits above your cards and points down at them. */
-.belot__seat      .belot__said::after { top: -3px; left: 50%; margin-left: -4px; }
+.belot__seat > .belot__said { position: absolute; z-index: 2; white-space: nowrap; }
+
+/* Out towards the middle of the table, with the tail back at the plate. */
+/* The partner's goes beside the plate rather than under it: under it is the
+   middle of the table, where the bid panel is laid while the auction is on. */
+.belot__seat--partner > .belot__said { left: 100%; top: 50%; transform: translate(var(--sp-2), -50%); }
+.belot__seat--left    > .belot__said { left: 100%; top: 50%;  transform: translate(var(--sp-2), -50%); }
+.belot__seat--right   > .belot__said { right: 100%; top: 50%; transform: translate(calc(var(--sp-2) * -1), -50%); }
+
+.belot__seat--partner > .belot__said::after { left: -3px; top: 50%; margin-top: -4px; }
+.belot__seat--left    > .belot__said::after { left: -3px; top: 50%; margin-top: -4px; }
+.belot__seat--right   > .belot__said::after { right: -3px; top: 50%; margin-top: -4px; }
 .belot__hand-head .belot__said::after { bottom: -3px; left: 50%; margin-left: -4px; }
 
 /* A pass is the one call worth nothing, so it is spoken on the felt rather
@@ -370,6 +355,9 @@
     box-shadow: inset 0 0 0 1px var(--line);
 }
 .belot__said--pass::after { display: none; }
+/* At a seat it can land on somebody's backs, where an outline on nothing is
+   unreadable against the red; it gets the plate's own dark behind it there. */
+.belot__seat > .belot__said--pass { background: rgba(4, 13, 8, 0.86); }
 
 /* Doubling is the loud call, and the only loud thing on this screen. */
 .belot__said--contra,
@@ -379,13 +367,6 @@
     box-shadow: none;
 }
 
-.belot__tag {
-    padding: 1px var(--sp-2);
-    border-radius: var(--r-pill);
-    background: rgba(255, 255, 255, 0.06);
-    font-size: var(--fs-xs);
-    color: var(--text-3);
-}
 
 /* The seconds left. One on the screen, next to the name of whoever they
    belong to: a clock at all four seats was four things to ignore. */
@@ -454,23 +435,12 @@
     font-weight: 700;
 }
 
-/* Each played card sits towards the seat that played it, so the trick reads
-   as four people putting cards down rather than a row of four cards. */
-/* Narrower than it looks like it should be: the two side seats take the
-   rest of the row, and at 60vw the left and right cards of the trick were
-   landing on top of them. */
-/* Where the four cards land: a pile the size of a couple of cards, in the
-   middle of the table. It used to be the whole seating area, so the card
-   from the seat opposite sat a hand's length from the card to your left and
-   the trick read as four people putting cards down in different rooms. The
-   seats are still spread by --belot-spread and --belot-depth; the cards are
-   not. */
 /* One card, and the other three pushed off it towards the chairs they came
-   from. Sized in cards rather than in pixels, so the pile is the same shape
-   at every screen size.
+ * from. Sized in cards rather than in pixels, so the pile is the same shape
+ * at every screen size.
  *
  * Each is turned a few degrees as well. Four cards laid out square read as a
- * broken grid — a slot missing wherever somebody has not played yet; turned,
+ * broken grid, a slot missing wherever somebody has not played yet; turned,
  * they read as four cards thrown onto a table, which is what they are, and
  * the corner index of each one stays clear of its neighbours. */
 .belot__played {
@@ -550,12 +520,22 @@
    say. Pass runs the full width underneath, because it is the call made most
    often and the one nobody should have to aim at. */
 
-/* Laid down under the table rather than on top of it: over the middle it
-   covered all three of the other players, and what they have called is half
-   of what a call is chosen on. Here it is also where the thumb already is. */
+/* Laid on the middle of the felt, as it is at a table. It stays out of the
+   three seats (they are at the edges, and the panel is held clear of them by
+   their inset plus a plate's width) because what the others have called is
+   half of what a call is chosen on. */
 .belot__bidding {
-    width: min(100%, 320px);
-    margin: 0 auto var(--sp-3);
+    width: min(320px, calc(100% - var(--belot-edge) * 2 - 150px));
+    min-width: 220px;
+    padding: var(--sp-2);
+    border: 1px solid var(--line-gold);
+    border-radius: var(--r-lg);
+    background: rgba(4, 13, 8, 0.9);
+    box-shadow: var(--sh-3);
+    /* Its rows run the full width of the panel. It shares a rule with the
+       trick, which centres what it holds, and a centred ladder was a narrow
+       column of buttons floating in the middle of its own panel. */
+    align-items: stretch;
 }
 
 .belot__ladder {
@@ -630,12 +610,7 @@
 
 /* ---- your own hand ---- */
 
-.belot__hand {
-    flex: 0 0 auto;
-    width: 100%;
-    max-width: var(--belot-table);
-    margin: 0 auto;
-}
+.belot__hand { flex: 0 0 auto; }
 
 /* Your name on one side, the clock on the other, on the line the hand hangs
    from. Both keep their place whoever is being waited for. */
@@ -677,19 +652,38 @@
 .belot__you-name { max-width: 14ch; }
 .belot__waiting-for { max-width: 16ch; }
 
-/* Eight cards, held. They overlap the way a fanned hand does and spread out
-   when there is room; the last one is always whole. */
+/* Eight cards, held as an arc along the bottom of the screen: each turned a
+   few degrees about a point well below it, and dropped a little the further
+   it is from the middle, which is the shape a hand makes in two hands. They
+   overlap by half on a phone and by a little less where there is room; the
+   last card is always whole. */
 .belot__cards {
     display: flex;
     justify-content: center;
-    padding-left: var(--sp-5);
+    align-items: flex-end;
+    /* The foot is room for the arc: the outside cards turn down past the
+       line the middle ones stand on. */
+    padding: var(--sp-3) 0 calc(var(--belot-card-hand) * 0.12);
+    padding-left: calc(var(--belot-card-hand) * 0.5);
 }
-.belot__cards > * { margin-left: calc(var(--sp-5) * -1); }
-.belot__cards > *:first-child { margin-left: 0; }
+.belot__held {
+    position: relative;
+    margin-left: calc(var(--belot-card-hand) * -0.5);
+    transform-origin: 50% 320%;
+    transform:
+        rotate(calc(var(--fan-step, 0) * 3.2deg))
+        translateY(calc(var(--fan-arc, 0) * 0.8px));
+}
+.belot__held:first-child { margin-left: 0; }
+/* The card under the pointer comes out from under its neighbour. The wrapper
+   is its own stacking context (it carries a transform) so the card inside
+   cannot do this by itself, however high its z-index. */
+.belot__held:hover,
+.belot__held:focus-within { z-index: 2; }
 
-@media (min-width: 560px) {
-    .belot__cards { gap: var(--sp-1); padding-left: 0; }
-    .belot__cards > * { margin-left: 0; }
+@media (min-width: 700px) {
+    .belot__cards { padding-left: calc(var(--belot-card-hand) * 0.38); }
+    .belot__held { margin-left: calc(var(--belot-card-hand) * -0.38); }
 }
 
 /* A belot card is held eight at a time rather than six, so the printed
@@ -938,5 +932,5 @@
    The middle gives up its room first: nothing is played into it during the
    auction, and during a hand four smaller cards still read. */
 @media (max-height: 740px) {
-    .screen.belot { --belot-depth: clamp(110px, 26vh, 200px); }
+    .screen.belot { --belot-card-hand: clamp(56px, 15vw, 86px); }
 }
