@@ -204,6 +204,14 @@ const BelotGame: React.FC = () => {
                             {declarer && <span className="belot__declared-by">{declarer}</span>}
                         </span>
                     )}
+                    {/* How far through the hand the table is. It holds for the
+                        whole trick and changes once per trick, like the
+                        contract above it, so it is kept where the contract is
+                        rather than on the felt, where every spot is somewhere
+                        a card lands. */}
+                    {state.play && (
+                        <span className="belot__trickno">ръка {state.play.trickNo}/8</span>
+                    )}
                     {state.hangingPoints > 0 && (
                         <span className="belot__hanging">висящи {state.hangingPoints}</span>
                     )}
@@ -481,9 +489,6 @@ const Trick: React.FC<{ state: BelotState }> = ({ state }) => {
 
     return (
         <div className="belot__trick">
-            {/* How far through the hand the table is. The contract itself is on
-                the score plate, where it stays for the whole hand. */}
-            <p className="belot__count belot__count--trick">ръка {play.trickNo}/8</p>
             <div className="belot__played">
                 {play.onTable.map((played) => (
                     <span

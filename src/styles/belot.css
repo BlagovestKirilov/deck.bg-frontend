@@ -41,6 +41,14 @@
        whole on the screen: cut off by the glass, eight cards read as three. */
     --belot-edge: clamp(12px, 4vw, 64px);
 
+    /* How far out from the centre line the two side players may sit. A
+       table is a little wider than it is deep, not three times wider: on a
+       wide screen the two at the sides were pinned to the glass, twice as
+       far apart as the two at the top and bottom, and the four read as
+       people in the corners of a room. Measured on the height, so the table
+       keeps its shape whatever the window's; the edge still wins on a phone. */
+    --belot-side: max(var(--belot-edge), calc(50% - 56vh));
+
     /* The strip along the top that belongs to the player opposite: half a
        back for the fan to rise into, and a plate. The trick is centred in
        what is left, so it never lands on top of them. */
@@ -67,7 +75,12 @@
     gap: var(--sp-2);
     padding: calc(var(--sa-top) + var(--sp-2)) var(--sp-3) calc(var(--sa-bottom) + var(--sp-3));
     background: var(--felt);
+    /* Still scrolls on a screen too short for it, but without a scrollbar:
+       a pixel of rounding put one down the right-hand side, fifteen pixels
+       wide, and the whole table sat that much left of centre. */
+    scrollbar-width: none;
 }
+.screen.belot::-webkit-scrollbar { display: none; }
 
 /* The score sheet at the top-left corner and the way out at the top-right,
    with the player opposite between them. */
@@ -157,6 +170,17 @@
 }
 .belot__doubled { font-weight: 800; color: var(--suit-red); }
 
+/* Which trick of the eight, under the contract it is being played for. */
+.belot__trickno {
+    grid-column: 1 / -1;
+    padding-top: 2px;
+    border-top: 1px solid var(--ink-line);
+    font-size: var(--fs-xs);
+    font-weight: 600;
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
+}
+
 /* Hanging points belong to neither column yet, so they sit under the rule,
    in the red the sheet keeps for a hand that did not come off. */
 .belot__hanging {
@@ -207,13 +231,21 @@
    towards the middle. With a hand on the outside the plate had to sit in
    from the edge by the hand's width, and on a phone that pushed it in under
    the bid panel. */
-.belot__seat--left    { left: var(--belot-edge); top: 50%; transform: translateY(-50%); }
-.belot__seat--right   { right: var(--belot-edge); top: 50%; transform: translateY(-50%); }
+/* Level with the middle of the felt below the partner's strip, which is
+   where the trick is: on the table's own midline they sat above the cards
+   they were playing into. */
+.belot__seat--left    { left: var(--belot-side);  top: calc(50% + var(--belot-top) / 2); transform: translateY(-50%); }
+.belot__seat--right   { right: var(--belot-side); top: calc(50% + var(--belot-top) / 2); transform: translateY(-50%); }
 
 .belot__middle {
     position: absolute;
     inset: var(--belot-top) 0 0;
     display: grid;
+    /* One track the size of the area, not one that grows to fit what is in
+       it: on a short screen the trick is taller than the space, and a growing
+       track moved its centre down, below the two players either side. Held
+       to the area, it overflows evenly both ways and stays level with them. */
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
     place-items: center;
     pointer-events: none;
 }
@@ -334,8 +366,11 @@
 .belot__seat--left  > .belot__backs {
     transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * 0.62)) rotate(90deg);
 }
+/* The mirror of the left one, not the left one turned half round. Turned, the
+   cards overlap the other way (downwards on one side, upwards on the other)
+   and the two hands read as a pair that does not match. */
 .belot__seat--right > .belot__backs {
-    transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * -0.62)) rotate(-90deg);
+    transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * -0.62)) scaleX(-1) rotate(90deg);
 }
 
 /* What this seat said, drawn as speech: a bubble with a tail pointing back
@@ -372,7 +407,10 @@
 /* Out towards the middle of the table, with the tail back at the plate. */
 /* The partner's goes beside the plate rather than under it: under it is the
    middle of the table, where the bid panel is laid while the auction is on. */
-.belot__seat--partner > .belot__said { left: 100%; top: 50%; transform: translate(var(--sp-2), -50%); }
+/* Past the end of their fan, not on it: beside the plate it landed on the
+   last card of the hand and read as a sticker on the back of it. The fan
+   runs out past the plate by a little over a card's width. */
+.belot__seat--partner > .belot__said { left: calc(100% + var(--belot-back-w) * 1.35); top: 50%; transform: translateY(-50%); }
 /* The two at the sides say theirs above the plate: beside it is their own
    hand now, and past that the bid panel, which would lie on top of it. */
 .belot__seat--left    > .belot__said,
@@ -453,23 +491,11 @@
     font-weight: 600;
 }
 
-.belot__count {
-    font-size: var(--fs-xs);
-    color: var(--text-3);
-    font-variant-numeric: tabular-nums;
-}
-/* How far through the hand the table is, over the pile the hands land in.
-   It was in the corner of that pile while the pile was the size of the whole
-   table; now that the four cards fall on top of one another there is no
-   corner to spare, and it sits above them. */
-.belot__count--trick {
-    margin: 0;
-    padding: 2px var(--sp-3);
-    border-radius: var(--r-pill);
-    background: rgba(4, 13, 8, 0.62);
-    color: var(--text-2);
-    font-weight: 700;
-}
+/* The trick is the pile and nothing else, so the middle of the pile is the
+   middle of the trick and sits level with the two players either side. The
+   trick counter moved to the score plate; the line saying who took the trick
+   hangs under the pile rather than being stacked in its column. */
+.belot__trick { position: relative; display: block; }
 
 /* One card, and the other three pushed off it towards the chairs they came
  * from. Sized in cards rather than in pixels, so the pile is the same shape
@@ -537,9 +563,15 @@
     white-space: nowrap;
 }
 
+/* Hung just under the pile rather than stacked in its column, for the same
+   reason as the counter. It only appears once all four cards are down. */
 .belot__took {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
     margin: 0;
-    min-height: 1.4em;
     font-size: var(--fs-sm);
     font-weight: 700;
     color: var(--gold);
@@ -561,7 +593,7 @@
    their inset plus a plate's width) because what the others have called is
    half of what a call is chosen on. */
 .belot__bidding {
-    width: min(320px, calc(100% - var(--belot-edge) * 2 - 168px));
+    width: min(320px, calc(100% - var(--belot-side) * 2 - 168px));
     min-width: 220px;
     padding: var(--sp-2);
     border: 1px solid var(--line-gold);
@@ -653,7 +685,11 @@
 .belot__hand-head {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    /* On the centre line with the hand under it, the way the partner's name
+       sits on the centre line over theirs. Pinned to the two corners, the
+       only two things on the screen that were not centred sat either side of
+       a hand that was. */
+    justify-content: center;
     gap: var(--sp-3);
     margin: 0 0 var(--sp-2);
     min-height: var(--tap);
@@ -666,7 +702,7 @@
     margin: 0;
     /* Gives way first: the clock is a fixed width and the name is not, so a
        long one is shortened rather than pushing the row off the screen. */
-    flex: 1 1 auto;
+    flex: 0 1 auto;
     min-width: 0;
     font-size: var(--fs-sm);
     font-weight: 700;
@@ -693,24 +729,31 @@
    it is from the middle, which is the shape a hand makes in two hands. They
    overlap by half on a phone and by a little less where there is room; the
    last card is always whole. */
+/* How much of each card the next one covers. */
+.belot__hand { --belot-overlap: 0.5; }
+
 .belot__cards {
     display: flex;
     justify-content: center;
     align-items: flex-end;
     /* The foot is room for the arc: the outside cards turn down past the
-       line the middle ones stand on. */
+       line the middle ones stand on. No padding at the sides: the overlap is
+       taken from every card but the first, so the hand is already as wide as
+       it looks and centres on the screen's own centre line. A left padding
+       that made up for an overlap the first card never had pushed the whole
+       hand a third of a card to the right. */
     padding: var(--sp-3) 0 calc(var(--belot-card-hand) * 0.12);
-    padding-left: calc(var(--belot-card-hand) * 0.5);
 }
 .belot__held {
     position: relative;
-    margin-left: calc(var(--belot-card-hand) * -0.5);
     transform-origin: 50% 320%;
     transform:
         rotate(calc(var(--fan-step, 0) * 3.2deg))
         translateY(calc(var(--fan-arc, 0) * 0.8px));
 }
-.belot__held:first-child { margin-left: 0; }
+.belot__held + .belot__held {
+    margin-left: calc(var(--belot-card-hand) * var(--belot-overlap) * -1);
+}
 /* The card under the pointer comes out from under its neighbour. The wrapper
    is its own stacking context (it carries a transform) so the card inside
    cannot do this by itself, however high its z-index. */
@@ -718,17 +761,15 @@
 .belot__held:focus-within { z-index: 2; }
 
 @media (min-width: 700px) {
-    .belot__cards { padding-left: calc(var(--belot-card-hand) * 0.38); }
-    .belot__held { margin-left: calc(var(--belot-card-hand) * -0.38); }
+    .belot__hand { --belot-overlap: 0.38; }
 }
 
 /* A phone held upright has room for eight cards at this size only if they
    overlap by more and turn by less: the turn itself swings the outside cards
    further out, and at the wider settings the eighth card left the screen. */
 @media (max-width: 480px) {
-    .belot__cards { padding-left: calc(var(--belot-card-hand) * 0.6); }
+    .belot__hand { --belot-overlap: 0.6; }
     .belot__held {
-        margin-left: calc(var(--belot-card-hand) * -0.6);
         transform-origin: 50% 260%;
         transform:
             rotate(calc(var(--fan-step, 0) * 2.4deg))
