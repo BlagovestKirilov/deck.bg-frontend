@@ -170,17 +170,6 @@
 }
 .belot__doubled { font-weight: 800; color: var(--suit-red); }
 
-/* Which trick of the eight, under the contract it is being played for. */
-.belot__trickno {
-    grid-column: 1 / -1;
-    padding-top: 2px;
-    border-top: 1px solid var(--ink-line);
-    font-size: var(--fs-xs);
-    font-weight: 600;
-    color: var(--ink-3);
-    font-variant-numeric: tabular-nums;
-}
-
 /* Hanging points belong to neither column yet, so they sit under the rule,
    in the red the sheet keeps for a hand that did not come off. */
 .belot__hanging {
@@ -493,9 +482,22 @@
 
 /* The trick is the pile and nothing else, so the middle of the pile is the
    middle of the trick and sits level with the two players either side. The
-   trick counter moved to the score plate; the line saying who took the trick
-   hangs under the pile rather than being stacked in its column. */
+   line saying who took the trick hangs under the pile rather than being
+   stacked in its column. */
 .belot__trick { position: relative; display: block; }
+
+/* Swept to the chair that took it. Held a beat first, so the four cards can
+   be read — which one won is the thing everyone looks for — then gathered in
+   and gone. Faster going than it would be coming: it is clearing the way for
+   the next card. With reduced motion the hold is kept and the sweep is not;
+   the trick is simply taken away when the moment is over. */
+.belot__trick.is-collected {
+    animation: trick-collect 420ms var(--ease-in) 1100ms forwards;
+}
+.belot__trick--to-left    { --collect-x: -34vw; }
+.belot__trick--to-right   { --collect-x: 34vw; }
+.belot__trick--to-partner { --collect-y: -28vh; }
+.belot__trick--to-you     { --collect-y: 30vh; }
 
 /* One card, and the other three pushed off it towards the chairs they came
  * from. Sized in cards rather than in pixels, so the pile is the same shape
@@ -552,6 +554,10 @@
     gap: 3px;
 }
 .belot__announced-call {
+    /* Its whole life, from arriving to fading, matches the moment it is
+       shown for (ANNOUNCED_FOR_MS in BelotGame), so it has faded out by the
+       time it is taken away. */
+    animation: announce-life 3500ms var(--ease-out);
     padding: 0 6px;
     border-radius: var(--r-pill);
     background: var(--gold-wash);
@@ -897,6 +903,88 @@
     margin: 0;
     font-size: var(--fs-sm);
     color: var(--ink-3);
+}
+
+/* =====================================================================
+   The count of one hand
+
+   Read out the way it is at a table: announced, taken in tricks, the total,
+   and what goes on the sheet — the last line set large and ruled off,
+   because it is the one the count is for. Same stock and the same two
+   columns as the sheet it is about to be written on.
+   ===================================================================== */
+
+.hand-result__called {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+    margin: 0 0 var(--sp-3);
+    font-weight: 700;
+    color: var(--ink-2);
+}
+.hand-result__called .belot__suit { font-size: var(--fs-xl); }
+.hand-result__doubled { color: var(--suit-red); }
+.hand-result__by { font-weight: 400; color: var(--ink-3); }
+
+.hand-result__grid {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: baseline;
+    gap: var(--sp-2) var(--sp-4);
+}
+.hand-result__head {
+    padding-bottom: var(--sp-1);
+    border-bottom: 1px solid var(--ink-line);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--ink-3);
+    text-align: right;
+    min-width: 4ch;
+}
+.hand-result__label { font-size: var(--fs-sm); color: var(--ink-2); }
+.hand-result__cell {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--ink);
+}
+/* The rule down the page, between ours and theirs, as on the sheet. */
+.hand-result__head--theirs,
+.hand-result__cell--theirs {
+    padding-left: var(--sp-4);
+    border-left: 1px solid var(--ink-line);
+}
+
+.hand-result__label--written,
+.hand-result__cell--written {
+    padding-top: var(--sp-2);
+    border-top: 3px double var(--ink-line);
+}
+.hand-result__label--written { font-weight: 700; color: var(--ink); }
+.hand-result__cell--written {
+    font-family: var(--belot-display);
+    font-size: var(--fs-2xl);
+    font-weight: 800;
+    line-height: 1;
+}
+
+.hand-result__outcome {
+    margin: var(--sp-4) 0 0;
+    text-align: center;
+    font-weight: 700;
+    color: var(--ink);
+}
+/* Red for the one outcome that means the contract failed, as on the sheet. */
+.hand-result__outcome--inside { color: var(--suit-red); }
+
+.hand-result__next {
+    margin: var(--sp-2) 0 0;
+    text-align: center;
+    font-size: var(--fs-xs);
+    color: var(--ink-3);
+    font-variant-numeric: tabular-nums;
 }
 
 /* =====================================================================

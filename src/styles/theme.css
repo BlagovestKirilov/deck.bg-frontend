@@ -749,6 +749,26 @@ code, kbd, samp { font-family: var(--font-mono); }
     50%      { transform: scale(1.05); filter: brightness(1.16); }
 }
 
+/* Something announced at a seat: it arrives, is read, and goes — the same
+   life a santase +20 has. No fill mode, so with reduced motion it simply
+   stands there until the table takes it away. */
+@keyframes announce-life {
+    0%   { transform: scale(0.6); opacity: 0; }
+    10%  { transform: scale(1.08); opacity: 1; }
+    16%  { transform: scale(1); }
+    85%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* A decided trick, gathered towards whoever took it. Where to is set by the
+   table, in --collect-x and --collect-y; this only says how it goes. */
+@keyframes trick-collect {
+    to {
+        transform: translate(var(--collect-x, 0), var(--collect-y, 0)) scale(0.4);
+        opacity: 0;
+    }
+}
+
 @keyframes tooltip-in {
     from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
     to   { opacity: 1; transform: translateX(-50%) translateY(0); }
