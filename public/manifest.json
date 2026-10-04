@@ -1,34 +1,28 @@
 {
   "short_name": "DECK.bg",
   "name": "DECK.bg",
-  "description": "Play Santase card game online",
+  "description": "Сантасе, белот и табла онлайн срещу реални опоненти.",
   "icons": [
     {
       "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
+      "sizes": "48x48 32x32 16x16",
       "type": "image/x-icon"
     },
     {
       "src": "logo192.png",
       "type": "image/png",
       "sizes": "192x192",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "logo512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "spades.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "purpose": "any"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "orientation": "portrait",
-  "theme_color": "#0a1f0f",
-  "background_color": "#0a1f0f"
+  "theme_color": "#08150e",
+  "background_color": "#08150e"
 }
