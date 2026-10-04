@@ -75,6 +75,14 @@ export interface BelotPlayView {
     yours: BelotCard[];
 }
 
+/** A finished trick, and who took it. */
+export interface BelotTrickView {
+    /** Which hand it was the last trick of. */
+    dealNumber: number;
+    cards: BelotPlayedCard[];
+    wonBy: BelotSeatName | null;
+}
+
 export type BelotDealResult = 'MADE' | 'INSIDE' | 'HANGING';
 
 /** One line of the score sheet: a hand that has been played and counted. */
@@ -155,6 +163,12 @@ export interface BelotState {
     declarations: BelotDeclarationsView | null;
     /** Every hand counted so far, oldest first. */
     sheet: BelotDealRow[];
+    /**
+     * The last trick of the newest hand on the sheet, or null if it was not
+     * played out. The card that ends a hand also deals the next one, so that
+     * trick never reaches `play`; this is the only way to see it fall.
+     */
+    lastTrick: BelotTrickView | null;
     northSouthScore: number;
     eastWestScore: number;
     hangingPoints: number;

@@ -28,29 +28,37 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
     const partner = state.seats.find(
         (seat) => seat.team === ourTeam && seat.seat !== state.yourSeat)?.username;
 
+    const verdict = won ? 'Спечелихте' : 'Загубихте';
+
     return (
         <Modal
-            title={won ? 'Спечелихте' : 'Загубихте'}
+            label={verdict}
+            closeButton={false}
             onClose={onLeave}
             width="narrow"
-            className={won ? '' : 'modal--loss'}
+            className={`game-result ${won ? 'game-result--won' : 'game-result--lost'}`}
             actions={
                 <>
                     <Button variant="ghost" onClick={onLeave}>Към игрите</Button>
-                    <Button variant="primary" onClick={onAgain}>Още една</Button>
+                    <Button variant={won ? 'gold' : 'secondary'} onClick={onAgain}>Още една</Button>
                 </>
             }
         >
-            <p className="belot-result__score">
-                <span className="belot-result__ours">{ours}</span>
-                <span className="belot-result__rule" aria-hidden="true" />
-                <span className="belot-result__theirs">{theirs}</span>
+            <h2 className="game-result__verdict">{verdict}</h2>
+            {/* The two columns of the sheet, closed: the last thing a player
+                sees is the shape they have been reading all game. */}
+            <p className="game-result__score">
+                <span className="game-result__side game-result__side--ours">
+                    <span className="game-result__points">{ours}</span>
+                    <span className="game-result__who">ние</span>
+                </span>
+                <span className="game-result__rule" aria-hidden="true" />
+                <span className="game-result__side">
+                    <span className="game-result__points">{theirs}</span>
+                    <span className="game-result__who">вие</span>
+                </span>
             </p>
-            {partner && (
-                <p className="belot-result__partner">
-                    {won ? `Вие и ${partner} взехте играта.` : `Вие и ${partner} я изпуснахте.`}
-                </p>
-            )}
+            {partner && <p className="game-result__partner">с {partner}</p>}
         </Modal>
     );
 };

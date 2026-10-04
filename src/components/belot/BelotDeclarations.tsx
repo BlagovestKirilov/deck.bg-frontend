@@ -4,16 +4,16 @@ import { BelotDeclarationKind, BelotSeatName, BelotState } from '../../types/bel
 /**
  * What each one is called out as at a table.
  *
- * Not the textbook names: a Bulgarian table says терца, петдесет, сто and
- * каре, and those are what a player is listening for. The lengths of the
+ * Not the textbook names: a Bulgarian table says терца, 50, 100, каре and
+ * белот, and those are what a player is listening for. The lengths of the
  * sequences are how the engine thinks about them, not how anyone says them.
  */
 const KIND_WORD: Record<BelotDeclarationKind, string> = {
-    TERZ: 'терца',
-    QUARTE: 'петдесет',
-    QUINTE: 'сто',
-    CARRE: 'каре',
-    BELOTE: 'белот',
+    TERZ: 'Терца',
+    QUARTE: '50',
+    QUINTE: '100',
+    CARRE: 'Каре',
+    BELOTE: 'Белот',
 };
 
 /**
@@ -49,11 +49,13 @@ const Announced: React.FC<{ said?: string[] }> = ({ said }) => {
         return null;
     }
 
+    // One bubble for everything said in the same breath, keyed on what it
+    // says, so a second announcement pops in fresh rather than changing the
+    // words inside a bubble that is already fading.
+    const words = said.join(' + ');
     return (
-        <span className="belot__announced">
-            {said.map((word, i) => (
-                <span key={`${word}-${i}`} className="belot__announced-call">{word}</span>
-            ))}
+        <span key={words} className="belot__said belot__said--announce" role="status">
+            {words}
         </span>
     );
 };

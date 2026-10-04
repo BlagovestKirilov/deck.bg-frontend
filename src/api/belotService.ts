@@ -22,6 +22,13 @@ export const belotService = {
     play: (card: BelotCard) => apiClient.post('/belot/play', { card }),
 
     /**
+     * The clock on screen has reached nought. The server acts for whoever ran
+     * out straight away instead of on its next sweep, and ignores the call if
+     * its own deadline has not passed.
+     */
+    timeout: () => apiClient.post('/belot/timeout'),
+
+    /**
      * Give up the game — for the pair, not for one seat. Belot is scored per
      * pair, so there is no result that ends for two of the four.
      *

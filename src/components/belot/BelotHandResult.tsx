@@ -8,12 +8,12 @@ import { ContractMark } from './ContractMark';
 const SHOWN_FOR_SECONDS = 8;
 
 const CALL_WORD: Record<BelotDealRow['contract'], string> = {
-    CLUBS: 'спатия',
-    DIAMONDS: 'каро',
-    HEARTS: 'купа',
-    SPADES: 'пика',
-    NO_TRUMPS: 'без коз',
-    ALL_TRUMPS: 'всичко коз',
+    CLUBS: 'СПАТИЯ',
+    DIAMONDS: 'КАРО',
+    HEARTS: 'КУПА',
+    SPADES: 'ПИКА',
+    NO_TRUMPS: 'БЕЗ КОЗ',
+    ALL_TRUMPS: 'ВСИЧКО КОЗ',
 };
 
 interface Props {
@@ -65,31 +65,33 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
 
     const declarer = state.seats.find((seat) => seat.seat === row.declarer)?.username;
 
-    const outcome = {
-        MADE: calledByUs ? 'Изкарахте я.' : 'Изкараха я.',
-        INSIDE: calledByUs
-            ? 'Вътре — точките от ръката отиват при тях.'
-            : 'Вътре — точките от ръката отиват при вас.',
-        HANGING: 'Висяща — точките на обявилите остават за следващата ръка.',
-    }[row.result];
+    // Said only when the contract was not made, and in the same word to both
+    // pairs: the numbers above already say who it went to.
+    const inside = row.result === 'INSIDE';
 
     return (
         <Modal
-            title={`Ръка ${row.dealNumber}`}
+            label="Резултат от ръката"
+            closeButton={false}
             width="narrow"
+            className="hand-result"
             onClose={onClose}
-            actions={<Button variant="primary" onClick={onClose}>Продължи</Button>}
+            actions={<Button variant="ghost" onClick={onClose}>Продължи</Button>}
         >
-            <div className="sheet hand-result">
+            <div className="hand-result__body">
+                {/* The call as it was made at the table: the same white
+                    bubble it was said in, with who said it beside it. */}
                 <p className="hand-result__called">
-                    <ContractMark contract={row.contract} />
-                    <span>{CALL_WORD[row.contract]}</span>
+                    <span className="belot__said hand-result__contract">
+                        <ContractMark contract={row.contract} />
+                        {CALL_WORD[row.contract]}
+                    </span>
                     {row.doubling !== 'NONE' && (
-                        <span className="hand-result__doubled">
-                            {row.doubling === 'CONTRA' ? 'контра' : 'реконтра'}
+                        <span className={`belot__said belot__said--${row.doubling.toLowerCase()}`}>
+                            {row.doubling === 'CONTRA' ? 'Контра' : 'Реконтра'}
                         </span>
                     )}
-                    {declarer && <span className="hand-result__by">обяви {declarer}</span>}
+                    {declarer && <span className="hand-result__by">от {declarer}</span>}
                 </p>
 
                 <div className="hand-result__grid">
@@ -101,7 +103,7 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
                     <span className="hand-result__cell">{ours.announced}</span>
                     <span className="hand-result__cell hand-result__cell--theirs">{theirs.announced}</span>
 
-                    <span className="hand-result__label">От ръцете</span>
+                    <span className="hand-result__label">От ръце</span>
                     <span className="hand-result__cell">{ours.tricks}</span>
                     <span className="hand-result__cell hand-result__cell--theirs">{theirs.tricks}</span>
 
@@ -110,7 +112,9 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
                     <span className="hand-result__cell hand-result__cell--theirs">{theirs.total}</span>
 
                     {/* What goes on the sheet: the line the count is for, so it is
-                        the one set large and ruled off from the working above. */}
+                        the one set large and ruled off from the working above —
+                        one rule across the whole width, not one per column. */}
+                    <span className="hand-result__rule" aria-hidden="true" />
                     <span className="hand-result__label hand-result__label--written">Записват се</span>
                     <span className="hand-result__cell hand-result__cell--written">{ours.written}</span>
                     <span className="hand-result__cell hand-result__cell--written hand-result__cell--theirs">
@@ -118,10 +122,15 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
                     </span>
                 </div>
 
-                <p className={`hand-result__outcome hand-result__outcome--${row.result.toLowerCase()}`}>
-                    {outcome}
-                </p>
-                <p className="hand-result__next" aria-live="off">Следващата ръка след {left} с</p>
+                {inside && <p className="hand-result__outcome">ВЪТРЕ</p>}
+                {/* The time left as a fuse rather than a number: it is read at
+                    a glance, and a ticking figure pulled the eye off the count. */}
+                <span
+                    className="hand-result__fuse"
+                    style={{ '--shown-for': `${SHOWN_FOR_SECONDS}s` } as React.CSSProperties}
+                    aria-hidden="true"
+                />
+                <p className="sr-only" aria-live="off">Следващата ръка след {left} секунди</p>
             </div>
         </Modal>
     );
