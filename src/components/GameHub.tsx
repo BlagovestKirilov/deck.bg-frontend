@@ -28,6 +28,13 @@ interface GameCard {
 
 const GAMES: GameCard[] = [
     {
+        key: 'BELOT',
+        title: 'Белот',
+        tagline: 'Двама срещу двама, до 151',
+        Art: BelotArt,
+        path: '/play/belot',
+    },
+    {
         key: 'SANTASE',
         title: 'Сантасе',
         tagline: 'Първият до 66 точки печели',
@@ -40,13 +47,6 @@ const GAMES: GameCard[] = [
         tagline: 'Изведи всички пулове пръв',
         Art: TablaArt,
         path: '/play/tabla',
-    },
-    {
-        key: 'BELOT',
-        title: 'Белот',
-        tagline: 'Двама срещу двама, до 151',
-        Art: BelotArt,
-        path: '/play/belot',
     },
 ];
 
