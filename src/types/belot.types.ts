@@ -171,6 +171,8 @@ export interface BelotState {
      * trick never reaches `play`; this is the only way to see it fall.
      */
     lastTrick: BelotTrickView | null;
+    /** Where the hand being bid for was cut; null while it waits to be cut. */
+    cutAt: number | null;
     northSouthScore: number;
     eastWestScore: number;
     hangingPoints: number;

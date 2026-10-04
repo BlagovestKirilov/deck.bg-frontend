@@ -80,8 +80,13 @@ const CardComponent: React.FC<{
     const name = `${RANK_LABEL_BG[card.rank] ?? card.rank} ${SUIT_LABEL_BG[card.suit] ?? ''}`.trim();
 
     const width = fixedWidth ?? (isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)');
-    const cornerSize = isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
-    const pipSize = isSmall ? 'clamp(1.4rem, 5.2vw, 2.7rem)' : 'clamp(1.8rem, 6.4vw, 2.6rem)';
+    // The face is a share of the card's own width — the same proportions as
+    // a belot card — so a card is the same card on a phone as on a desk, only
+    // smaller. Sized on the screen instead, the corner shrank faster than the
+    // card did and a phone's hand read as a fainter deck.
+    const cornerSize = `calc(${width} * 0.185)`;
+    const pipSize = `calc(${width} * 0.34)`;
+    const padding = `calc(${width} * 0.065)`;
 
     const interactive = isPlayable && !!onClick;
 
@@ -116,6 +121,7 @@ const CardComponent: React.FC<{
 
     const style: React.CSSProperties = {
         width,
+        padding,
         aspectRatio: '71 / 103',
         color: suit.color,
     };
@@ -1813,8 +1819,12 @@ const SantaseGame: React.FC = () => {
                                                        the strip is never below 44px however the card
                                                        scales. Six cards still fit: at 320px the hand
                                                        is 74 + 5x44 = 294px inside ~300px of room. */
+                                                    // As much of each card shows as on a
+                                                    // belot hand of the same size: six fit
+                                                    // at 320px (74 + 5 x 44 = 294px) and
+                                                    // every card's middle stays in view.
                                                     marginLeft: isMobile && index > 0
-                                                        ? 'calc(clamp(44px, 13vw, 64px) - clamp(74px, 20vw, 104px))'
+                                                        ? 'calc(clamp(74px, 20vw, 104px) * -0.4)'
                                                         : '0',
                                                 }}
                                             >

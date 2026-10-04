@@ -28,6 +28,9 @@ export const belotService = {
      */
     timeout: () => apiClient.post('/belot/timeout'),
 
+    /** Cut the deck at this card, counted from the top, when it is yours to cut. */
+    cut: (at: number) => apiClient.post('/belot/cut', { at }),
+
     /**
      * Give up the game — for the pair, not for one seat. Belot is scored per
      * pair, so there is no result that ends for two of the four.

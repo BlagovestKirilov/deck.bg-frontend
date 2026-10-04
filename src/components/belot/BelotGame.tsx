@@ -24,6 +24,7 @@ import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import BelotCardFace from './BelotCardFace';
 import Announced, { announcementsBySeat } from './BelotDeclarations';
+import { DealOverlay, useDealRun } from './BelotDealAnimation';
 import BelotHandResult from './BelotHandResult';
 import BelotResult from './BelotResult';
 import BelotScoreSheet from './BelotScoreSheet';
@@ -98,8 +99,8 @@ function buzz(pattern: number | number[]) {
     }
 }
 
-/** Long enough for the last of eight cards to finish rising into the hand. */
-const DEAL_MS = 1000;
+/** Long enough for the last card of a packet to finish turning face up. */
+const DEAL_MS = 1200;
 
 /** One thing a seat said, for as long as it is being said. */
 type Heard = { key: string; seat: BelotSeatName; word: string };
@@ -240,6 +241,32 @@ const BelotGame: React.FC = () => {
         return kept.keys.filter((key) => byKey.has(key)).map((key) => byKey.get(key)!);
     }, [state]);
 
+    // The cut and the deal, played out once the last hand has been counted;
+    // until a seat's packet lands, its cards are not there yet.
+    // A hand that has only just been counted — its line on the sheet arrived
+    // in this very render — blocks the deal as well. The last trick and the
+    // count are put up by an effect a moment later, and without this the cut
+    // started in that moment, on top of the last trick.
+    const handJustCounted = rowsSeen.current !== null && (state?.sheet.length ?? 0) > rowsSeen.current;
+    const dealt = useDealRun(
+        state,
+        handJustCounted || !!closingTrick || !!handResult || state?.status === 'FINISHED',
+        ORDER,
+        (seat) => placeOf(seat, state?.yourSeat ?? null),
+    );
+    const handOnTable = useMemo(() => {
+        if (!dealt.shown) return shownHand;
+        let arriving = Math.max(0, dealt.shown.you - dealt.keep.size);
+        return shownHand.filter((card) => {
+            if (dealt.keep.has(`${card.suit}-${card.rank}`)) return true;
+            if (arriving > 0) {
+                arriving -= 1;
+                return true;
+            }
+            return false;
+        });
+    }, [shownHand, dealt.shown, dealt.keep]);
+
     const seats = useMemo(() => {
         const byPlace = new Map<Place, BelotSeatView>();
         state?.seats.forEach((seat) => byPlace.set(placeOf(seat.seat, state.yourSeat), seat));
@@ -330,7 +357,9 @@ const BelotGame: React.FC = () => {
     // Only when there is a chair to be in. Without one the bottom of the
     // table is somebody else's, and naming them as you would be a lie.
     const you = state.yourSeat ? seats.get('you') : undefined;
-    const toAct = state.play?.toAct ?? state.bidding?.toAct ?? null;
+    // The server's own answer first: before the bidding opens it is the
+    // player cutting the deck who is being waited for, not the first bidder.
+    const toAct = state.turn?.seat ?? state.play?.toAct ?? state.bidding?.toAct ?? null;
 
     // What has been called and by whom, kept on the score plate from the
     // moment it is said until the hand is over. It is the one fact a player
@@ -350,7 +379,7 @@ const BelotGame: React.FC = () => {
     // it is only put on the table once this one has been taken and counted —
     // cards arriving under the count read as the table moving on without
     // anyone. And nothing is dealt at all once the game is over.
-    const dealing = !!closingTrick || !!handResult || state.status === 'FINISHED';
+    const dealing = handJustCounted || !!closingTrick || !!handResult || state.status === 'FINISHED';
 
     return (
         <main className="screen belot">
@@ -430,6 +459,7 @@ const BelotGame: React.FC = () => {
                         place={place}
                         seat={seats.get(place)}
                         dealing={dealing}
+                        given={dealt.shown?.[place] ?? null}
                         toAct={toAct}
                         taking={!!seats.get(place) && takingSeat === seats.get(place)!.seat}
                         last={!!closingTrick}
@@ -459,8 +489,9 @@ const BelotGame: React.FC = () => {
                             wonBy={state.play.wonBy}
                             yourSeat={state.yourSeat}
                         />
-                    ) : <Bidding state={state} />}
+                    ) : dealt.run ? null : <Bidding state={state} />}
                 </div>
+                {dealt.run && <DealOverlay key={dealt.run.id} run={dealt.run} onCutDone={dealt.cutDone} serverCutAt={state.cutAt} />}
             </div>
 
             <section className="belot__hand" aria-label="Вашите карти">
@@ -494,7 +525,7 @@ const BelotGame: React.FC = () => {
                     the best call so far, the hand rearranged itself under the
                     player's eyes every time somebody raised the bidding. */}
                 <Held
-                    cards={dealing ? [] : shownHand}
+                    cards={dealing ? [] : handOnTable}
                     state={state}
                     locked={trickBeingTaken}
                 />
@@ -569,6 +600,8 @@ const Opponent: React.FC<{
     toAct: BelotSeatName | null;
     /** Whether the table is between hands, with nothing dealt yet. */
     dealing: boolean;
+    /** How many of their cards have been dealt to them so far, while a deal is played out. */
+    given: number | null;
     /** Whether the trick on the table is being swept to this seat. */
     taking: boolean;
     /** Whether that trick is the last of the hand. */
@@ -577,7 +610,7 @@ const Opponent: React.FC<{
     lastCall?: BelotBidView;
     announced?: string[];
     state: BelotState;
-}> = ({ place, seat, toAct, dealing, taking, last, secondsLeft, lastCall, announced, state }) => (
+}> = ({ place, seat, toAct, dealing, given, taking, last, secondsLeft, lastCall, announced, state }) => (
     <div className={[
         'belot__seat',
         `belot__seat--${place}`,
@@ -588,7 +621,7 @@ const Opponent: React.FC<{
     >
         {/* Behind the plate and partly under it, the way somebody's hand is
             half hidden behind the person holding it. */}
-        <Fan cards={dealing ? 0 : seat?.cardsLeft ?? 0} />
+        <Fan cards={dealing ? 0 : Math.min(seat?.cardsLeft ?? 0, given ?? Infinity)} />
         <div className="belot__plate">
             <span className="belot__who">
                 <span className="belot__name">{seat?.username ?? 'свободно'}</span>
@@ -680,24 +713,35 @@ const Held: React.FC<{
     held.forEach((key) => { if (!arrived.current.has(key)) arrived.current.set(key, now); });
 
     return (
-        <div className="belot__cards">
+        <div className="belot__cards" data-count={cards.length}>
             {cards.map((card, i) => {
                 const step = i - middle;
+                const key = `${card.suit}-${card.rank}`;
                 const playable = (state.play?.yours ?? []).some(
                     (legal) => legal.suit === card.suit && legal.rank === card.rank);
+                const at = arrived.current.get(key) ?? 0;
+                const dealt = now - at < DEAL_MS;
+                // Turned up one after another within the packet it came in,
+                // not by its place in the hand: a packet of three is three
+                // turns, not one turn and a long wait.
+                const turn = cards.slice(0, i)
+                    .filter((other) => arrived.current.get(`${other.suit}-${other.rank}`) === at).length;
                 return (
                     <span
-                        key={`${card.suit}-${card.rank}`}
-                        className={now - (arrived.current.get(`${card.suit}-${card.rank}`) ?? 0) < DEAL_MS
-                            ? 'belot__held is-dealt'
-                            : 'belot__held'}
-                        style={{ '--fan-step': step, '--fan-arc': step * step, '--deal-i': i } as React.CSSProperties}
+                        key={key}
+                        className={dealt ? 'belot__held is-dealt' : 'belot__held'}
+                        style={{ '--fan-step': step, '--fan-arc': step * step, '--deal-i': turn } as React.CSSProperties}
                     >
-                        <BelotCardFace
-                            card={card}
-                            muted={!!state.play && !playable}
-                            onPlay={playable && !locked ? () => { void belotService.play(card); } : undefined}
-                        />
+                        {/* A card with two sides: it lands showing its back,
+                            like the packet it came in, and is turned over. */}
+                        <span className="belot__flip">
+                            <BelotCardFace
+                                card={card}
+                                muted={!!state.play && !playable}
+                                onPlay={playable && !locked ? () => { void belotService.play(card); } : undefined}
+                            />
+                            {dealt && <span className="card-back belot__flip-back" aria-hidden="true" />}
+                        </span>
                     </span>
                 );
             })}

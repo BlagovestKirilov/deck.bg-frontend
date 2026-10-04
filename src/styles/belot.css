@@ -28,8 +28,8 @@
     /* On whichever the screen has less of: a wide, short window (a laptop
        with its bars showing, four windows tiled on one screen) gives the side
        hands the height of the table to lie along, and nothing more. */
-    --belot-card: clamp(40px, min(12.5vw, 9vh), 76px);
-    --belot-card-hand: clamp(62px, 18vw, 108px);
+    --belot-card: clamp(40px, min(12.5vw, 10vh), 92px);
+    --belot-card-hand: clamp(62px, min(18vw, 15vh), 130px);
 
     /* A back in somebody else's hand: a shade smaller than a card on the
        table, and no smaller than that. At two thirds of it the three hands
@@ -47,7 +47,7 @@
        far apart as the two at the top and bottom, and the four read as
        people in the corners of a room. Measured on the height, so the table
        keeps its shape whatever the window's; the edge still wins on a phone. */
-    --belot-side: max(var(--belot-edge), calc(50% - 56vh));
+    --belot-side: max(var(--belot-edge), calc(50% - 40vh));
 
     /* The strip along the top that belongs to the player opposite: half a
        back for the fan to rise into, and a plate. The trick is centred in
@@ -81,6 +81,41 @@
     scrollbar-width: none;
 }
 .screen.belot::-webkit-scrollbar { display: none; }
+
+/* On a wide screen the whole width is the table: the score sheet and the
+   way out in the room's own corners, the two side players out near its
+   edges, and the hands they hold drawn smaller and tighter — eight backs at
+   full size stood up the sides of the screen like two walls. */
+@media (min-width: 900px) {
+    .screen.belot {
+        padding-inline: var(--sp-4);
+        /* The side hands as far from the trick as the partner's is above it
+           and yours below, give or take: the four sit round it like four
+           people at a square table, not pinned to the far edges of a wide
+           screen with the middle two close in. Measured on the height, so it
+           holds at any width; the fan's own offset from its plate is taken
+           off so it is the cards, not the plate, that sit there. */
+        --belot-side: max(var(--belot-edge), calc(50% - 47vh - var(--belot-back-h) * 1.07));
+        --belot-back-w: calc(var(--belot-card) * 0.8);
+        --belot-card-hand: clamp(62px, min(18vw, 17vh), 150px);
+    }
+    .screen.belot .belot__backs .card-back { margin-left: calc(var(--belot-back-w) * -0.55); }
+    /* The score sheet and the way out drawn in over the two side players,
+       the corners of the table the four are sitting round, rather than the
+       corners of the monitor. */
+    .screen.belot .belot__bar { margin-inline: calc(var(--belot-side) - var(--sp-3)); }
+    /* Your partner sits higher, up against the top of the table, so their
+       bigger fan clears the bid panel and the trick below it. */
+    .screen.belot .belot__seat--partner { top: calc(var(--belot-back-h) * 0.12); }
+
+    /* The calls laid out at the size of a desk, with buttons a hand can find
+       without looking. */
+    .screen.belot .belot__bidding { width: min(400px, calc(100% - var(--belot-side) * 2 - 240px)); }
+    .belot__bidding .belot__call { min-height: 54px; }
+    .belot__bidding .belot__call .belot__suit { font-size: var(--fs-2xl); }
+    .belot__bidding .belot__call-word { font-size: var(--fs-sm); }
+    .belot__bidding .belot__call--pass { min-height: 54px; font-size: var(--fs-lg); }
+}
 
 /* The score sheet at the top-left corner and the way out at the top-right,
    with the player opposite between them. */
@@ -354,10 +389,31 @@
 /* Dealt, not switched on: each card arrives a beat after the one before it,
    once the last hand has been counted. Only a card that is new animates —
    the ones still held keep their place when a card is played. */
-.belot__held.is-dealt,
+/* A card of your own lands showing its back, like the packet it came in,
+   and is turned over — a real half turn, the face coming round as the back
+   goes away, one card after another. Only transform moves, so the browser
+   can run it at the screen's own rate. */
+.belot__flip {
+    position: relative;
+    display: block;
+    transform-style: preserve-3d;
+}
+.belot__flip > .pcard { backface-visibility: hidden; }
+.belot__flip-back {
+    position: absolute;
+    inset: 0;
+    border-radius: var(--r-md);
+    backface-visibility: hidden;
+    transform: rotateY(180deg);
+}
+.belot__held.is-dealt .belot__flip {
+    animation: card-turn-over 720ms cubic-bezier(0.45, 0.05, 0.25, 1) both;
+    animation-delay: calc(var(--deal-i, 0) * 110ms);
+    will-change: transform;
+}
 .belot__backs .card-back {
-    animation: deal-in 360ms var(--ease-out) both;
-    animation-delay: calc(var(--deal-i, 0) * 70ms);
+    animation: deal-in 420ms var(--ease-out) both;
+    animation-delay: calc(var(--deal-i, 0) * 60ms);
 }
 .belot__backs .card-back { --deal-from: 24px; }
 
@@ -600,7 +656,8 @@
 .belot__you.is-taking.is-last { animation-delay: 1700ms; }
 
 .belot__trick.is-collected {
-    animation: trick-collect 420ms var(--ease-in) 1100ms forwards;
+    animation: trick-collect 480ms cubic-bezier(0.55, 0, 0.45, 1) 1100ms forwards;
+    will-change: transform, opacity;
 }
 .belot__trick--to-left    { --collect-x: -34vw; }
 .belot__trick--to-right   { --collect-x: 34vw; }
@@ -629,7 +686,14 @@
     position: absolute;
     inset: 0;
     transition: transform var(--dur) var(--ease-out);
+    /* Slid in from the side of the table it was played from, rather than
+       switched on in the middle. */
+    animation: card-arrive 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
+.belot__played-card--partner { --from-y: -70px; }
+.belot__played-card--you     { --from-y: 80px; }
+.belot__played-card--left    { --from-x: -80px; }
+.belot__played-card--right   { --from-x: 80px; }
 .belot__played-card--partner { transform: translateY(-52%) rotate(-5deg); }
 .belot__played-card--you     { transform: translateY(52%)  rotate(4deg); }
 .belot__played-card--left    { transform: translateX(-56%) rotate(-8deg); }
@@ -1278,6 +1342,102 @@
 }
 
 /* =====================================================================
+   The cut and the deal
+
+   The deck spread in front of the dealer and cut where the player on his
+   left touches it, then dealt from in packets of three and two, each
+   flying to the hand it is for. Over the screen rather than in the table's layout, so
+   nothing moves while it plays. Under reduced motion it is not played at
+   all — the cards are simply there.
+   ===================================================================== */
+
+.belot__deal {
+    position: fixed;
+    z-index: 30;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+}
+/* One soft shadow under the spread deck, rather than one under every card:
+   thirty-two of those stacked into a black band. Only while it is spread:
+   over flying cards the browser repainted that shadow across the whole
+   table on every frame, which is what made the deal stutter. */
+.belot__deal:has(.belot__spread) { filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.35)); }
+.belot__deal .card-back {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: var(--belot-back-w);
+    height: var(--belot-back-h);
+    border-radius: 4px;
+    box-shadow: -1px 0 0 rgba(0, 0, 0, 0.12);
+}
+/* Until its turn comes each card waits on the deck, so the cards still to
+   be dealt are the deck. */
+.belot__flying {
+    animation: deal-fly 460ms cubic-bezier(0.3, 0.6, 0.3, 1) both;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    will-change: transform, opacity;
+}
+
+/* The deck spread for the cut: every card a few pixels along from the one
+   under it, so the whole of it can be touched. Each is a button only for
+   the player cutting.
+
+   One soft shadow under the whole deck, and only a hairline between the
+   cards: thirty-two shadows, one per card, stacked into a black band. */
+.belot__deal .belot__spread {
+    transform: translate(-50%, -50%);
+    padding: 0;
+    border: 0;
+    box-shadow: -1px 0 0 rgba(0, 0, 0, 0.12);
+    cursor: default;
+    /* Opened out from the middle, one card after another. */
+    animation: spread-in 520ms var(--ease-out) calc(var(--i, 0) * 14ms) backwards;
+}
+button.belot__spread {
+    pointer-events: auto;
+    cursor: pointer;
+}
+/* The card under the finger stands up out of the spread: that is where the
+   deck will be cut. */
+button.belot__spread:hover,
+button.belot__spread:focus-visible {
+    top: -12px;
+    outline: none;
+}
+/* The cut, and then the deck squared up again. */
+.belot__deal .belot__spread.is-lifted {
+    z-index: 100 !important;
+    animation:
+        cut-lift 800ms var(--ease-out) both,
+        spread-gather 380ms var(--ease-in) 820ms forwards;
+}
+.belot__deal .belot__spread.is-sliding {
+    animation:
+        cut-slide 800ms var(--ease-out) both,
+        spread-gather 380ms var(--ease-in) 820ms forwards;
+}
+
+/* Who is cutting, said over the deck — or, to them, that it is theirs to
+   cut. */
+.belot__cut-label {
+    position: absolute;
+    left: 0;
+    bottom: calc(var(--belot-back-h) / 2 + var(--sp-3));
+    transform: translateX(-50%);
+    padding: 3px var(--sp-3);
+    border-radius: var(--r-sm);
+    background: var(--card);
+    box-shadow: var(--sh-1);
+    color: var(--ink);
+    font-family: var(--belot-display);
+    font-size: var(--fs-md);
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+/* =====================================================================
    A phone held upright
 
    Most people at this table are on a phone, and a phone is narrow and
@@ -1293,7 +1453,7 @@
         /* A quarter of the width for a card in your hand, a fifth for one on
            the table — or less if the phone is short, so the hand and the
            trick still fit one above the other. */
-        --belot-card: clamp(56px, min(19vw, 11vh), 84px);
+        --belot-card: clamp(52px, min(16.5vw, 10vh), 80px);
         --belot-card-hand: clamp(76px, min(24vw, 15.5vh), 112px);
         /* Backs are only there to be counted: small, so the partner's fan
            stays a strip along the top and not a wall. */
@@ -1306,7 +1466,23 @@
     /* Eight cards a quarter of the screen wide fit across it only if each
        covers most of the one before; under a third of every card still
        shows, which is a slice a thumb can still hit. */
-    .belot__hand { --belot-overlap: 0.7; }
+    /* Only as much overlap as the hand needs to fit: five cards fit at the
+       desk's spacing, with every card's middle showing; eight need most of
+       each covered. */
+    /* The two side hands pushed out to the edge of the glass, half under
+       their own plates, so the trick has the width of the table to itself.
+       The names stay where they are. */
+    .belot__seat--left > .belot__backs {
+        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * 0.45)) rotate(90deg);
+    }
+    .belot__seat--right > .belot__backs {
+        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * -0.45)) scaleX(-1) rotate(90deg);
+    }
+
+    .belot__hand { --belot-overlap: 0.4; }
+    .belot__hand:has(.belot__cards[data-count="6"]) { --belot-overlap: 0.5; }
+    .belot__hand:has(.belot__cards[data-count="7"]) { --belot-overlap: 0.6; }
+    .belot__hand:has(.belot__cards[data-count="8"]) { --belot-overlap: 0.7; }
     /* Turned less than on a desk: at this size the turn alone swung the two
        outside cards off the glass. */
     .belot__held {

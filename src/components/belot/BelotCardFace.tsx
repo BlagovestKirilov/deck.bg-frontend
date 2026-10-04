@@ -30,16 +30,22 @@ type Size = 'hand' | 'table';
  * a smaller card carries the same printed proportions rather than the same
  * glyph shrunk against a growing margin.
  */
-const SIZE: Record<Size, { width: string; corner: string; pip: string }> = {
+// Every measure of the face is a share of the card's own width, so a card is
+// the same card on a phone as on a desk, only smaller — sized on the screen
+// instead, the corner shrank faster than the card did and a phone's hand
+// read as a different, fainter deck.
+const SIZE: Record<Size, { width: string; corner: string; pip: string; padding: string }> = {
     hand: {
         width: 'var(--belot-card-hand)',
-        corner: 'clamp(0.82rem, 3vw, 1.25rem)',
-        pip: 'clamp(1.45rem, 5.4vw, 2.3rem)',
+        corner: 'calc(var(--belot-card-hand) * 0.185)',
+        pip: 'calc(var(--belot-card-hand) * 0.34)',
+        padding: 'calc(var(--belot-card-hand) * 0.065)',
     },
     table: {
         width: 'var(--belot-card)',
-        corner: 'clamp(0.72rem, 2.5vw, 1.05rem)',
-        pip: 'clamp(1.2rem, 4.4vw, 1.9rem)',
+        corner: 'calc(var(--belot-card) * 0.22)',
+        pip: 'calc(var(--belot-card) * 0.4)',
+        padding: 'calc(var(--belot-card) * 0.07)',
     },
 };
 
@@ -73,6 +79,7 @@ const BelotCardFace: React.FC<Props> = ({ card, onPlay, muted = false, size = 'h
 
     const style: React.CSSProperties = {
         width: scale.width,
+        padding: scale.padding,
         aspectRatio: '71 / 103',
         color: suit.color,
     };
