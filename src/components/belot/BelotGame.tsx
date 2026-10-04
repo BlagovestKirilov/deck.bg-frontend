@@ -16,6 +16,7 @@ import {
     BelotSeatView,
     BelotTeam,
     BelotState,
+    BelotTurnView,
 } from '../../types/belot.types';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
@@ -88,6 +89,15 @@ const LAST_TRICK_FOR_MS = 2500;
  */
 const TRICK_TAKEN_MS = 1600;
 
+/** A vibration, where the device has one and the browser allows it. */
+function buzz(pattern: number | number[]) {
+    try {
+        navigator.vibrate?.(pattern);
+    } catch {
+        // Refused before any tap on the page, or not offered at all: no buzz.
+    }
+}
+
 /** Long enough for the last of eight cards to finish rising into the hand. */
 const DEAL_MS = 1000;
 
@@ -147,6 +157,18 @@ const BelotGame: React.FC = () => {
     // than on its next pass, which left the clock standing at 0. Once per
     // deadline, from every screen — the first to arrive is acted on and the
     // others find nothing left to do.
+    // A buzz when the table turns to you, and again with five seconds left.
+    // On a phone the screen is often not being looked at when the turn comes
+    // round. Android only: iOS browsers do not vibrate, and it is skipped
+    // where it is not offered.
+    const myTurn = !!state?.yourSeat && state.turn?.seat === state.yourSeat;
+    useEffect(() => {
+        if (myTurn) buzz(60);
+    }, [myTurn, state?.turn?.deadline]);
+    useEffect(() => {
+        if (myTurn && secondsLeft === 5) buzz([40, 60, 40]);
+    }, [myTurn, secondsLeft]);
+
     const timedOut = useRef<string | null>(null);
     const deadline = state?.turn?.deadline ?? null;
     useEffect(() => {
@@ -459,8 +481,8 @@ const BelotGame: React.FC = () => {
                         ].filter(Boolean).join(' ')}
                         >
                             <span className="belot__you-name">{you.username}</span>
-                            {toAct === you.seat && <SeatClock secondsLeft={secondsLeft} />}
-                            {state.dealerSeat === you.seat && <Dealer />}
+                            {toAct === you.seat && <TurnBar turn={state.turn} secondsLeft={secondsLeft} />}
+                            {!state.play && state.dealerSeat === you.seat && <Dealer />}
                             <SeatBubble
                                 lastCall={lastCalls.get(you.seat)}
                                 announced={saying.get(you.seat)}
@@ -570,8 +592,8 @@ const Opponent: React.FC<{
         <div className="belot__plate">
             <span className="belot__who">
                 <span className="belot__name">{seat?.username ?? 'свободно'}</span>
-                {seat && state.dealerSeat === seat.seat && <Dealer />}
-                {seat && toAct === seat.seat && <SeatClock secondsLeft={secondsLeft} />}
+                {seat && !state.play && state.dealerSeat === seat.seat && <Dealer />}
+                {seat && toAct === seat.seat && <TurnBar turn={state.turn} secondsLeft={secondsLeft} />}
             </span>
         </div>
         <SeatBubble lastCall={lastCall} announced={announced} />
@@ -619,10 +641,13 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
 /**
  * Who is dealing, as the marker that sits by their elbow at a table.
  *
- * A round counter rather than the word: it holds for the whole hand and is
- * read once, so it does not want the same room as what somebody has just
- * announced. As a word on a line of its own it put three labels under one
- * player and turned the seat into a list.
+ * A round counter rather than the word: it is read once, so it does not want
+ * the same room as what somebody has just announced. As a word on a line of
+ * its own it put three labels under one player and turned the seat into a
+ * list.
+ *
+ * Only while the hand is bid for — the dealer is what tells you who speaks
+ * first. Once the cards are being played it answers nothing.
  */
 const Dealer: React.FC = () => (
     <span className="belot__dealer" role="img" aria-label="раздава">Р</span>
@@ -702,22 +727,42 @@ const CallChip: React.FC<{ bid: BelotBidView }> = ({ bid }) => (
 );
 
 /**
- * The seconds the table is still waiting, at the seat it is waiting for.
+ * The time the table is still waiting, as a bar under the plate of the seat
+ * it is waiting for, burning down from full to nothing.
  *
- * Only the number: where it sits already says whose time it is, so a line
- * naming them beside it was the same fact twice. Red under the last few
- * seconds, at every seat — a partner about to run out is worth noticing too.
+ * A bar rather than a number: how much of the turn is left is read at a
+ * glance from across the table, where a figure had to be read. Measured from
+ * when the turn started to when it ends, both the server's, so it is right
+ * after a reload too. Red for the last few seconds, at every seat — a
+ * partner about to run out is worth noticing as well.
  */
-const SeatClock: React.FC<{ secondsLeft: number | null }> = ({ secondsLeft }) => {
-    if (secondsLeft === null) return null;
-    const urgent = secondsLeft <= URGENT_SECONDS;
+const TurnBar: React.FC<{ turn: BelotTurnView | null; secondsLeft: number | null }> = ({ turn, secondsLeft }) => {
+    const [left, setLeft] = useState(1);
+    const startedAt = turn?.startedAt ?? null;
+    const deadline = turn?.deadline ?? null;
+
+    useEffect(() => {
+        if (!startedAt || !deadline) return undefined;
+        const start = new Date(startedAt).getTime();
+        const end = new Date(deadline).getTime();
+        const span = Math.max(1, end - start);
+        const tick = () => setLeft(Math.min(1, Math.max(0, (end - Date.now()) / span)));
+        tick();
+        // Four steps a second, each eased into by the bar's own transition,
+        // reads as one smooth burn and still holds under reduced motion.
+        const id = window.setInterval(tick, 250);
+        return () => window.clearInterval(id);
+    }, [startedAt, deadline]);
+
+    if (!deadline) return null;
+    const urgent = secondsLeft !== null && secondsLeft <= URGENT_SECONDS;
     return (
         <span
-            className={`belot__clock tabular ${urgent ? 'is-urgent' : ''}`}
+            className={`belot__turnbar ${urgent ? 'is-urgent' : ''}`}
             role="timer"
-            aria-label={`${secondsLeft} секунди`}
+            aria-label={secondsLeft !== null ? `${secondsLeft} секунди` : undefined}
         >
-            {secondsLeft}
+            <span className="belot__turnbar-fill" style={{ transform: `scaleX(${left})` }} />
         </span>
     );
 };

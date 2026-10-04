@@ -25,9 +25,6 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
     const ours = ourTeam === 'NORTH_SOUTH' ? state.northSouthScore : state.eastWestScore;
     const theirs = ourTeam === 'NORTH_SOUTH' ? state.eastWestScore : state.northSouthScore;
 
-    const partner = state.seats.find(
-        (seat) => seat.team === ourTeam && seat.seat !== state.yourSeat)?.username;
-
     const verdict = won ? 'Спечелихте' : 'Загубихте';
 
     return (
@@ -58,7 +55,6 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
                     <span className="game-result__who">вие</span>
                 </span>
             </p>
-            {partner && <p className="game-result__partner">с {partner}</p>}
         </Modal>
     );
 };

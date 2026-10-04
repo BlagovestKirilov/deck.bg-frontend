@@ -117,6 +117,8 @@ export interface BelotDealRow {
  */
 export interface BelotTurnView {
     seat: BelotSeatName;
+    /** When the turn started: with the deadline, how much of it is gone. */
+    startedAt: string | null;
     deadline: string | null;
 }
 

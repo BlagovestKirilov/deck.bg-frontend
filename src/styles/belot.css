@@ -499,30 +499,31 @@
 .belot__said--recontra { color: var(--suit-red); }
 
 
-/* The seconds left. One on the screen, beside the name of whoever they
-   belong to: a clock at all four seats was four things to ignore. A small
-   token rather than loose digits, so it reads as a counter and holds the
-   same width from 40 down to 0. */
-.belot__clock {
-    flex: none;
-    min-width: 2.4em;
-    /* No taller than the name beside it, so a plate does not grow by a line
-       when the clock comes to it. */
-    padding: 1px 6px;
+/* The time left, burning down under the plate of whoever it belongs to.
+   Hung below the plate rather than set in it, so the plate keeps its size
+   whether the turn is at it or not, and nothing beside it moves. */
+.belot__turnbar {
+    position: absolute;
+    left: var(--sp-2);
+    right: var(--sp-2);
+    top: calc(100% + 4px);
+    z-index: 1;
+    height: 5px;
     border-radius: var(--r-pill);
-    background: var(--gold-wash);
-    font-family: var(--belot-display);
-    font-size: var(--fs-sm);
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    line-height: 1.15;
-    text-align: center;
-    color: var(--gold);
+    background: rgba(4, 13, 8, 0.7);
+    box-shadow: inset 0 0 0 1px var(--line);
+    overflow: hidden;
+    pointer-events: none;
 }
-.belot__clock.is-urgent {
-    background: var(--danger);
-    color: var(--ink);
+.belot__turnbar-fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--gold);
+    transform-origin: 0 50%;
+    transition: transform 250ms linear, background-color var(--dur) var(--ease-out);
 }
+.belot__turnbar.is-urgent .belot__turnbar-fill { background: var(--danger); }
 
 /* ---- the middle: the trick, or the bidding ---- */
 
@@ -784,7 +785,9 @@
        a hand that was. */
     justify-content: center;
     gap: var(--sp-3);
-    margin: 0 0 var(--sp-2);
+    /* Room under the plate for the turn bar that hangs from it, and for a
+       playable card standing up out of the hand, without either touching. */
+    margin: 0 0 var(--sp-5);
     min-height: var(--tap);
 }
 
@@ -1180,11 +1183,7 @@
     width: 1px;
     background: var(--line-strong);
 }
-.game-result__partner {
-    margin: var(--sp-3) 0 0;
-    font-size: var(--fs-sm);
-    color: var(--text-3);
-}
+
 
 /* =====================================================================
    The table before it is full
@@ -1276,4 +1275,84 @@
    auction, and during a hand four smaller cards still read. */
 @media (max-height: 740px) {
     .screen.belot { --belot-card-hand: clamp(56px, 15vw, 86px); }
+}
+
+/* =====================================================================
+   A phone held upright
+
+   Most people at this table are on a phone, and a phone is narrow and
+   tall. Sized on the width alone, everything shrank to fit the narrow side
+   and the height went to empty felt: cards a thumb could barely hit and
+   names too small to read at arm's length. So on a phone the cards are
+   sized on both, and the text is set for reading in a hand rather than on
+   a desk.
+   ===================================================================== */
+
+@media (max-width: 600px) {
+    .screen.belot {
+        /* A quarter of the width for a card in your hand, a fifth for one on
+           the table — or less if the phone is short, so the hand and the
+           trick still fit one above the other. */
+        --belot-card: clamp(56px, min(19vw, 11vh), 84px);
+        --belot-card-hand: clamp(76px, min(24vw, 15.5vh), 112px);
+        /* Backs are only there to be counted: small, so the partner's fan
+           stays a strip along the top and not a wall. */
+        --belot-back-w: calc(var(--belot-card) * 0.62);
+        --belot-edge: var(--sp-2);
+        /* The partner's strip: half a back and a plate, and no more. */
+        --belot-top: calc(var(--belot-back-h) * 0.5 + 52px);
+    }
+
+    /* Eight cards a quarter of the screen wide fit across it only if each
+       covers most of the one before; under a third of every card still
+       shows, which is a slice a thumb can still hit. */
+    .belot__hand { --belot-overlap: 0.7; }
+    /* Turned less than on a desk: at this size the turn alone swung the two
+       outside cards off the glass. */
+    .belot__held {
+        transform:
+            rotate(calc(var(--fan-step, 0) * 1.6deg))
+            translateY(calc(var(--fan-arc, 0) * 0.5px));
+    }
+
+    /* A card that can be played stands a little proud of the others, so the
+       slice that is showing is easier to find and to hit. */
+    .belot__held:has(.pcard--playable) { translate: 0 calc(var(--belot-card-hand) * -0.1); }
+    /* And the room above the hand grows by that much, so the card that stands
+       up still clears the turn bar under your name. */
+    .belot__hand-head { margin-bottom: calc(var(--sp-4) + var(--belot-card-hand) * 0.1); }
+
+    /* Read in a hand, at arm's length. */
+    .belot__seat { font-size: var(--fs-md); }
+    .belot__plate,
+    .belot__you {
+        min-height: var(--tap);
+        justify-content: center;
+    }
+    .belot__you { font-size: var(--fs-md); }
+    .belot__turnbar { height: 6px; }
+    .belot__dealer {
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+    }
+    .belot__points { font-size: var(--fs-2xl); }
+    .belot__side { font-size: var(--fs-sm); }
+
+    /* The calls between the two side players rather than over them — their
+       bubbles are what you are reading the auction from — with every call a
+       full thumb high, however short the screen. */
+    .belot__bidding {
+        width: calc(100% - var(--belot-side) * 2 - 184px);
+        min-width: 196px;
+    }
+    .belot__bidding .belot__call { min-height: var(--tap); }
+    .belot__call-word { font-size: var(--fs-sm); }
+
+    /* The count of a hand and the end of the game, in the same reading size
+       as the table under them. */
+    .hand-result__label,
+    .hand-result__cell { font-size: var(--fs-md); }
+    .hand-result__head { font-size: var(--fs-sm); }
+    .game-result__who { font-size: var(--fs-sm); }
 }
