@@ -16,12 +16,12 @@ import {
     BelotSeatView,
     BelotTeam,
     BelotState,
-    BelotTurnView,
 } from '../../types/belot.types';
 import Button from '../ui/Button';
 import Icon from '../ui/Icon';
 import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
+import TurnBar from '../ui/TurnBar';
 import BelotCardFace from './BelotCardFace';
 import Announced, { announcementsBySeat } from './BelotDeclarations';
 import { DealOverlay, useDealRun } from './BelotDealAnimation';
@@ -463,7 +463,6 @@ const BelotGame: React.FC = () => {
                         toAct={toAct}
                         taking={!!seats.get(place) && takingSeat === seats.get(place)!.seat}
                         last={!!closingTrick}
-                        secondsLeft={secondsLeft}
                         lastCall={seats.get(place) && lastCalls.get(seats.get(place)!.seat)}
                         announced={seats.get(place) && saying.get(seats.get(place)!.seat)}
                         state={state}
@@ -512,7 +511,10 @@ const BelotGame: React.FC = () => {
                         ].filter(Boolean).join(' ')}
                         >
                             <span className="belot__you-name">{you.username}</span>
-                            {toAct === you.seat && <TurnBar turn={state.turn} secondsLeft={secondsLeft} />}
+                            {toAct === you.seat && (
+                                <TurnBar startedAt={state.turn?.startedAt} deadline={state.turn?.deadline}
+                                         urgentSeconds={URGENT_SECONDS} className="belot__turnbar" />
+                            )}
                             {!state.play && state.dealerSeat === you.seat && <Dealer />}
                             <SeatBubble
                                 lastCall={lastCalls.get(you.seat)}
@@ -606,11 +608,10 @@ const Opponent: React.FC<{
     taking: boolean;
     /** Whether that trick is the last of the hand. */
     last: boolean;
-    secondsLeft: number | null;
     lastCall?: BelotBidView;
     announced?: string[];
     state: BelotState;
-}> = ({ place, seat, toAct, dealing, given, taking, last, secondsLeft, lastCall, announced, state }) => (
+}> = ({ place, seat, toAct, dealing, given, taking, last, lastCall, announced, state }) => (
     <div className={[
         'belot__seat',
         `belot__seat--${place}`,
@@ -626,7 +627,10 @@ const Opponent: React.FC<{
             <span className="belot__who">
                 <span className="belot__name">{seat?.username ?? 'свободно'}</span>
                 {seat && !state.play && state.dealerSeat === seat.seat && <Dealer />}
-                {seat && toAct === seat.seat && <TurnBar turn={state.turn} secondsLeft={secondsLeft} />}
+                {seat && toAct === seat.seat && (
+                    <TurnBar startedAt={state.turn?.startedAt} deadline={state.turn?.deadline}
+                             urgentSeconds={URGENT_SECONDS} className="belot__turnbar" label={seat.username} />
+                )}
             </span>
         </div>
         <SeatBubble lastCall={lastCall} announced={announced} />
@@ -683,7 +687,9 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
  * first. Once the cards are being played it answers nothing.
  */
 const Dealer: React.FC = () => (
-    <span className="belot__dealer" role="img" aria-label="раздава">Р</span>
+    <span className="belot__dealer" role="img" aria-label="раздава">
+        <span className="belot__dealer-mark">Р</span>
+    </span>
 );
 
 /**
@@ -769,47 +775,6 @@ const CallChip: React.FC<{ bid: BelotBidView }> = ({ bid }) => (
         ) : callLabel(bid)}
     </span>
 );
-
-/**
- * The time the table is still waiting, as a bar under the plate of the seat
- * it is waiting for, burning down from full to nothing.
- *
- * A bar rather than a number: how much of the turn is left is read at a
- * glance from across the table, where a figure had to be read. Measured from
- * when the turn started to when it ends, both the server's, so it is right
- * after a reload too. Red for the last few seconds, at every seat — a
- * partner about to run out is worth noticing as well.
- */
-const TurnBar: React.FC<{ turn: BelotTurnView | null; secondsLeft: number | null }> = ({ turn, secondsLeft }) => {
-    const [left, setLeft] = useState(1);
-    const startedAt = turn?.startedAt ?? null;
-    const deadline = turn?.deadline ?? null;
-
-    useEffect(() => {
-        if (!startedAt || !deadline) return undefined;
-        const start = new Date(startedAt).getTime();
-        const end = new Date(deadline).getTime();
-        const span = Math.max(1, end - start);
-        const tick = () => setLeft(Math.min(1, Math.max(0, (end - Date.now()) / span)));
-        tick();
-        // Four steps a second, each eased into by the bar's own transition,
-        // reads as one smooth burn and still holds under reduced motion.
-        const id = window.setInterval(tick, 250);
-        return () => window.clearInterval(id);
-    }, [startedAt, deadline]);
-
-    if (!deadline) return null;
-    const urgent = secondsLeft !== null && secondsLeft <= URGENT_SECONDS;
-    return (
-        <span
-            className={`belot__turnbar ${urgent ? 'is-urgent' : ''}`}
-            role="timer"
-            aria-label={secondsLeft !== null ? `${secondsLeft} секунди` : undefined}
-        >
-            <span className="belot__turnbar-fill" style={{ transform: `scaleX(${left})` }} />
-        </span>
-    );
-};
 
 /** The cards on the table, each shown at the seat that played it. */
 const Trick: React.FC<{

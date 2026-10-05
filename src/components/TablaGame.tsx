@@ -14,6 +14,7 @@ import OpeningRoll from './tabla/OpeningRoll';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+import TurnBar from './ui/TurnBar';
 import GamePrelude from './lobby/GamePrelude';
 import { TablaArt } from './lobby/GameArt';
 
@@ -33,6 +34,9 @@ const TURN_SECONDS = 45;
 const WARNING_SECONDS = 10;
 /** When the turn pill starts reading as urgent. */
 const WARNING_AT = 10;
+/** The opponent's bar turns red once they are on the prompt: the server's deadline is
+ *  the prompt's seconds plus three of slack. */
+const OPPONENT_URGENT_SECONDS = WARNING_SECONDS + 3;
 /** Wait before sending a blocked roll's pass again, when it did not get through. */
 const PASS_RETRY_MS = 2000;
 /**
@@ -499,6 +503,17 @@ const TablaGame: React.FC = () => {
                         <span className="sr-only">Пипове с {COLOR_LABEL[otherColor]}: </span>
                         <span className="tabla-hud__pip tabular">{state.opponentPipCount}</span>
                     </span>
+                    {/* Their time while they must act — their turn, or their
+                        opening throw — burning down from the server's moments. */}
+                    {!state.winnerUsername && (
+                        <TurnBar
+                            startedAt={state.opponentTurnStartedAt}
+                            deadline={state.opponentDeadline}
+                            urgentSeconds={OPPONENT_URGENT_SECONDS}
+                            className="tabla-hud__turnbar"
+                            label={opponentName}
+                        />
+                    )}
                 </span>
 
                 <button

@@ -349,6 +349,20 @@
     font-weight: 800;
     line-height: 1;
 }
+/* The letter, not its line, is what is centred. A line keeps room above a
+   capital for accents and below it for descenders, unevenly, so the Р sat
+   high — by a pixel and a half on a phone, at that size the whole gap. Cut
+   down to the capital's own height, the box is the letter, and centring
+   the box centres it in any face. */
+.belot__dealer-mark {
+    display: block;
+    text-box: trim-both cap alphabetic;
+}
+/* Where that cut is not supported: the same correction, measured for this
+   face — the letter sat 0.17em above the middle. */
+@supports not (text-box: trim-both cap alphabetic) {
+    .belot__dealer-mark { translate: 0 0.17em; }
+}
 
 .belot__name {
     max-width: 10ch;
@@ -558,28 +572,14 @@
 /* The time left, burning down under the plate of whoever it belongs to.
    Hung below the plate rather than set in it, so the plate keeps its size
    whether the turn is at it or not, and nothing beside it moves. */
+/* Where belot's turn bar sits: under the plate. Its look is .turnbar's. */
 .belot__turnbar {
     position: absolute;
     left: var(--sp-2);
     right: var(--sp-2);
     top: calc(100% + 4px);
     z-index: 1;
-    height: 5px;
-    border-radius: var(--r-pill);
-    background: rgba(4, 13, 8, 0.7);
-    box-shadow: inset 0 0 0 1px var(--line);
-    overflow: hidden;
-    pointer-events: none;
 }
-.belot__turnbar-fill {
-    display: block;
-    height: 100%;
-    border-radius: inherit;
-    background: var(--gold);
-    transform-origin: 0 50%;
-    transition: transform 250ms linear, background-color var(--dur) var(--ease-out);
-}
-.belot__turnbar.is-urgent .belot__turnbar-fill { background: var(--danger); }
 
 /* ---- the middle: the trick, or the bidding ---- */
 
@@ -1506,7 +1506,7 @@ button.belot__spread:focus-visible {
         justify-content: center;
     }
     .belot__you { font-size: var(--fs-md); }
-    .belot__turnbar { height: 6px; }
+    .belot__turnbar { --turnbar-h: 6px; }
     .belot__dealer {
         width: 20px;
         height: 20px;
