@@ -68,6 +68,16 @@ const LADDER: { kind: BelotBidKind; contract: BelotContract | null; multiplier?:
 const URGENT_SECONDS = 6;
 
 /**
+ * How many times a player's time may run out in one game: the third gives
+ * their pair's game away. The server's rule (BelotService.MISSED_TURNS_TO_FORFEIT);
+ * here only to say it.
+ */
+const MISSED_TURNS_TO_FORFEIT = 3;
+
+/** From how many seconds left your own turn warns you, as santase's does. */
+const HURRY_SECONDS = 10;
+
+/**
  * How long an announcement stays up at the seat that made it.
  *
  * Said, heard, gone — the way santase shows +20 and +40. It used to stay on
@@ -575,6 +585,18 @@ const BelotGame: React.FC = () => {
                 />
             )}
 
+            {/* Santase's "time is running out", without its Continue: here the
+                table plays for you when it runs out, and the third time loses
+                the game. Not a dialog — it must not stand between you and the
+                card you are being told to play. The cut is not counted, so it
+                is not warned about. */}
+            {myTurn && !dealing && state.cutAt !== null && secondsLeft !== null && secondsLeft <= HURRY_SECONDS && (
+                <Hurry
+                    secondsLeft={secondsLeft}
+                    missed={state.seats.find((taken) => taken.seat === state.yourSeat)?.missedTurns ?? 0}
+                />
+            )}
+
             {/* After the last hand's own count, not over it: the game is won on
                 that hand, and the count is how. */}
             {state.status === 'FINISHED' && state.winnerTeam && !sheetOpen && !handResult && !closingTrick && (
@@ -686,6 +708,34 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
  * Only while the hand is bid for — the dealer is what tells you who speaks
  * first. Once the cards are being played it answers nothing.
  */
+/**
+ * Your own last seconds: santase's warning card, printed on the same stock,
+ * minus the Continue it offers there. What happens if you do not play, and
+ * how many more times it may happen before the game is lost.
+ */
+const Hurry: React.FC<{ secondsLeft: number; missed: number }> = ({ secondsLeft, missed }) => {
+    const allowed = MISSED_TURNS_TO_FORFEIT - 1;
+    const left = Math.max(0, allowed - missed);
+    return (
+        <div className="lobby sheet urgent belot__hurry" role="status">
+            <p className="belot__hurry-title">Времето изтича!</p>
+            <div
+                className={`tabular sheet__countdown ${secondsLeft <= 3 ? 'sheet__countdown--critical' : ''}`}
+                role="timer"
+                aria-label={`Остават ${secondsLeft} секунди`}
+            >
+                {secondsLeft}
+            </div>
+            <p className="sheet__text">
+                {left > 0
+                    ? 'Ако не изиграеш, масата ще изиграе вместо теб.'
+                    : 'Ако не изиграеш, играта е загубена, а рейтингът ти пада двойно.'}
+            </p>
+            <span className="sheet__note">Оставащи пропуски: {left} / {allowed}</span>
+        </div>
+    );
+};
+
 const Dealer: React.FC = () => (
     <span className="belot__dealer" role="img" aria-label="раздава">
         <span className="belot__dealer-mark">Р</span>

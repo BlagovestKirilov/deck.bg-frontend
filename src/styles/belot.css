@@ -333,6 +333,40 @@
     max-width: 100%;
 }
 
+/* Your last seconds: santase's warning card, on the same stock and with the
+   same red rule, laid over the top of the table rather than in the middle
+   of it — and letting every tap through, because the one thing it asks for
+   is a card played from the hand underneath. */
+.belot__hurry {
+    position: fixed;
+    left: 50%;
+    top: calc(var(--sa-top) + clamp(56px, 9vh, 96px));
+    z-index: var(--z-overlay);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+    width: min(320px, calc(100vw - var(--sp-4) * 2));
+    padding: var(--sp-4) var(--sp-5);
+    transform: translateX(-50%);
+    border: 1px solid var(--suit-red);
+    border-radius: 20px;
+    background: var(--card);
+    color: var(--ink);
+    text-align: center;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35), 0 24px 48px -16px rgba(0, 0, 0, 0.75);
+    pointer-events: none;
+}
+.belot__hurry-title {
+    margin: 0;
+    font-family: var(--lobby-display);
+    font-size: var(--fs-xl);
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--suit-red);
+}
+.belot__hurry .sheet__text { margin: 0; }
+
 /* Sits by their elbow for the whole hand and is read once, so it is a
    counter rather than a label competing with what was just announced. */
 .belot__dealer {
@@ -1217,6 +1251,17 @@
     color: var(--text-1);
 }
 .game-result--won .game-result__verdict { color: var(--gold-bright); }
+
+/* Why a game ended before its last hand, under the verdict: one plain
+   sentence, in the ink everything else that is not the verdict is in. */
+.game-result__reason {
+    max-width: 32ch;
+    margin: calc(var(--sp-2) * -1) auto var(--sp-4);
+    color: var(--text-2);
+    font-size: var(--fs-sm);
+    line-height: 1.45;
+    text-align: center;
+}
 
 .game-result__score {
     display: flex;

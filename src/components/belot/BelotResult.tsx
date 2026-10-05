@@ -26,6 +26,8 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
     const theirs = ourTeam === 'NORTH_SOUTH' ? state.eastWestScore : state.northSouthScore;
 
     const verdict = won ? 'Спечелихте' : 'Загубихте';
+    const you = state.seats.find((seat) => seat.seat === state.yourSeat)?.username ?? null;
+    const reason = forfeitReason(state, you, won);
 
     return (
         <Modal
@@ -42,6 +44,7 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
             }
         >
             <h2 className="game-result__verdict">{verdict}</h2>
+            {reason && <p className="game-result__reason">{reason}</p>}
             {/* The two columns of the sheet, closed: the last thing a player
                 sees is the shape they have been reading all game. */}
             <p className="game-result__score">
@@ -58,5 +61,27 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
         </Modal>
     );
 };
+
+/**
+ * Why a game ended before its last hand, said to each of the four in their
+ * own terms — and, to whoever let their time run out, what it cost them.
+ */
+function forfeitReason(state: BelotState, you: string | null, won: boolean): string | null {
+    const who = state.forfeitedBy;
+    if (!state.forfeit || !who) return null;
+    const yours = who === you;
+
+    if (state.forfeit === 'INACTIVITY') {
+        if (yours) return 'Времето ти изтече три пъти и играта отиде при другите двама. Рейтингът ти пада двойно.';
+        // Their partner is told the game is lost — it is — and that it does
+        // not count against them: they did nothing wrong, and their record
+        // takes it as a win.
+        return won
+            ? `${who} не игра три пъти — играта е ваша.`
+            : `${who} не игра три пъти и играта отиде при другите двама. За теб тя се брои за победа.`;
+    }
+    if (yours) return 'Предаде играта.';
+    return won ? `${who} се предаде — играта е ваша.` : `${who} се предаде.`;
+}
 
 export default BelotResult;

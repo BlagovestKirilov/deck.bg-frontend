@@ -38,7 +38,12 @@ export interface BelotSeatView {
     username: string;
     /** How many cards are still in that hand — a count, never the cards. */
     cardsLeft: number;
+    /** Turns the table has had to play for them this game; the third gives it away. */
+    missedTurns: number;
 }
+
+/** How a game ended early: given up, or left to run out. */
+export type BelotForfeit = 'SURRENDER' | 'INACTIVITY';
 
 export interface BelotBidView {
     seat: BelotSeatName;
@@ -151,6 +156,10 @@ export interface BelotState {
     status: BelotGameStatus;
     /** Who took the game, once a pair passes 151. */
     winnerTeam: BelotTeam | null;
+    /** How the game ended early, if it did; null for one played to its end. */
+    forfeit: BelotForfeit | null;
+    /** Whose doing that was. */
+    forfeitedBy: string | null;
     serverSeedHash: string;
     seats: BelotSeatView[];
     yourSeat: BelotSeatName | null;
