@@ -35,6 +35,9 @@ export function useBelotTable(username: string): Table {
     const clientRef = useRef<any>(null);
     const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const closedByUs = useRef(false);
+    // Whether this screen has a table yet: the first connection sits the
+    // player down, a later one only asks where they are.
+    const hasState = useRef(false);
 
     const connect = useCallback(async () => {
         if (!username || closedByUs.current) return;
@@ -54,11 +57,23 @@ export function useBelotTable(username: string): Table {
             setIsConnected(true);
 
             client.subscribe(`/topic/belot/${username}`, (message: any) => {
+                hasState.current = true;
                 setState(JSON.parse(message.body) as BelotState);
             });
 
-            // Sitting down and asking for the state are the same request here:
-            // search returns the player to the table they already have.
+            // Coming back after the connection dropped — the server restarted,
+            // a deploy, the network — the screen only asks for the table it
+            // already has. Searching again would sit a player who is reading a
+            // finished game's result down at a new one they never asked for;
+            // for one still at a table the two answers are the same.
+            if (hasState.current) {
+                belotService.getState().catch(() => undefined);
+                return;
+            }
+
+            // The first time, sitting down and asking for the state are the
+            // same request: search returns the player to the table they
+            // already have, or finds them one.
             belotService.search().catch((error) => {
                 // 404 is the server saying belot is not on offer to this
                 // account — switched off, or still only for the testers.
@@ -67,13 +82,21 @@ export function useBelotTable(username: string): Table {
         };
 
         const onError = () => {
+            // A connection already replaced may still report its own close
+            // later; reconnecting for it would open a second, duplicate one.
+            if (clientRef.current !== client) return;
             setIsConnected(false);
             if (closedByUs.current) return;
             if (reconnectRef.current) clearTimeout(reconnectRef.current);
             reconnectRef.current = setTimeout(() => { void connect(); }, RECONNECT_DELAY_MS);
         };
 
-        client.connect({ Authorization: `Bearer ${token}` }, onConnected, onError);
+        // onError twice: once for a STOMP error, and once as the close callback.
+        // The compatibility client neither reconnects by itself nor reports a
+        // dropped socket as an error, so without the second a restarted server
+        // left this screen connected to nothing — "Още една" seated the player
+        // and filled the table, and the game started for the other three.
+        client.connect({ Authorization: `Bearer ${token}` }, onConnected, onError, onError);
     }, [username]);
 
     useEffect(() => {
