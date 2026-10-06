@@ -691,7 +691,13 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
                 key={i}
                 className="card-back"
                 aria-hidden="true"
-                style={{ '--fan-step': i - (cards - 1) / 2, '--deal-i': i } as React.CSSProperties}
+                style={{
+                    '--fan-step': i - (cards - 1) / 2,
+                    // The same arc your own hand is held in, for the partner's
+                    // fan to mirror on a desk.
+                    '--fan-arc': (i - (cards - 1) / 2) ** 2,
+                    '--deal-i': i,
+                } as React.CSSProperties}
             />
         ))}
     </span>
