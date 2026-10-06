@@ -22,6 +22,9 @@
     --felt:
         var(--felt-stamp) center / 120px 120px repeat,
         radial-gradient(ellipse at 50% 38%, #1d5333 0%, #10361f 44%, #061609 100%);
+    /* The felt's own lit green, laid over the stamp where a table wants a
+       plain middle to put cards down on. */
+    --felt-calm:   rgba(27, 78, 48, 0.88);
 
     /* ---- text ---- */
     --text-1: #f1f6f2;   /* primary       ~15:1 on --bg */
@@ -69,6 +72,7 @@
     --line:        rgba(255, 255, 255, 0.10);
     --line-strong: rgba(255, 255, 255, 0.18);
     --line-gold:   rgba(227, 191, 93, 0.42);
+    --line-gold-soft: rgba(227, 191, 93, 0.24);
 
     /* ---- focus ---- */
     --focus-ring: #7fd3ff;

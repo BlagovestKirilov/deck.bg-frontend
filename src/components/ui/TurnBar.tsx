@@ -53,6 +53,9 @@ const TurnBar: React.FC<TurnBarProps> = ({ startedAt, deadline, urgentSeconds, c
             className={`turnbar ${urgent ? 'is-urgent' : ''} ${className}`}
             role="timer"
             aria-label={label && spoken ? `${label}: ${spoken}` : spoken}
+            // The same fraction for a table that draws the time as something
+            // other than a bar: belot's ring round a player's plate.
+            style={{ '--turn-left': left } as React.CSSProperties}
         >
             <span className="turnbar__fill" style={{ transform: `scaleX(${left})` }} />
         </span>
