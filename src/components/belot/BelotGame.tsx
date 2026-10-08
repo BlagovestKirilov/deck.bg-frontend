@@ -18,6 +18,8 @@ import {
     BelotState,
 } from '../../types/belot.types';
 import Button from '../ui/Button';
+import GamePrelude from '../lobby/GamePrelude';
+import { BelotArt } from '../lobby/GameArt';
 import Icon from '../ui/Icon';
 import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
@@ -158,7 +160,7 @@ const BelotGame: React.FC = () => {
     const { user } = useAuthContext();
     const username = user?.username ?? '';
 
-    const { state, isConnected, unavailable } = useBelotTable(username);
+    const { state, noTable, searching, startSearch, unavailable } = useBelotTable(username);
 
     // One clock for the screen: the seat that is being waited for shows it,
     // and it is the server’s deadline rather than a timer of our own.
@@ -258,6 +260,16 @@ const BelotGame: React.FC = () => {
     // count are put up by an effect a moment later, and without this the cut
     // started in that moment, on top of the last trick.
     const handJustCounted = rowsSeen.current !== null && (state?.sheet.length ?? 0) > rowsSeen.current;
+    // The last trick, from the very render that brings the hand's line. The
+    // effect above only puts it back after that render, and in between the
+    // trick on the table was taken off and drawn again — so the three cards
+    // already down played their arrival a second time with the fourth, a
+    // flicker at the end of every hand.
+    const lastRow = state?.sheet[state.sheet.length - 1];
+    const closing = closingTrick
+        ?? (handJustCounted && state?.lastTrick && lastRow && state.lastTrick.dealNumber === lastRow.dealNumber
+            ? state.lastTrick
+            : null);
     const dealt = useDealRun(
         state,
         handJustCounted || !!closingTrick || !!handResult || state?.status === 'FINISHED',
@@ -349,19 +361,31 @@ const BelotGame: React.FC = () => {
         return null;
     }
 
-    if (!state) {
-        return (
-            <StatusScreen
-                tone="neutral"
-                icon="cards"
-                title={isConnected ? 'Търси се маса' : 'Свързване…'}
-                message="Белот се играе от четирима. Щом седнат и четиримата, раздаваме."
-            />
-        );
+    // Where the player is has not come back yet: a reload mid-game should go
+    // straight back to the table, not show the way in for a moment first.
+    if (!state && !noTable) {
+        return <StatusScreen tone="neutral" icon="cards" title="Свързване…" />;
     }
 
-    if (state.status === 'WAITING') {
-        return <Waiting state={state} onLeave={() => navigate('/')} />;
+    // At no table, or at one still short of four: the way in, as at the other
+    // two games. Sitting down is the button, and the table is not shown until
+    // it is full — the four places filling one by one were a waiting room.
+    if (!state || state.status === 'WAITING') {
+        const seated = state?.seats.length ?? 0;
+        return (
+            <main className="screen screen--flow">
+                <GamePrelude
+                    title="Белот"
+                    rule="Двама срещу двама. Първата двойка до 151 точки печели."
+                    Art={BelotArt}
+                    isSearching={searching || !!state}
+                    onStart={startSearch}
+                    onBack={() => navigate('/')}
+                    startLabel="Намери маса"
+                    searchingText={seated > 0 ? `Търсим играчи… ${seated} от 4 на масата` : 'Търсим играчи…'}
+                />
+            </main>
+        );
     }
 
     // Only when there is a chair to be in. Without one the bottom of the
@@ -384,12 +408,12 @@ const BelotGame: React.FC = () => {
     // Whoever is taking the trick on the table: their plate lights up as the
     // pile is swept to them, so the answer is at the chair and not only on
     // the card.
-    const takingSeat = closingTrick?.wonBy ?? state.play?.wonBy ?? null;
+    const takingSeat = closing?.wonBy ?? state.play?.wonBy ?? null;
     // The next hand is dealt the moment the last card of this one falls, but
     // it is only put on the table once this one has been taken and counted —
     // cards arriving under the count read as the table moving on without
     // anyone. And nothing is dealt at all once the game is over.
-    const dealing = handJustCounted || !!closingTrick || !!handResult || state.status === 'FINISHED';
+    const dealing = handJustCounted || !!closing || !!handResult || state.status === 'FINISHED';
 
     return (
         <main className="screen belot">
@@ -472,7 +496,7 @@ const BelotGame: React.FC = () => {
                         given={dealt.shown?.[place] ?? null}
                         toAct={toAct}
                         taking={!!seats.get(place) && takingSeat === seats.get(place)!.seat}
-                        last={!!closingTrick}
+                        last={!!closing}
                         lastCall={seats.get(place) && lastCalls.get(seats.get(place)!.seat)}
                         announced={seats.get(place) && saying.get(seats.get(place)!.seat)}
                         state={state}
@@ -485,10 +509,10 @@ const BelotGame: React.FC = () => {
                     none of them — which is what kept it out of the middle
                     while they were sitting close in around it. */}
                 <div className="belot__middle">
-                    {closingTrick ? (
+                    {closing ? (
                         <Trick
-                            cards={closingTrick.cards}
-                            wonBy={closingTrick.wonBy}
+                            cards={closing.cards}
+                            wonBy={closing.wonBy}
                             yourSeat={state.yourSeat}
                             last
                         />
@@ -517,7 +541,7 @@ const BelotGame: React.FC = () => {
                             'belot__you',
                             toAct === you.seat ? 'is-turn' : '',
                             takingSeat === you.seat ? 'is-taking' : '',
-                            closingTrick ? 'is-last' : '',
+                            closing ? 'is-last' : '',
                         ].filter(Boolean).join(' ')}
                         >
                             <span className="belot__you-name">{you.username}</span>
@@ -569,9 +593,12 @@ const BelotGame: React.FC = () => {
                         </>
                     }
                 >
+                    {/* What it costs, and whom: the game goes to the other
+                        pair, it costs you twice the rating, and your partner
+                        is not made to pay for it. */}
                     <p className="sheet__text">
-                        Белотът се играе по двойки, затова играта се предава за двама:
-                        {partner ? ` ${partner.username} губи заедно с теб.` : ' съотборникът ти губи заедно с теб.'}
+                        Играта отива при другите двама и рейтингът ти пада двойно.
+                        {partner ? ` За ${partner.username} тя се брои за победа.` : ' За съотборника ти тя се брои за победа.'}
                     </p>
                 </Modal>
             )}
@@ -599,7 +626,7 @@ const BelotGame: React.FC = () => {
 
             {/* After the last hand's own count, not over it: the game is won on
                 that hand, and the count is how. */}
-            {state.status === 'FINISHED' && state.winnerTeam && !sheetOpen && !handResult && !closingTrick && (
+            {state.status === 'FINISHED' && state.winnerTeam && !sheetOpen && !handResult && !closing && (
                 <BelotResult
                     state={state}
                     ourTeam={ourTeam}
@@ -929,58 +956,5 @@ const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
 function scoreOf(state: BelotState, team: BelotTeam): number {
     return team === 'NORTH_SOUTH' ? state.northSouthScore : state.eastWestScore;
 }
-
-/**
- * The table before it is full.
- *
- * Shows the four places rather than a count: a player who can see three
- * empty chairs and the names in the taken ones knows exactly what is being
- * waited for, and knows their own name is already down.
- */
-const Waiting: React.FC<{ state: BelotState; onLeave: () => void }> = ({ state, onLeave }) => {
-    const taken = state.seats.length;
-    const seats = ORDER.map((seat) => state.seats.find((sitting) => sitting.seat === seat) ?? null);
-
-    return (
-        <main className="screen belot belot--waiting">
-            <header className="belot__bar">
-                <Button variant="ghost" size="sm" icon="arrowLeft" onClick={onLeave}>Игри</Button>
-            </header>
-
-            <div className="waiting">
-                <h1 className="waiting__title">Масата се пълни</h1>
-                <p className="waiting__count">{taken} от 4</p>
-
-                <ul className="waiting__seats">
-                    {seats.map((seat, place) => (
-                        <li
-                            key={seat?.seat ?? `empty-${place}`}
-                            className={seat ? 'waiting__seat is-taken' : 'waiting__seat'}
-                        >
-                            {seat ? (
-                                <>
-                                    <span className="card-back" aria-hidden="true" />
-                                    <span className="waiting__who">
-                                        {seat.username}
-                                        {seat.seat === state.yourSeat && (
-                                            <span className="waiting__you"> — вие</span>
-                                        )}
-                                    </span>
-                                </>
-                            ) : (
-                                <span className="waiting__free">свободно място</span>
-                            )}
-                        </li>
-                    ))}
-                </ul>
-
-                <p className="waiting__note">
-                    Белот се играе от четирима. Щом седне и четвъртият, раздаваме — 
-                    можете да оставите играта отворена.
-                </p>
-            </div>
-        </main>
-    );
-};
 
 export default BelotGame;

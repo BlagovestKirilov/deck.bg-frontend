@@ -25,8 +25,12 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
     const ours = ourTeam === 'NORTH_SOUTH' ? state.northSouthScore : state.eastWestScore;
     const theirs = ourTeam === 'NORTH_SOUTH' ? state.eastWestScore : state.northSouthScore;
 
-    const verdict = won ? 'Спечелихте' : 'Загубихте';
     const you = state.seats.find((seat) => seat.seat === state.yourSeat)?.username ?? null;
+    // Your partner gave the game away: the table is lost, but your record takes
+    // it as a win, so "you lost" over "it counts as a win" would contradict
+    // itself. The heading says only that it is over.
+    const partnerGaveUp = !won && !!state.forfeit && !!state.forfeitedBy && state.forfeitedBy !== you;
+    const verdict = won ? 'Спечелихте' : partnerGaveUp ? 'Играта приключи' : 'Загубихте';
     const reason = forfeitReason(state, you, won);
 
     return (
@@ -64,24 +68,27 @@ const BelotResult: React.FC<Props> = ({ state, ourTeam, onLeave, onAgain }) => {
 
 /**
  * Why a game ended before its last hand, said to each of the four in their
- * own terms — and, to whoever let their time run out, what it cost them.
+ * own terms. A surrender and three missed turns end the same way: whoever
+ * gave the game away loses twice the rating, and their partner — who did
+ * nothing wrong — is given the win. Both of those are said, to the two they
+ * happen to.
  */
 function forfeitReason(state: BelotState, you: string | null, won: boolean): string | null {
     const who = state.forfeitedBy;
     if (!state.forfeit || !who) return null;
-    const yours = who === you;
+    const ranOut = state.forfeit === 'INACTIVITY';
 
-    if (state.forfeit === 'INACTIVITY') {
-        if (yours) return 'Времето ти изтече три пъти и играта отиде при другите двама. Рейтингът ти пада двойно.';
-        // Their partner is told the game is lost — it is — and that it does
-        // not count against them: they did nothing wrong, and their record
-        // takes it as a win.
-        return won
-            ? `${who} не игра три пъти — играта е ваша.`
-            : `${who} не игра три пъти и играта отиде при другите двама. За теб тя се брои за победа.`;
+    if (who === you) {
+        return ranOut
+            ? 'Времето ти изтече три пъти и играта отиде при другите двама. Рейтингът ти пада двойно.'
+            : 'Предаде играта и тя отиде при другите двама. Рейтингът ти пада двойно.';
     }
-    if (yours) return 'Предаде играта.';
-    return won ? `${who} се предаде — играта е ваша.` : `${who} се предаде.`;
+    const what = ranOut ? `${who} не игра три пъти` : `${who} се предаде`;
+    // Their partner is told the one thing that matters to them: it does not
+    // count against them, their record takes it as a win.
+    return won
+        ? `${what} — играта е ваша.`
+        : `${what}. За теб играта се брои за победа.`;
 }
 
 export default BelotResult;

@@ -9,11 +9,22 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const RECONNECT_DELAY_MS = 2000;
 
+/**
+ * How long to wait for a table before taking it that there is none. The
+ * server says so at once (204), and this is only for one that does not yet:
+ * otherwise a player at no table would be left looking at "connecting".
+ */
+const NO_TABLE_AFTER_MS = 3000;
+
 interface Table {
     state: BelotState | null;
     isConnected: boolean;
-    /** True from sitting down until the fourth player arrives. */
-    isWaiting: boolean;
+    /** The server has answered that this player is not at a table. */
+    noTable: boolean;
+    /** Asked to be seated, and the answer has not come back yet. */
+    searching: boolean;
+    /** Find a table: the one this player already has, or one short of four. */
+    startSearch: () => void;
     /** Set when the server refused — the game is not on offer to this account. */
     unavailable: boolean;
 }
@@ -26,18 +37,45 @@ interface Table {
  * has one topic per player instead, so the client can listen before it knows
  * which table it will be given, and the same subscription carries it through
  * every deal and every reconnect.
+ *
+ * Opening the screen sits nobody down: it asks where the player already is,
+ * and a player at no table is shown the way to find one, as at the other two
+ * games. The search starts when they ask for it.
  */
 export function useBelotTable(username: string): Table {
     const [state, setState] = useState<BelotState | null>(null);
     const [isConnected, setIsConnected] = useState(false);
+    const [noTable, setNoTable] = useState(false);
+    const [searching, setSearching] = useState(false);
     const [unavailable, setUnavailable] = useState(false);
 
     const clientRef = useRef<any>(null);
     const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const noTableRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const closedByUs = useRef(false);
-    // Whether this screen has a table yet: the first connection sits the
-    // player down, a later one only asks where they are.
+    // Whether this screen has a table yet.
     const hasState = useRef(false);
+    // A search asked for before the socket was up: started once it is, so the
+    // table it finds is not pushed to a subscription that does not exist yet.
+    const searchWhenConnected = useRef(false);
+
+    const search = useCallback(() => {
+        belotService.search().catch((error) => {
+            setSearching(false);
+            // 404 is the server saying belot is not on offer to this
+            // account — switched off, or still only for the testers.
+            if (error?.response?.status === 404) setUnavailable(true);
+        });
+    }, []);
+
+    const startSearch = useCallback(() => {
+        setSearching(true);
+        if (clientRef.current?.connected) {
+            search();
+        } else {
+            searchWhenConnected.current = true;
+        }
+    }, [search]);
 
     const connect = useCallback(async () => {
         if (!username || closedByUs.current) return;
@@ -61,24 +99,26 @@ export function useBelotTable(username: string): Table {
                 setState(JSON.parse(message.body) as BelotState);
             });
 
-            // Coming back after the connection dropped — the server restarted,
-            // a deploy, the network — the screen only asks for the table it
-            // already has. Searching again would sit a player who is reading a
-            // finished game's result down at a new one they never asked for;
-            // for one still at a table the two answers are the same.
-            if (hasState.current) {
-                belotService.getState().catch(() => undefined);
+            if (searchWhenConnected.current) {
+                searchWhenConnected.current = false;
+                search();
                 return;
             }
 
-            // The first time, sitting down and asking for the state are the
-            // same request: search returns the player to the table they
-            // already have, or finds them one.
-            belotService.search().catch((error) => {
-                // 404 is the server saying belot is not on offer to this
-                // account — switched off, or still only for the testers.
-                if (error?.response?.status === 404) setUnavailable(true);
-            });
+            // Only ever asked, never sat down: a reload mid-game, a deploy, the
+            // network — the screen gets back the table it has, and a player
+            // reading a finished game's result is not seated at a new one.
+            belotService.getState()
+                .then((response) => {
+                    if (response.status === 204 && !hasState.current) setNoTable(true);
+                })
+                .catch(() => undefined);
+            if (!hasState.current) {
+                if (noTableRef.current) clearTimeout(noTableRef.current);
+                noTableRef.current = setTimeout(() => {
+                    if (!hasState.current) setNoTable(true);
+                }, NO_TABLE_AFTER_MS);
+            }
         };
 
         const onError = () => {
@@ -97,7 +137,7 @@ export function useBelotTable(username: string): Table {
         // left this screen connected to nothing — "Още една" seated the player
         // and filled the table, and the game started for the other three.
         client.connect({ Authorization: `Bearer ${token}` }, onConnected, onError, onError);
-    }, [username]);
+    }, [username, search]);
 
     useEffect(() => {
         closedByUs.current = false;
@@ -106,6 +146,7 @@ export function useBelotTable(username: string): Table {
         return () => {
             closedByUs.current = true;
             if (reconnectRef.current) clearTimeout(reconnectRef.current);
+            if (noTableRef.current) clearTimeout(noTableRef.current);
             try {
                 clientRef.current?.disconnect?.();
             } catch {
@@ -125,10 +166,5 @@ export function useBelotTable(username: string): Table {
         return () => document.removeEventListener('visibilitychange', onVisible);
     }, []);
 
-    return {
-        state,
-        isConnected,
-        isWaiting: state !== null && state.status === 'WAITING',
-        unavailable,
-    };
+    return { state, isConnected, noTable, searching, startSearch, unavailable };
 }

@@ -1537,91 +1537,6 @@
 }
 
 
-/* =====================================================================
-   The table before it is full
-
-   Four places rather than a count: a player who can see three empty
-   chairs and the names in the taken ones knows what is being waited for,
-   and can see their own name is already down.
-   ===================================================================== */
-
-.screen.belot--waiting { justify-content: flex-start; }
-
-.waiting {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--sp-3);
-    width: 100%;
-    max-width: 420px;
-    margin: 0 auto;
-    text-align: center;
-}
-
-.waiting__title {
-    margin: 0;
-    font-family: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
-    font-size: var(--fs-2xl);
-    font-weight: 800;
-    color: var(--text-1);
-}
-.waiting__count {
-    margin: 0;
-    font-family: 'Sofia Sans Extra Condensed', 'Sofia Sans', var(--font-display);
-    font-size: var(--fs-xl);
-    font-weight: 800;
-    color: var(--gold);
-    font-variant-numeric: tabular-nums;
-}
-
-.waiting__seats {
-    display: flex;
-    flex-direction: column;
-    gap: var(--sp-2);
-    width: 100%;
-    margin: var(--sp-2) 0 0;
-    padding: 0;
-    list-style: none;
-}
-
-.waiting__seat {
-    display: flex;
-    align-items: center;
-    gap: var(--sp-3);
-    min-height: var(--tap);
-    padding: var(--sp-2) var(--sp-4);
-    border: 1px dashed var(--line);
-    border-radius: var(--r-md);
-    color: var(--text-3);
-    font-size: var(--fs-sm);
-}
-/* A taken place is solid and carries a card; an empty one is an outline.
-   The difference is the whole content of this screen. */
-.waiting__seat.is-taken {
-    border-style: solid;
-    border-color: var(--line-gold);
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--text-1);
-    font-weight: 700;
-}
-.waiting__seat .card-back {
-    width: 22px;
-    height: 32px;
-    border-radius: 3px;
-}
-.waiting__you { font-weight: 400; color: var(--text-3); }
-.waiting__free { font-style: italic; }
-
-.waiting__note {
-    margin: var(--sp-2) 0 0;
-    max-width: 34ch;
-    font-size: var(--fs-sm);
-    line-height: var(--lh-body);
-    color: var(--text-3);
-}
-
 /* A short screen — a phone in a case, or a browser with its bars showing.
    The middle gives up its room first: nothing is played into it during the
    auction, and during a hand four smaller cards still read. */
@@ -1824,4 +1739,97 @@ button.belot__spread:focus-visible {
     .hand-result__cell { font-size: var(--fs-md); }
     .hand-result__head { font-size: var(--fs-sm); }
     .game-result__who { font-size: var(--fs-sm); }
+}
+
+/* ---- A phone: every hand runs off the glass ----
+
+   Only the edge of a hand that faces the table is any use to look at, so on
+   a phone that edge is all that is shown: your partner's hand runs up off
+   the top of the screen, the two either side off its sides, and your own
+   off the bottom, with each player's plate laid over their own cards. The
+   middle of the table gets the room the hands gave up. */
+@media (max-width: 600px) {
+    .screen.belot {
+        /* Flush with the bottom of the glass, which is where your hand is cut. */
+        padding-bottom: var(--sa-bottom);
+        /* The hands you cannot see big enough to read as hands, now that
+           most of each is off the screen. */
+        --belot-back-w: calc(var(--belot-card) * 0.85);
+        /* Your own cards a little larger: only their top shows. */
+        --belot-card-hand: clamp(76px, min(25vw, 17vh), 124px);
+        /* The partner's strip: the part of their hand still on the screen. */
+        --belot-top: calc(var(--belot-back-h) * 0.6 + var(--tap) / 2 + var(--sp-3));
+    }
+
+    /* The score and the way out laid over the two top corners, so your
+       partner's hand can run up between them; over it, too, where they meet. */
+    .belot__bar {
+        position: absolute;
+        top: calc(var(--sa-top) + var(--sp-2));
+        left: var(--sp-3);
+        right: var(--sp-3);
+        z-index: 4;
+    }
+
+    /* Your partner: the top of their fan cut off by the top of the screen,
+       their plate on the lower half of it. Their hand is yours turned half
+       round — held from above the glass, opening down towards you. */
+    .belot__seat--partner { top: calc(var(--belot-back-h) * 0.1 - var(--sp-2)); }
+    .belot__seat--partner > .belot__backs { transform: translateY(-35%); }
+    .belot__seat--partner .card-back {
+        transform-origin: 50% -130%;
+        transform: rotate(calc(var(--fan-step, 0) * -7deg));
+    }
+    .belot__seat--partner > .belot__said { top: calc(50% + var(--tap) / 2 + var(--sp-1)); }
+
+    /* The two either side: most of the fan off the glass, the inner part of
+       it under their plate. Mirrors of each other. */
+    .belot__seat--left > .belot__backs {
+        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * 0.1 - var(--belot-side))) rotate(90deg);
+    }
+    .belot__seat--right > .belot__backs {
+        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * -0.1 + var(--belot-side))) scaleX(-1) rotate(90deg);
+    }
+
+    /* The calls in the middle, with the two side plates either side of
+       them: kept narrow for it — a tighter plate, a shorter name, and the
+       dealer's mark pinned to the plate's inner corner instead of widening
+       it. On the narrowest phones the calls lie over the plates' edges. */
+    .belot__seat--left .belot__plate,
+    .belot__seat--right .belot__plate { padding-inline: var(--sp-2); }
+    .belot__seat--left .belot__name,
+    .belot__seat--right .belot__name { max-width: 8ch; }
+    .belot__seat--left .belot__dealer,
+    .belot__seat--right .belot__dealer {
+        position: absolute;
+        top: calc(var(--sp-2) * -1);
+    }
+    .belot__seat--left .belot__dealer { right: calc(var(--sp-2) * -1); }
+    .belot__seat--right .belot__dealer { left: calc(var(--sp-2) * -1); }
+
+    /* Your hand: the top of every card — the corner it is read by, and the
+       suit in its middle — above the bottom of the screen, the rest below
+       it. Clipped rather than pushed off, so the page does not scroll down
+       to the part that is hidden. */
+    /* At this size five cards overlap a little more than they did, so the
+       corner of the outside two stays on the glass. */
+    .belot__hand { --belot-overlap: 0.45; }
+    .belot__cards {
+        align-items: flex-start;
+        height: calc(var(--sp-2) + var(--belot-card-hand) * 103 / 71 * 0.82);
+        min-height: 0;
+        padding: var(--sp-2) 0 0;
+        overflow-x: visible;
+        overflow-y: clip;
+    }
+    /* Your plate over your hand rather than on it, so nothing covers the
+       suit in the middle of a card. */
+    .belot__hand-head { margin-bottom: var(--sp-1); }
+
+    /* The hand holds still. A card that can be played is told by the ones
+       that cannot, which are dimmed; it does not stand up, and a touch does
+       not lift it — on a phone a touched card kept its hover and stayed up. */
+    .belot__held:has(.pcard--playable) { translate: none; }
+    .belot__hand .pcard--playable:hover,
+    .belot__hand .pcard--playable:active { transform: none; }
 }
