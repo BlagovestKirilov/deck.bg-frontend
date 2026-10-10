@@ -71,8 +71,15 @@ const SIZE: Record<NonNullable<RankBadgeProps['size']>, string> = {
     large: 'clamp(70px, 18vw, 96px)',
 };
 
+/**
+ * The look of a rank, and of no rank for anything else. A rank the client
+ * does not know — a newer server, or an answer that was not a record at all —
+ * shows as unranked instead of throwing and taking the screen with it.
+ */
+const configOf = (rank: Rank | undefined) => (rank && RANK_CONFIG[rank]) || RANK_CONFIG.UNRANKED;
+
 /** Bulgarian name of a rank, for labels outside the badge. */
-export const rankName = (rank: Rank): string => RANK_CONFIG[rank].name;
+export const rankName = (rank: Rank): string => configOf(rank).name;
 
 /**
  * The medal on its own — no button, no tooltip.
@@ -86,7 +93,7 @@ export const RankMedal: React.FC<{ rank: Rank; size?: RankBadgeProps['size']; al
     size = 'small',
     alt = '',
 }) => {
-    const config = RANK_CONFIG[rank];
+    const config = configOf(rank);
     const dimension = SIZE[size];
     return (
         <img
@@ -118,7 +125,7 @@ export const RankMedal: React.FC<{ rank: Rank; size?: RankBadgeProps['size']; al
 const RankBadge: React.FC<RankBadgeProps> = ({ rank, size = 'medium', placementGamesRemaining = 0 }) => {
     const [open, setOpen] = useState(false);
     const wrapRef = useRef<HTMLDivElement>(null);
-    const config = RANK_CONFIG[rank];
+    const config = configOf(rank);
     const isLegend = rank === 'LEGEND';
 
     const label =

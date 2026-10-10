@@ -1,4 +1,4 @@
-import axios, { InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const apiClient = axios.create({
@@ -203,9 +203,37 @@ function endSession(): void {
     window.location.href = '/';
 }
 
-// Response interceptor: refresh once on 401, then retry the original request.
+/**
+ * True when an API call was answered with a web page instead of data.
+ *
+ * That is what a path the proxy does not route looks like: it falls through to
+ * the site itself, which answers every unknown path with index.html and a 200.
+ * Handed on as data, the page reached a screen as if it were a record — the
+ * lobby read a rank off it, threw, and the whole app went blank.
+ */
+function isWebPage(response: AxiosResponse): boolean {
+    const type = String(response.headers?.['content-type'] ?? '');
+    if (type.includes('text/html')) return true;
+    return typeof response.data === 'string' && /^\s*<(!doctype|html)/i.test(response.data);
+}
+
+// Response interceptor: refuse a web page, refresh once on 401, then retry the
+// original request.
 apiClient.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        if (isWebPage(response)) {
+            return Promise.reject(
+                new AxiosError(
+                    `Expected data from ${response.config.url ?? 'the API'}, got a web page`,
+                    AxiosError.ERR_BAD_RESPONSE,
+                    response.config,
+                    response.request,
+                    response,
+                ),
+            );
+        }
+        return response;
+    },
     async (error) => {
         const originalRequest = error.config;
 
