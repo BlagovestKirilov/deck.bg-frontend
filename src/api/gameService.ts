@@ -1,4 +1,5 @@
 import apiClient from './apiClient';
+import { ActiveGameResponse } from '../types/game.types';
 
 export const gameService = {
     searchGame: () =>
@@ -22,9 +23,13 @@ export const gameService = {
     getInitialState: () =>
         apiClient.get(`/santase/state`),
 
-    /** The game this player is already in: 202 and its id on the search topic, or 204. */
+    /**
+     * The game this player is already in: 200 with its id, or 204. A server
+     * from before the id was in the answer says 202 and sends the id on the
+     * search topic instead.
+     */
     getActiveGame: () =>
-        apiClient.get('/santase/active'),
+        apiClient.get<ActiveGameResponse | ''>('/santase/active'),
 
     surrender: () =>
         apiClient.post(`/santase/surrender`),

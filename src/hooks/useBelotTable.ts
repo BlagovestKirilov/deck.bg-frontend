@@ -65,6 +65,25 @@ export function useBelotTable(username: string): Table {
     // Asked to sit down, and no table has come back yet.
     const asked = useRef(false);
 
+    // Every view of the table, from the socket or from an answer, lands here.
+    const receive = useCallback((next: BelotState) => {
+        hasState.current = true;
+        waiting.current = next.status === 'WAITING';
+        if (!waiting.current) asked.current = false;
+        setState(next);
+    }, []);
+
+    // An answer to "where am I?". The view in it is drawn only while the
+    // screen has none yet: after that the socket is the one source, because an
+    // answer can arrive after a newer push and would put the table back.
+    const answered = useCallback((response: { status: number; data?: BelotState | '' }) => {
+        if (response.status === 204) {
+            if (!hasState.current && !closedByUs.current) setNoTable(true);
+            return;
+        }
+        if (response.data && !hasState.current && !closedByUs.current) receive(response.data);
+    }, [receive]);
+
     const search = useCallback(() => {
         asked.current = true;
         belotService.search().catch((error) => {
@@ -103,11 +122,7 @@ export function useBelotTable(username: string): Table {
             setIsConnected(true);
 
             client.subscribe(`/topic/belot/${username}`, (message: any) => {
-                const next = JSON.parse(message.body) as BelotState;
-                hasState.current = true;
-                waiting.current = next.status === 'WAITING';
-                if (!waiting.current) asked.current = false;
-                setState(next);
+                receive(JSON.parse(message.body) as BelotState);
             });
 
             if (searchWhenConnected.current || waiting.current) {
@@ -119,11 +134,7 @@ export function useBelotTable(username: string): Table {
             // Only ever asked, never sat down: a reload mid-game, a deploy, the
             // network — the screen gets back the table it has, and a player
             // reading a finished game's result is not seated at a new one.
-            belotService.getState()
-                .then((response) => {
-                    if (response.status === 204 && !hasState.current) setNoTable(true);
-                })
-                .catch(() => undefined);
+            belotService.getState().then(answered).catch(() => undefined);
             if (!hasState.current) {
                 if (noTableRef.current) clearTimeout(noTableRef.current);
                 noTableRef.current = setTimeout(() => {
@@ -148,11 +159,18 @@ export function useBelotTable(username: string): Table {
         // left this screen connected to nothing — "Още една" seated the player
         // and filled the table, and the game started for the other three.
         client.connect({ Authorization: `Bearer ${token}` }, onConnected, onError, onError);
-    }, [username, search]);
+    }, [username, search, receive, answered]);
 
     useEffect(() => {
         closedByUs.current = false;
         void connect();
+
+        // Asked at once, alongside the socket rather than after it. A player at
+        // no table is shown the way to one after a single round trip, and a
+        // player at a table sees it drawn from the answer while the socket is
+        // still connecting. Anything that moves in between is asked for again
+        // once the socket is up.
+        belotService.getState().then(answered).catch(() => undefined);
 
         return () => {
             closedByUs.current = true;
@@ -172,7 +190,7 @@ export function useBelotTable(username: string): Table {
                 // Already gone: nothing to close.
             }
         };
-    }, [connect]);
+    }, [connect, answered]);
 
     // A tab that comes back may have missed a push while it was asleep.
     useEffect(() => {

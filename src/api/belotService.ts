@@ -1,5 +1,5 @@
 import apiClient from './apiClient';
-import { BelotBidKind, BelotCard, BelotContract, BelotProfile } from '../types/belot.types';
+import { BelotBidKind, BelotCard, BelotContract, BelotProfile, BelotState } from '../types/belot.types';
 
 /**
  * Belot. Every call answers 202 with an empty body: what the player is waiting
@@ -13,8 +13,12 @@ export const belotService = {
     /** Sit down: at the table this player already has, or at one short of four. */
     search: () => apiClient.post('/belot/search'),
 
-    /** Ask for this seat's view again, after a reload or a dropped socket. */
-    getState: () => apiClient.get('/belot/state'),
+    /**
+     * This seat's view: 200 with it, also sent on the socket, or 204 at no
+     * table. A server from before the view was in the answer says 202 and
+     * sends it on the socket only.
+     */
+    getState: () => apiClient.get<BelotState | ''>('/belot/state'),
 
     bid: (kind: BelotBidKind, contract?: BelotContract) =>
         apiClient.post('/belot/bid', { kind, contract: contract ?? null }),
