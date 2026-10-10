@@ -154,6 +154,16 @@ export function useBelotTable(username: string): Table {
         closedByUs.current = false;
         void connect();
 
+        // Asked at once, alongside the socket rather than after it: a player at
+        // no table is shown the way to one after a single round trip. A player
+        // at a table is answered on the socket, which may not be listening yet;
+        // it asks again once it is, and that answer is the one that lands.
+        belotService.getState()
+            .then((response) => {
+                if (response.status === 204 && !hasState.current && !closedByUs.current) setNoTable(true);
+            })
+            .catch(() => undefined);
+
         return () => {
             closedByUs.current = true;
             // Back to the games while the table fills: the seat is given up,
