@@ -5,6 +5,7 @@ import { GameKey } from '../types/user.types';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
 import { socketToken } from '../api/apiClient';
+import { ActiveGameResponse } from '../types/game.types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -16,8 +17,8 @@ const RECONNECT_GIVE_UP_MS = 60000;
 interface GameApi {
     searchGame: () => Promise<unknown>;
     getInitialState: () => Promise<unknown>;
-    /** 202 with the game's id on the search topic when the player is in one, 204 when not. */
-    getActiveGame: () => Promise<{ status: number }>;
+    /** 200 with the game's id when the player is in one, 204 when not (202: the id comes on the search topic). */
+    getActiveGame: () => Promise<{ status: number; data?: ActiveGameResponse | '' }>;
     surrender: () => Promise<unknown>;
 }
 
@@ -317,12 +318,36 @@ export function useGameSession<S extends MinimalState>(
     }, [finishAndReturn]);
 
     // On opening the screen: back into the game the player is already in.
+    //
+    // Asked over plain HTTP before any socket is opened. A player in no game —
+    // most of the time — sees the way in after one round trip instead of the
+    // socket's three plus this one, and no socket is opened until they search.
+    // A player in a game has its id already, and the socket joins it directly.
+    // A 202, from a server older than the id in the answer, and a failure both
+    // fall back to asking once the socket is up, as before.
     useEffect(() => {
         if (!username) {
             setIsResuming(false);
-            return;
+            return undefined;
         }
-        void connectRef.current(false, true);
+        let current = true;
+        apiRef.current.getActiveGame()
+            .then((response) => {
+                if (!current) return;
+                if (response.status === 204) {
+                    setIsResuming(false);
+                    return;
+                }
+                const gameId = response.data ? response.data.gameId : undefined;
+                if (gameId) gameIdRef.current = gameId;
+                void connectRef.current(false, true);
+            })
+            .catch(() => {
+                if (current) void connectRef.current(false, true);
+            });
+        return () => {
+            current = false;
+        };
     }, [username]);
 
     useEffect(() => teardown, [teardown]);

@@ -40,3 +40,13 @@ export interface GameState {
     opponentTurnStartedAt?: string;
     opponentDeadline?: string;
 }
+
+/**
+ * The answer to "am I already in a game?" — `/santase/active`, `/tabla/active`.
+ * The same shape the search topic sends when a game starts: 200 with this when
+ * there is a game, 204 with no body when there is none.
+ */
+export interface ActiveGameResponse {
+    status: 'GAME_STARTED';
+    gameId: string;
+}

@@ -1385,12 +1385,35 @@ const SantaseGame: React.FC = () => {
     };
 
     // On opening the screen: back into the game the player is already in.
+    //
+    // Asked over plain HTTP before any socket is opened, as in useGameSession:
+    // a player in no game sees the way in after one round trip, and a player in
+    // one has its id before the socket is up, so the socket joins it directly.
+    // A 202 from an older server, and a failure, fall back to asking once the
+    // socket is up.
     useEffect(() => {
         if (!username) {
             setIsResuming(false);
-            return;
+            return undefined;
         }
-        void connectWebSocket(false, true);
+        let current = true;
+        gameService.getActiveGame()
+            .then((response) => {
+                if (!current) return;
+                if (response.status === 204) {
+                    setIsResuming(false);
+                    return;
+                }
+                const gameId = response.data ? response.data.gameId : undefined;
+                if (gameId) gameIdRef.current = gameId;
+                void connectWebSocket(false, true);
+            })
+            .catch(() => {
+                if (current) void connectWebSocket(false, true);
+            });
+        return () => {
+            current = false;
+        };
         // Once, for this player: every later connection is a search or a reconnect.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [username]);
