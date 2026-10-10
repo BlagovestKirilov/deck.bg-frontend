@@ -88,3 +88,220 @@ test('opening belot at no table: the way in before the socket is up', async ({ p
     // that, here, never comes.
     await expect(page.getByRole('button', { name: 'Намери маса' })).toBeVisible({ timeout: 1500 });
 });
+
+/**
+ * A table in play, in the shape the server sends it — taken from the backend's
+ * wire-format snapshot (BelotStateResponse), with the clock moved far enough
+ * ahead that nobody's turn runs out while the test looks at it.
+ */
+const BELOT_TABLE = {
+    "gameId": "11111111-2222-3333-4444-555555555555",
+    "status": "PLAYING",
+    "winnerTeam": null,
+    "forfeit": null,
+    "forfeitedBy": null,
+    "serverSeedHash": "0f5c1b6c9b4b4d2f8a1e6d3c2b7a9e8f0a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "seats": [
+        {
+            "seat": "NORTH",
+            "team": "NORTH_SOUTH",
+            "username": "petko91",
+            "cardsLeft": 5,
+            "missedTurns": 0
+        },
+        {
+            "seat": "WEST",
+            "team": "EAST_WEST",
+            "username": "ninja2011",
+            "cardsLeft": 5,
+            "missedTurns": 1
+        },
+        {
+            "seat": "SOUTH",
+            "team": "NORTH_SOUTH",
+            "username": "gosho",
+            "cardsLeft": 5,
+            "missedTurns": 0
+        },
+        {
+            "seat": "EAST",
+            "team": "EAST_WEST",
+            "username": "ivan",
+            "cardsLeft": 5,
+            "missedTurns": 3
+        }
+    ],
+    "yourSeat": "NORTH",
+    "dealNumber": 3,
+    "dealerSeat": "WEST",
+    "dealStatus": "BIDDING",
+    "yourHand": [
+        {
+            "suit": "SPADES",
+            "rank": "ACE"
+        },
+        {
+            "suit": "HEARTS",
+            "rank": "JACK"
+        }
+    ],
+    "bidding": {
+        "toAct": "SOUTH",
+        "highestBid": "HEARTS",
+        "bidder": "NORTH",
+        "doubling": "CONTRA",
+        "said": [
+            {
+                "seat": "NORTH",
+                "kind": "BID",
+                "contract": "HEARTS"
+            },
+            {
+                "seat": "WEST",
+                "kind": "CONTRA",
+                "contract": null
+            }
+        ],
+        "yours": [
+            {
+                "seat": "SOUTH",
+                "kind": "PASS",
+                "contract": null
+            }
+        ]
+    },
+    "play": {
+        "contract": "HEARTS",
+        "declarer": "NORTH",
+        "toAct": "EAST",
+        "trickNo": 4,
+        "onTable": [
+            {
+                "seat": "NORTH",
+                "card": {
+                    "suit": "CLUBS",
+                    "rank": "TEN"
+                }
+            },
+            {
+                "seat": "WEST",
+                "card": {
+                    "suit": "CLUBS",
+                    "rank": "KING"
+                }
+            }
+        ],
+        "wonBy": null,
+        "yours": [
+            {
+                "suit": "CLUBS",
+                "rank": "SEVEN"
+            }
+        ]
+    },
+    "turn": {
+        "seat": "EAST",
+        "startedAt": "2099-01-01T10:00:00Z",
+        "deadline": "2099-01-01T10:00:30Z"
+    },
+    "declarations": {
+        "shown": [
+            {
+                "seat": "NORTH",
+                "kind": "TERZ",
+                "suit": "SPADES",
+                "topRank": "KING",
+                "points": 20
+            },
+            {
+                "seat": "EAST",
+                "kind": "BELOTE",
+                "suit": "HEARTS",
+                "topRank": "KING",
+                "points": 20
+            }
+        ],
+        "northSouthPoints": 20,
+        "eastWestPoints": 20
+    },
+    "sheet": [
+        {
+            "dealNumber": 1,
+            "contract": "SPADES",
+            "declarer": "NORTH",
+            "callerTeam": "NORTH_SOUTH",
+            "doubling": "NONE",
+            "callerPoints": 97,
+            "opponentPoints": 65,
+            "callerDeclarations": 20,
+            "opponentDeclarations": 0,
+            "callerScore": 10,
+            "opponentScore": 6,
+            "result": "MADE"
+        },
+        {
+            "dealNumber": 2,
+            "contract": "NO_TRUMPS",
+            "declarer": "EAST",
+            "callerTeam": "EAST_WEST",
+            "doubling": "CONTRA",
+            "callerPoints": 120,
+            "opponentPoints": 140,
+            "callerDeclarations": 0,
+            "opponentDeclarations": 50,
+            "callerScore": 0,
+            "opponentScore": 52,
+            "result": "INSIDE"
+        }
+    ],
+    "lastTrick": {
+        "dealNumber": 2,
+        "cards": [
+            {
+                "seat": "EAST",
+                "card": {
+                    "suit": "HEARTS",
+                    "rank": "ACE"
+                }
+            },
+            {
+                "seat": "NORTH",
+                "card": {
+                    "suit": "HEARTS",
+                    "rank": "SEVEN"
+                }
+            },
+            {
+                "seat": "WEST",
+                "card": {
+                    "suit": "HEARTS",
+                    "rank": "TEN"
+                }
+            },
+            {
+                "seat": "SOUTH",
+                "card": {
+                    "suit": "HEARTS",
+                    "rank": "KING"
+                }
+            }
+        ],
+        "wonBy": "EAST"
+    },
+    "cutAt": 12,
+    "northSouthScore": 91,
+    "eastWestScore": 64,
+    "hangingPoints": 0
+};
+
+test('opening belot at a table: drawn from the answer while the socket connects', async ({ page }) => {
+    await signedIn(page);
+    await page.route(`${API}/belot/state`, (route) => route.fulfill({ json: BELOT_TABLE }));
+
+    await page.goto('/play/belot');
+
+    // The socket never answers here, so the only way to the table is the
+    // answer to /belot/state.
+    await expect(page.locator('.belot__bar')).toBeVisible({ timeout: 1500 });
+    await expect(page.getByText('ninja2011').first()).toBeVisible();
+});
