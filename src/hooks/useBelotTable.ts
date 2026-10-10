@@ -58,9 +58,17 @@ export function useBelotTable(username: string): Table {
     // A search asked for before the socket was up: started once it is, so the
     // table it finds is not pushed to a subscription that does not exist yet.
     const searchWhenConnected = useRef(false);
+    // Sitting at a table still short of four. Leaving the screen gets the
+    // player up from it, and so does the server when the socket closes — so a
+    // socket that only dropped sits them down again once it is back.
+    const waiting = useRef(false);
+    // Asked to sit down, and no table has come back yet.
+    const asked = useRef(false);
 
     const search = useCallback(() => {
+        asked.current = true;
         belotService.search().catch((error) => {
+            asked.current = false;
             setSearching(false);
             // 404 is the server saying belot is not on offer to this
             // account — switched off, or still only for the testers.
@@ -95,11 +103,14 @@ export function useBelotTable(username: string): Table {
             setIsConnected(true);
 
             client.subscribe(`/topic/belot/${username}`, (message: any) => {
+                const next = JSON.parse(message.body) as BelotState;
                 hasState.current = true;
-                setState(JSON.parse(message.body) as BelotState);
+                waiting.current = next.status === 'WAITING';
+                if (!waiting.current) asked.current = false;
+                setState(next);
             });
 
-            if (searchWhenConnected.current) {
+            if (searchWhenConnected.current || waiting.current) {
                 searchWhenConnected.current = false;
                 search();
                 return;
@@ -145,6 +156,14 @@ export function useBelotTable(username: string): Table {
 
         return () => {
             closedByUs.current = true;
+            // Back to the games while the table fills: the seat is given up,
+            // so the player is free to play something else.
+            if (waiting.current || searchWhenConnected.current || asked.current) {
+                waiting.current = false;
+                searchWhenConnected.current = false;
+                asked.current = false;
+                belotService.leave().catch(() => undefined);
+            }
             if (reconnectRef.current) clearTimeout(reconnectRef.current);
             if (noTableRef.current) clearTimeout(noTableRef.current);
             try {

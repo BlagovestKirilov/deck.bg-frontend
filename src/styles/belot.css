@@ -82,208 +82,63 @@
 }
 .screen.belot::-webkit-scrollbar { display: none; }
 
-/* On a wide screen the whole width is the table: the score sheet and the
-   way out in the room's own corners, the two side players out near its
-   edges, and the hands they hold drawn smaller and tighter — eight backs at
-   full size stood up the sides of the screen like two walls. */
+/* ---- A desk: every hand runs off the glass ----
+
+   The phone's table at a desk's size. Your partner's hand runs up off the
+   top of the screen, the two either side off its sides and your own off the
+   bottom, each with its player's plate laid on it, and the middle — the
+   calls, then the trick — has all the room the hands gave up. The backs are
+   about an eighth of the height and your own cards a sixth: big enough to be
+   hands, which at a desk they never were while they had to fit whole. */
 @media (min-width: 900px) {
     .screen.belot {
-        padding-inline: var(--sp-4);
-        /* The side hands as far from the trick as the partner's is above it
-           and yours below, give or take: the four sit round it like four
-           people at a square table, not pinned to the far edges of a wide
-           screen with the middle two close in. Measured on the height, so it
-           holds at any width; the fan's own offset from its plate is taken
-           off so it is the cards, not the plate, that sit there. */
-        --belot-side: max(var(--belot-edge), calc(50% - 47vh - var(--belot-back-h) * 1.07));
-        --belot-back-w: calc(var(--belot-card) * 0.8);
-        --belot-card-hand: clamp(62px, min(18vw, 17vh), 150px);
+        /* Flush with the bottom of the glass, which is where your hand is cut. */
+        padding: calc(var(--sa-top) + var(--sp-3)) var(--sp-4) var(--sa-bottom);
+        --belot-card: clamp(60px, min(8vw, 12vh), 130px);
+        --belot-back-w: clamp(64px, min(8vw, 14vh), 160px);
+        --belot-card-hand: clamp(90px, min(9vw, 16vh), 190px);
+        /* The two side plates at the edges of the glass. */
+        --belot-side: var(--sp-4);
+        /* The partner's strip: the part of their hand still on the screen. */
+        --belot-top: calc(var(--belot-back-h) * 0.6 + var(--tap) / 2 + var(--sp-3));
     }
     .screen.belot .belot__backs .card-back { margin-left: calc(var(--belot-back-w) * -0.55); }
     /* As specific as the line above, or it loses to it: the first back was
        pulled in under nothing, and every fan sat half an overlap off its
-       player — your partner's a good 17px left of the line through the two
-       of you. */
+       player. */
     .screen.belot .belot__backs .card-back:first-child { margin-left: 0; }
-    /* The score sheet and the way out drawn in over the two side players,
-       the corners of the table the four are sitting round, rather than the
-       corners of the monitor. */
-    .screen.belot .belot__bar { margin-inline: calc(var(--belot-side) - var(--sp-3)); }
-    /* Your partner sits higher, up against the top of the table, so their
-       bigger fan clears the bid panel and the trick below it. */
-    .screen.belot .belot__seat--partner { top: calc(var(--belot-back-h) * 0.12); }
 
-    /* The calls laid out at the size of a desk, with buttons a hand can find
-       without looking. */
-    .screen.belot .belot__bidding { width: min(400px, calc(100% - var(--belot-side) * 2 - 240px)); }
-    /* A desk's roomier 54px where the screen is tall enough, down to a
-       tap's height where it is not: five rows of calls sit between your
-       partner's plate and your own, and a fixed 54 ran into both on any
-       screen under about 950 pixels. */
-    .belot__bidding .belot__call { min-height: clamp(var(--tap), 5.4vh, 54px); }
-    .belot__bidding .belot__call .belot__suit { font-size: var(--fs-2xl); }
-    .belot__bidding .belot__call-word { font-size: var(--fs-sm); }
-    .belot__bidding .belot__call--pass { min-height: clamp(var(--tap), 5.4vh, 54px); font-size: var(--fs-lg); }
-}
-
-/* A wide monitor. The table above is sized by the height alone, so a screen
-   much wider than it is tall kept a column of felt in the middle and left
-   the rest empty: on 1910 x 940 the side players sat 400px in from either
-   edge. Here they move out to an eighth of the width — never further in
-   than the rule above puts them — and the score and the way out go with
-   them, so the table is an oval the shape of the screen. The cards take a
-   little more of the height the table already has, the most it can spare
-   with the stack from your partner's fan down to your hand still fitting. */
-@media (min-width: 1200px) and (min-aspect-ratio: 3/2) {
-    .screen.belot {
-        --belot-side: max(var(--belot-edge), min(calc(50% - 47vh - var(--belot-back-h) * 1.07), 12vw));
-    }
-}
-/* A desk table folded in half: your partner across from you is your own
-   side of the table turned round. Their half is as tall as yours, their
-   plate sits as far under their cards as yours sits over your own, and the
-   score and the way out float over the two top corners instead of pushing
-   the top half down. The two halves are then the same height by
-   construction, so the middle — where the trick lands — is the middle of
-   the screen, and the two side players sit on that same line. */
-@media (min-width: 900px) {
-    .screen.belot {
-        padding-block: calc(var(--sa-top) + var(--sp-3)) calc(var(--sa-bottom) + var(--sp-3));
-        /* Two hands this size, one at the top and one at the bottom, leave the
-           middle exactly the room a trick of four takes: a third of the
-           height for the trick, a third for each half. */
-        /* And never wider than leaves a hand of eight — seven overlaps and
-           the turn of the two outside cards, about seven card-widths — clear
-           of the score and the way out in the two top corners. */
-        --belot-card-hand: clamp(62px, min(18vw, 15vh, calc((100vw - 332px) / 7.1)), 176px);
-    }
-    /* In the screen's own top corners: your partner's hand now runs across
-       the top of the table, and the corners are what it leaves free. */
+    /* The score and the way out over the two top corners of the screen; over
+       your partner's hand too, where it reaches them. */
     .screen.belot .belot__bar {
         position: absolute;
         top: calc(var(--sa-top) + var(--sp-3));
         left: calc(var(--sa-left) + var(--sp-4));
         right: calc(var(--sa-right) + var(--sp-4));
-        margin-inline: 0;
+        z-index: 4;
     }
-    /* The table stops being the frame the seats are placed in: the screen is,
-       so "the middle" is the screen's middle. */
-    .screen.belot .belot__table {
-        position: static;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
-    .screen.belot .belot__middle {
-        position: relative;
-        inset: auto;
-        flex: 1 1 auto;
-        /* The room between the two halves and no more: a trick taller than
-           that overflows it evenly both ways rather than pushing the bottom
-           half down and the middle off the screen's middle. */
-        min-height: 0;
-        align-self: stretch;
-    }
-    .screen.belot .belot__seat--left,
-    .screen.belot .belot__seat--right { top: 50%; }
 
-    .screen.belot .belot__seat--partner {
-        position: relative;
-        top: auto;
-        left: auto;
-        z-index: 1;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        transform: none;
-    }
-    /* Your hand's box, upside down, with their cards at the end of it nearest
-       the table: the edge they show you is as far from the middle as the edge
-       of your own hand is, and their plate as far under it as yours is over
-       yours. */
-    .screen.belot .belot__seat--partner > .belot__backs {
-        align-items: flex-end;
-        min-height: calc(var(--belot-card-hand) * 103 / 71 + var(--sp-3) + var(--belot-card-hand) * 0.12);
-        padding: calc(var(--belot-card-hand) * 0.12) 0 var(--sp-3);
-        transform: none;
-    }
-    /* The same backs, the same overlap and the same turn per card as the
-       two players either side: three hands you cannot see, held alike. Turned
-       about a point above them, so it opens towards the table, towards you. */
+    /* Your partner: the top of their fan cut off by the top of the screen,
+       their plate on the lower half of it. Their hand is yours turned half
+       round — held from above the glass, opening down towards you — in the
+       same backs as the two either side. */
+    .screen.belot .belot__seat--partner { top: calc(var(--belot-back-h) * 0.1 - var(--sp-3)); }
+    .screen.belot .belot__seat--partner > .belot__backs { transform: translateY(-35%); }
     .screen.belot .belot__seat--partner .card-back {
         transform-origin: 50% -130%;
-        transform: rotate(calc(var(--fan-step, 0) * -4.5deg));
+        transform: rotate(calc(var(--fan-step, 0) * -5deg));
     }
-    .screen.belot .belot__seat--partner .card-back:first-child { margin-left: 0; }
-    /* As far under their hand as your plate is over yours: the gap your
-       plate's row keeps, and the height of that row. */
-    .screen.belot .belot__seat--partner > .belot__plate {
-        margin: calc(var(--sp-5) + (var(--tap) - 32px) / 2) 0 calc((var(--tap) - 32px) / 2);
-    }
-    .screen.belot .belot__seat--partner > .belot__said { top: calc(100% + var(--sp-2)); }
-}
-/* A short desk screen: both hands a little smaller still, so the bidding
-   panel has the middle to itself and a hand of eight clears the score in
-   the corner. */
-@media (min-width: 900px) and (max-height: 860px) {
-    .screen.belot { --belot-card-hand: clamp(62px, min(18vw, 14vh, calc((100vw - 332px) / 7.1)), 176px); }
-}
-@media (min-width: 900px) and (max-height: 800px) {
-    .screen.belot { --belot-card-hand: clamp(62px, min(18vw, 13vh, calc((100vw - 332px) / 7.1)), 176px); }
-}
+    .screen.belot .belot__seat--partner > .belot__said { top: calc(50% + var(--tap) / 2 + var(--sp-1)); }
 
-/* One rule for all four seats on a desk, so the table reads the same from
-   every side of it: the hand at the edge, the plate between the hand and the
-   trick, what was said beside the plate. Each pair — your partner and you,
-   the two either side — is the other turned round. */
-@media (min-width: 900px) {
-    /* Its own stacking context, so the table drawn under everything below
-       sits over the screen's felt and under every card and plate. */
-    .screen.belot { isolation: isolate; }
-
-    /* The table itself: an oval the four hands rest against, centred
-       on the screen's middle. Inside it the stamped suits give way to plain
-       lit felt, where the trick goes down; the rim is a gold hairline, the
-       one line the table already draws with. */
-    .screen.belot::before {
-        content: '';
-        position: absolute;
-        z-index: -1;
-        /* Along the edge of each hand that faces the trick: your hand's top
-           edge, your partner's bottom one (the same distance from the middle,
-           by the rule above), and the inner edges of the two side fans. */
-        inset-block: calc(var(--sa-top) + var(--sp-3) + var(--belot-card-hand) * 1.57)
-                     calc(var(--sa-bottom) + var(--sp-3) + var(--belot-card-hand) * 1.57);
-        inset-inline: calc(var(--belot-side) + var(--belot-back-h) * 1.57);
-        border-radius: 50%;
-        background: radial-gradient(closest-side, var(--felt-calm) 50%, transparent 100%);
-        box-shadow: inset 0 0 0 1px var(--line-gold-soft), inset 0 0 64px rgba(0, 0, 0, 0.22);
-        pointer-events: none;
-    }
-
-    /* The side seats: the fan stays where it was, the plate moves off it to
-       its inside edge, between the hand and the trick, as your partner's sits
-       under their hand and yours over your own. Each seat is pinned at the
-       edge that faces the fan, so a longer name or the dealer's mark widens
-       the plate towards the middle and the fan never moves. */
-    .screen.belot .belot__seat--left  { left:  calc(var(--belot-side) + var(--belot-back-h) * 1.62 + var(--sp-3)); }
-    .screen.belot .belot__seat--right { right: calc(var(--belot-side) + var(--belot-back-h) * 1.62 + var(--sp-3)); }
+    /* The two either side: plate at the edge of the glass, on the part of
+       their fan still on it, and most of the fan off it. Mirrors. */
     .screen.belot .belot__seat--left > .belot__backs {
-        left: 0;
-        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * -0.55 - var(--sp-3))) rotate(90deg);
+        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * 0.15 - var(--belot-side))) rotate(90deg);
     }
     .screen.belot .belot__seat--right > .belot__backs {
-        left: 100%;
-        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * 0.55 + var(--sp-3))) scaleX(-1) rotate(90deg);
+        transform: translate(-50%, -50%) translateX(calc(var(--belot-back-h) * -0.15 + var(--belot-side))) scaleX(-1) rotate(90deg);
     }
-    /* The calls kept clear of the two plates now on the inside of the side
-       hands, with room for a long name on either. */
-    .screen.belot .belot__bidding {
-        width: min(400px, calc(100% - (var(--belot-side) + var(--belot-back-h) * 1.62 + 150px) * 2));
-    }
-
-    /* What the side players say goes above their plates, the same on both:
-       on the inside of the plate it would land on the calls. */
+    /* What they say goes above their plates, the same on both. */
     .screen.belot .belot__seat--left > .belot__said,
     .screen.belot .belot__seat--right > .belot__said {
         top: auto;
@@ -300,6 +155,59 @@
         bottom: -3px;
         left: 50%;
         margin: 0 0 0 -4px;
+    }
+    /* The dealer's mark on the plate's inner corner, so it never moves the
+       plate off the edge it is pinned to. */
+    .screen.belot .belot__seat--left .belot__dealer,
+    .screen.belot .belot__seat--right .belot__dealer {
+        position: absolute;
+        top: calc(var(--sp-2) * -1);
+    }
+    .screen.belot .belot__seat--left .belot__dealer { right: calc(var(--sp-2) * -1); }
+    .screen.belot .belot__seat--right .belot__dealer { left: calc(var(--sp-2) * -1); }
+
+    /* The calls at the size of a desk, in the middle of the table: a call is
+       a target the hand finds without looking. */
+    .screen.belot .belot__bidding { width: clamp(340px, 30vw, 560px); }
+    .belot__bidding .belot__call { min-height: clamp(var(--tap), 8.5vh, 96px); }
+    .belot__bidding .belot__call .belot__suit { font-size: clamp(var(--fs-xl), 4.4vh, 48px); }
+    .belot__bidding .belot__call-word { font-size: var(--fs-md); }
+    .belot__bidding .belot__call--pass { min-height: clamp(var(--tap), 8.5vh, 96px); font-size: var(--fs-xl); }
+
+    /* Your hand: the top of every card above the bottom of the screen, the
+       rest below it — clipped rather than pushed off, so the page does not
+       scroll down to the part that is hidden. Room at the top for the card
+       under the pointer to stand up. */
+    .screen.belot .belot__hand { position: relative; }
+    .screen.belot .belot__cards {
+        align-items: flex-start;
+        height: calc(var(--sp-4) + var(--belot-card-hand) * 103 / 71 * 0.85);
+        min-height: 0;
+        padding: var(--sp-4) 0 0;
+        overflow-x: visible;
+        overflow-y: clip;
+    }
+    /* Your plate laid over the bottom of your own cards, as the others' are
+       over theirs; the pips of a number card show round it. A touch goes
+       through it to the card underneath. */
+    .screen.belot .belot__hand-head {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: var(--sp-4);
+        z-index: 3;
+        margin: 0;
+        pointer-events: none;
+    }
+
+    /* The names, read from across a desk, on plates as tall as a tap. */
+    .screen.belot .belot__seat,
+    .screen.belot .belot__you { font-size: var(--fs-md); }
+    .screen.belot .belot__plate,
+    .screen.belot .belot__you {
+        min-height: var(--tap);
+        justify-content: center;
+        padding-inline: var(--sp-4);
     }
 
     /* Whose turn it is: the plate lit, and the time left running round it
@@ -333,13 +241,20 @@
     initial-value: 1;
 }
 
-/* The bigger cards only on a screen tall enough to hold them as well as the
-   calls between your partner and you. Shorter, the calls already filled that
-   gap, and bigger cards ran your plate and your partner's into the panel. */
-@media (min-width: 1200px) and (min-aspect-ratio: 3/2) and (min-height: 900px) {
-    .screen.belot {
-        --belot-card: clamp(40px, min(12.5vw, 11vh), 110px);
-    }
+/* The middle of the table: the felt lit from above and plain, the stamped
+   suits giving way to it, with the site's spade pressed in large where the
+   cards go down. Under everything on the table, and over the screen's own
+   felt — the screen is its own stacking context for that. */
+.screen.belot { isolation: isolate; }
+.belot__middle::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        var(--felt-emblem) center / auto min(56%, 34vw) no-repeat,
+        radial-gradient(closest-side, var(--felt-calm), transparent);
+    pointer-events: none;
 }
 
 /* The score sheet at the top-left corner and the way out at the top-right,
@@ -805,7 +720,7 @@
 
 /* On a phone the inside of a side seat is under the bid panel, so the two
    side players speak from above their plates instead. */
-@media (max-width: 600px) {
+@media (max-width: 899px) {
     .belot__seat--left > .belot__said,
     .belot__seat--right > .belot__said {
         top: auto;
@@ -1540,13 +1455,8 @@
 /* A short screen — a phone in a case, or a browser with its bars showing.
    The middle gives up its room first: nothing is played into it during the
    auction, and during a hand four smaller cards still read. */
-@media (max-height: 740px) {
+@media (max-width: 899px) and (max-height: 740px) {
     .screen.belot { --belot-card-hand: clamp(56px, 15vw, 86px); }
-}
-/* A desk screen that short: the calls need the middle more than the two
-   hands need their last few pixels, or the panel meets your partner's plate. */
-@media (min-width: 900px) and (max-height: 740px) {
-    .screen.belot { --belot-card-hand: clamp(56px, min(15vw, 11.5vh), 86px); }
 }
 
 /* =====================================================================
@@ -1654,9 +1564,11 @@ button.belot__spread:focus-visible {
    names too small to read at arm's length. So on a phone the cards are
    sized on both, and the text is set for reading in a hand rather than on
    a desk.
+   A tablet below a desk's width is laid out the same way: its own
+   in-between table had the side hands lying over the calls.
    ===================================================================== */
 
-@media (max-width: 600px) {
+@media (max-width: 899px) {
     .screen.belot {
         /* A quarter of the width for a card in your hand, a fifth for one on
            the table — or less if the phone is short, so the hand and the
@@ -1729,6 +1641,8 @@ button.belot__spread:focus-visible {
     .belot__bidding {
         width: calc(100% - var(--belot-side) * 2 - 184px);
         min-width: 196px;
+        /* A tablet held upright has the width for more; the calls do not need it. */
+        max-width: 440px;
     }
     .belot__bidding .belot__call { min-height: var(--tap); }
     .belot__call-word { font-size: var(--fs-sm); }
@@ -1748,7 +1662,7 @@ button.belot__spread:focus-visible {
    the top of the screen, the two either side off its sides, and your own
    off the bottom, with each player's plate laid over their own cards. The
    middle of the table gets the room the hands gave up. */
-@media (max-width: 600px) {
+@media (max-width: 899px) {
     .screen.belot {
         /* Flush with the bottom of the glass, which is where your hand is cut. */
         padding-bottom: var(--sa-bottom);

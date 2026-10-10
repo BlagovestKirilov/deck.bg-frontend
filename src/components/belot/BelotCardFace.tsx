@@ -1,6 +1,7 @@
 import React from 'react';
 import { BelotCard } from '../../types/belot.types';
 import { SUIT_COLOR } from '../../styles/tokens';
+import CardCentre from '../ui/CardCentre';
 
 const SUIT = {
     SPADES: { symbol: '♠', color: SUIT_COLOR.black, name: 'пика' },
@@ -90,9 +91,7 @@ const BelotCardFace: React.FC<Props> = ({ card, onPlay, muted = false, size = 'h
                 <span>{rank.glyph}</span>
                 <span>{suit.symbol}</span>
             </span>
-            <span className="pcard__pip" style={{ fontSize: scale.pip }} aria-hidden="true">
-                {suit.symbol}
-            </span>
+            <CardCentre glyph={rank.glyph} symbol={suit.symbol} width={scale.width} pipSize={scale.pip} />
             <span
                 className="pcard__corner"
                 style={{ alignSelf: 'flex-end', fontSize: scale.corner, transform: 'rotate(180deg)' }}

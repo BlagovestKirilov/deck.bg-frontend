@@ -16,6 +16,8 @@ const RECONNECT_GIVE_UP_MS = 60000;
 interface GameApi {
     searchGame: () => Promise<unknown>;
     getInitialState: () => Promise<unknown>;
+    /** 202 with the game's id on the search topic when the player is in one, 204 when not. */
+    getActiveGame: () => Promise<{ status: number }>;
     surrender: () => Promise<unknown>;
 }
 
@@ -32,6 +34,8 @@ interface Session<S> {
     state: S | null;
     isConnected: boolean;
     isSearching: boolean;
+    /** Opening the screen: asking whether the player is already in a game. */
+    isResuming: boolean;
     startSearch: () => void;
     /** Surrender, tear down, return to the lobby. */
     leaveGame: () => Promise<void>;
@@ -56,6 +60,7 @@ export function useGameSession<S extends MinimalState>(
     const [state, setState] = useState<S | null>(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
+    const [isResuming, setIsResuming] = useState(true);
 
     // A refused game sends the player back to the lobby, and the callback that
     // learns about it is deep in the socket wiring, where a hook cannot be
@@ -78,7 +83,7 @@ export function useGameSession<S extends MinimalState>(
     const healthTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     // connect() and scheduleReconnect() call each other; the ref breaks the cycle.
-    const connectRef = useRef<(isReconnect: boolean) => void>(() => undefined);
+    const connectRef = useRef<(isReconnect: boolean, resumeOnly?: boolean) => void>(() => undefined);
     const onStateRef = useRef(onState);
     const apiRef = useRef(api);
 
@@ -145,6 +150,7 @@ export function useGameSession<S extends MinimalState>(
         if (next.gameId) gameIdRef.current = next.gameId;
         setState(next);
         setIsSearching(false);
+        setIsResuming(false);
         onStateRef.current?.(next);
     }, []);
 
@@ -160,7 +166,7 @@ export function useGameSession<S extends MinimalState>(
         );
     }, [applyState, username]);
 
-    const connect = useCallback(async (isReconnect: boolean) => {
+    const connect = useCallback(async (isReconnect: boolean, resumeOnly = false) => {
         if (connectingRef.current) return;
         connectingRef.current = true;
 
@@ -186,6 +192,7 @@ export function useGameSession<S extends MinimalState>(
         connectTimerRef.current = setTimeout(() => {
             if (connectingRef.current) {
                 connectingRef.current = false;
+                setIsResuming(false);
                 if (gameIdRef.current) scheduleReconnect();
                 else setIsSearching(false);
             }
@@ -246,6 +253,20 @@ export function useGameSession<S extends MinimalState>(
                 return;
             }
 
+            // Opening the screen: a game already under way is joined at once
+            // — its id comes on the search topic above — and only a player in
+            // none is offered a search. Nobody is put in the queue by this.
+            if (resumeOnly) {
+                const offerSearch = () => {
+                    teardown();
+                    setIsResuming(false);
+                };
+                apiRef.current.getActiveGame()
+                    .then((response) => { if (response.status === 204) offerSearch(); })
+                    .catch(offerSearch);
+                return;
+            }
+
             apiRef.current.searchGame().catch((error) => {
                 setIsSearching(false);
                 // 404 from the search is the server saying this game is not on
@@ -263,12 +284,13 @@ export function useGameSession<S extends MinimalState>(
         const onError = () => {
             connectingRef.current = false;
             setIsConnected(false);
+            setIsResuming(false);
             if (gameIdRef.current) scheduleReconnect();
             else setIsSearching(false);
         };
 
         client.connect({ Authorization: `Bearer ${token}` }, onConnected, onError);
-    }, [clearTimers, gameKey, scheduleReconnect, subscribeToGame, username]);
+    }, [clearTimers, gameKey, scheduleReconnect, subscribeToGame, teardown, username]);
 
     connectRef.current = connect;
 
@@ -294,7 +316,16 @@ export function useGameSession<S extends MinimalState>(
         finishAndReturn();
     }, [finishAndReturn]);
 
+    // On opening the screen: back into the game the player is already in.
+    useEffect(() => {
+        if (!username) {
+            setIsResuming(false);
+            return;
+        }
+        void connectRef.current(false, true);
+    }, [username]);
+
     useEffect(() => teardown, [teardown]);
 
-    return { state, isConnected, isSearching, startSearch, leaveGame, finishAndReturn };
+    return { state, isConnected, isSearching, isResuming, startSearch, leaveGame, finishAndReturn };
 }

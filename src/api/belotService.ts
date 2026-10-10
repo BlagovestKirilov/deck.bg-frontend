@@ -32,8 +32,14 @@ export const belotService = {
     cut: (at: number) => apiClient.post('/belot/cut', { at }),
 
     /**
-     * Give up the game — for the pair, not for one seat. Belot is scored per
-     * pair, so there is no result that ends for two of the four.
+     * Get up from a table still waiting for its fourth player — back to the
+     * games. A table already being played is not left this way.
+     */
+    leave: () => apiClient.post('/belot/leave'),
+
+    /**
+     * Give up the game: it goes to the other pair, costs whoever gave up twice
+     * the rating, and counts as a win for their partner.
      *
      * Safe to call twice: a table that is already over is left alone.
      */

@@ -740,12 +740,11 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
  */
 /**
  * Your own last seconds: santase's warning card, printed on the same stock,
- * minus the Continue it offers there. What happens if you do not play, and
- * how many more times it may happen before the game is lost.
+ * minus the Continue it offers there: what happens if you do not play. Not
+ * a count of the times left — the last time says it is the last.
  */
 const Hurry: React.FC<{ secondsLeft: number; missed: number }> = ({ secondsLeft, missed }) => {
-    const allowed = MISSED_TURNS_TO_FORFEIT - 1;
-    const left = Math.max(0, allowed - missed);
+    const lastTime = missed >= MISSED_TURNS_TO_FORFEIT - 1;
     return (
         <div className="lobby sheet urgent belot__hurry" role="status">
             <p className="belot__hurry-title">Времето изтича!</p>
@@ -757,11 +756,10 @@ const Hurry: React.FC<{ secondsLeft: number; missed: number }> = ({ secondsLeft,
                 {secondsLeft}
             </div>
             <p className="sheet__text">
-                {left > 0
-                    ? 'Ако не изиграеш, масата ще изиграе вместо теб.'
-                    : 'Ако не изиграеш, играта е загубена, а рейтингът ти пада двойно.'}
+                {lastTime
+                    ? 'Ако не изиграеш, играта е загубена, а рейтингът ти пада двойно.'
+                    : 'Ако не изиграеш, масата ще изиграе вместо теб.'}
             </p>
-            <span className="sheet__note">Оставащи пропуски: {left} / {allowed}</span>
         </div>
     );
 };

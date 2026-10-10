@@ -25,6 +25,10 @@
     /* The felt's own lit green, laid over the stamp where a table wants a
        plain middle to put cards down on. */
     --felt-calm:   rgba(27, 78, 48, 0.88);
+    /* The site's own spade, pressed into the felt in the middle of a table the
+       way the small ones are stamped all over it: the same shadow a hair
+       below and the same faint light on it, only large. */
+    --felt-emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20.4'%3E%3Cpath fill='rgba(0,0,0,0.2)' transform='translate(0 0.18)' d='M10 1C13 5 19 8 19 12C19 15 16.5 16.5 14 15.5C12.8 15 11.6 14 11 13C11.3 15.5 12 17.5 13.5 19H6.5C8 17.5 8.7 15.5 9 13C8.4 14 7.2 15 6 15.5C3.5 16.5 1 15 1 12C1 8 7 5 10 1Z'/%3E%3Cpath fill='rgba(255,255,255,0.035)' d='M10 1C13 5 19 8 19 12C19 15 16.5 16.5 14 15.5C12.8 15 11.6 14 11 13C11.3 15.5 12 17.5 13.5 19H6.5C8 17.5 8.7 15.5 9 13C8.4 14 7.2 15 6 15.5C3.5 16.5 1 15 1 12C1 8 7 5 10 1Z'/%3E%3C/svg%3E");
 
     /* ---- text ---- */
     --text-1: #f1f6f2;   /* primary       ~15:1 on --bg */
@@ -982,6 +986,22 @@ code, kbd, samp { font-family: var(--font-mono); }
    overflow:hidden held the ratio, and it clipped its lower index instead. One
    card shorter than the rest, all of them cut off at the bottom. */
 .pcard__pip { align-self: center; opacity: 0.92; line-height: 1; }
+/* A number card's pips (ui/CardCentre), printed as a real deck prints them:
+   two columns between the two corner indices and a centre line, the lower
+   half upside down. Laid over the face rather than in its column, so the
+   corners keep exactly the places they have on every other card. */
+.pcard__pips {
+    position: absolute;
+    inset: 17% 31%;
+    line-height: 1;
+    opacity: 0.92;
+    pointer-events: none;
+}
+.pcard__pips > span {
+    position: absolute;
+    translate: -50% -50%;
+}
+.pcard__pips > .is-turned { rotate: 180deg; }
 
 /* The stock, and the trump lying crosswise under it.
 

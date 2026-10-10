@@ -14,6 +14,7 @@ import OpeningRoll from './tabla/OpeningRoll';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+import StatusScreen from './ui/StatusScreen';
 import TurnBar from './ui/TurnBar';
 import GamePrelude from './lobby/GamePrelude';
 import { TablaArt } from './lobby/GameArt';
@@ -106,6 +107,7 @@ const TablaGame: React.FC = () => {
     const api = useMemo(() => ({
         searchGame: tablaService.searchGame,
         getInitialState: tablaService.getInitialState,
+        getActiveGame: tablaService.getActiveGame,
         surrender: tablaService.surrender,
     }), []);
 
@@ -120,7 +122,7 @@ const TablaGame: React.FC = () => {
     }, []);
 
     const session = useGameSession<TablaState>({ gameKey: 'tabla', username, api, onState });
-    const { state, isConnected, isSearching, startSearch, leaveGame, finishAndReturn } = session;
+    const { state, isConnected, isSearching, isResuming, startSearch, leaveGame, finishAndReturn } = session;
 
     // How far each cube has turned, and whether it is still in the air. The
     // landing rotation comes from the server's values, so the animation cannot
@@ -445,6 +447,12 @@ const TablaGame: React.FC = () => {
     }, [blocked]);
 
     /* ---------------- lobby ---------------- */
+
+    // Asking whether a game is already under way: one that is goes straight
+    // to the board, without the way in showing for a moment first.
+    if (!state && isResuming) {
+        return <StatusScreen tone="neutral" icon="cards" title="Свързване…" />;
+    }
 
     if (!state) {
         return (

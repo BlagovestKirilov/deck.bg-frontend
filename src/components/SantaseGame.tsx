@@ -16,6 +16,8 @@ import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
 import TurnBar from './ui/TurnBar';
+import StatusScreen from './ui/StatusScreen';
+import CardCentre from './ui/CardCentre';
 import GamePrelude from './lobby/GamePrelude';
 import { SantaseArt } from './lobby/GameArt';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
@@ -144,9 +146,7 @@ const CardComponent: React.FC<{
                 <span>{displayRank}</span>
                 <span>{suit.symbol}</span>
             </span>
-            <span className="pcard__pip" style={{fontSize: pipSize}} aria-hidden="true">
-                {suit.symbol}
-            </span>
+            <CardCentre glyph={displayRank} symbol={suit.symbol} width={width} pipSize={pipSize} />
             <span
                 className="pcard__corner"
                 style={{alignSelf: 'flex-end', fontSize: cornerSize, transform: 'rotate(180deg)'}}
@@ -290,6 +290,8 @@ const SantaseGame: React.FC = () => {
     const {user, logout} = useAuthContext();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    // Opening the screen: asking whether a game is already under way.
+    const [isResuming, setIsResuming] = useState(true);
     const [announcedSuit, setAnnouncedSuit] = useState<Suit | null>(null);
     const [confirmAction, setConfirmAction] = useState<null | {
         title: string;
@@ -1058,7 +1060,7 @@ const SantaseGame: React.FC = () => {
         });
     };
 
-    const connectWebSocket = async (isReconnect: boolean = false) => {
+    const connectWebSocket = async (isReconnect: boolean = false, resumeOnly: boolean = false) => {
         // Prevent multiple simultaneous connection attempts
         if (connectionLockRef.current) {
             return;
@@ -1161,6 +1163,7 @@ const SantaseGame: React.FC = () => {
                 } else if (!gameIdRef.current) {
                     // If no active game (searching), reset searching state
                     setIsSearching(false);
+                    setIsResuming(false);
                 }
             }
         }, 3000);
@@ -1313,6 +1316,26 @@ const SantaseGame: React.FC = () => {
                         });
                     }
                 });
+                // Opening the screen: a game already under way is joined at
+                // once — its id comes on the search topic above — and only a
+                // player in none is offered a search. Nobody is queued by it.
+                if (resumeOnly) {
+                    const offerSearch = () => {
+                        try { client.disconnect(); } catch { /* already gone */ }
+                        try { socket.close(); } catch { /* already gone */ }
+                        stompClient.current = null;
+                        socketRef.current = null;
+                        if (connectionCheckIntervalRef.current) {
+                            clearInterval(connectionCheckIntervalRef.current);
+                            connectionCheckIntervalRef.current = null;
+                        }
+                        setIsResuming(false);
+                    };
+                    gameService.getActiveGame()
+                        .then((response) => { if (response.status === 204) offerSearch(); })
+                        .catch(offerSearch);
+                    return;
+                }
                 gameService.searchGame().catch((error: any) => {
                     setIsSearching(false);
                     // A 404 here is the server saying сантасе is not on offer —
@@ -1329,6 +1352,7 @@ const SantaseGame: React.FC = () => {
         const onError = (error: any) => {
             console.error('WebSocket connection error:', error);
             setIsConnected(false);
+            setIsResuming(false);
             connectionLockRef.current = false;
 
             // Clear connection timeout
@@ -1359,6 +1383,20 @@ const SantaseGame: React.FC = () => {
 
         client.connect({'Authorization': `Bearer ${sockToken}`}, onConnect, onError);
     };
+
+    // On opening the screen: back into the game the player is already in.
+    useEffect(() => {
+        if (!username) {
+            setIsResuming(false);
+            return;
+        }
+        void connectWebSocket(false, true);
+        // Once, for this player: every later connection is a search or a reconnect.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [username]);
+    useEffect(() => {
+        if (gameState) setIsResuming(false);
+    }, [gameState]);
 
     const startSearch = () => {
         if (isSearching) return;
@@ -1485,7 +1523,9 @@ const SantaseGame: React.FC = () => {
                 </div>
             )}
 
-            {!gameState ? (
+            {!gameState && isResuming ? (
+                <StatusScreen tone="neutral" icon="cards" title="Свързване…" />
+            ) : !gameState ? (
                 <div style={styles.lobby}>
                     <GamePrelude
                         title="Сантасе"
