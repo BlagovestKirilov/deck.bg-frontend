@@ -112,6 +112,9 @@ export interface TablaState {
 
     inactivityCount: number;
     nextMoveTimeInSeconds?: number;
+    /** The opponent's clock while they must act — their turn, or their opening throw (ISO). */
+    opponentTurnStartedAt?: string;
+    opponentDeadline?: string;
 
     /** Published from move one so past rolls can be verified afterwards. */
     serverSeedHash?: string;

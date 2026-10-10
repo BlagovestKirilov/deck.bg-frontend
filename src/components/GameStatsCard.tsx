@@ -4,6 +4,11 @@ import RankBadge, { rankName } from './RankBadge';
 
 interface Props {
     title: string;
+    /**
+     * Every game has a rank on the same ladder, belot included — belot keeps
+     * its record in its own schema and is asked for separately, but what comes
+     * back is this shape.
+     */
     stats: GameStats;
 }
 

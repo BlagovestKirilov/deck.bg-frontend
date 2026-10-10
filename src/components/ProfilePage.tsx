@@ -9,6 +9,9 @@ import Field from './ui/Field';
 import Note from './ui/Note';
 import Icon from './ui/Icon';
 import GameStatsCard from './GameStatsCard';
+import { belotService } from '../api/belotService';
+import { servicesService } from '../api/servicesService';
+import { BelotProfile } from '../types/belot.types';
 
 interface ProfilePageProps {
     username: string;
@@ -80,6 +83,26 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
             setEmailSent(false);
         }
     }, [profile?.isEmailConfirmed]);
+
+    // Belot keeps its record in its own schema, so it is a second request —
+    // and only for a player who is offered belot at all. Everyone else is
+    // shown the two games they have.
+    const [belot, setBelot] = useState<BelotProfile | null>(null);
+
+    useEffect(() => {
+        const offered = servicesService.lastKnown();
+        if (!offered?.includes('BELOT')) return undefined;
+
+        const controller = new AbortController();
+        belotService.profile(controller.signal)
+            .then((record) => {
+                if (!controller.signal.aborted) setBelot(record);
+            })
+            .catch(() => {
+                // No record yet, or an older server: the card is left out.
+            });
+        return () => controller.abort();
+    }, []);
 
     /**
      * Rating and rank are per game, so the profile lists one card per game.
@@ -307,6 +330,7 @@ const ProfilePage: React.FC<ProfilePageProps> = ({ username, onClose }) => {
                             {gameCards.map((game) => (
                                 <GameStatsCard key={game.key} title={game.title} stats={game.stats} />
                             ))}
+                            {belot && <GameStatsCard title="Белот" stats={belot} />}
                         </div>
 
                         <div className="profile__actions">

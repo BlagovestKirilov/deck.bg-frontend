@@ -1,7 +1,7 @@
 export type Rank = 'UNRANKED' | 'BRONZE' | 'SILVER' | 'GOLD' | 'PLATINUM' | 'DIAMOND' | 'LEGEND';
 
 /** The games a player holds a separate record in. */
-export type GameKey = 'SANTASE' | 'TABLA';
+export type GameKey = 'SANTASE' | 'TABLA' | 'BELOT';
 
 /** One game's record. Rating and rank are per game, not per account. */
 export interface GameStats {

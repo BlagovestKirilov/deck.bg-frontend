@@ -14,6 +14,8 @@ import OpeningRoll from './tabla/OpeningRoll';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+import StatusScreen from './ui/StatusScreen';
+import TurnBar from './ui/TurnBar';
 import GamePrelude from './lobby/GamePrelude';
 import { TablaArt } from './lobby/GameArt';
 
@@ -33,6 +35,9 @@ const TURN_SECONDS = 45;
 const WARNING_SECONDS = 10;
 /** When the turn pill starts reading as urgent. */
 const WARNING_AT = 10;
+/** The opponent's bar turns red once they are on the prompt: the server's deadline is
+ *  the prompt's seconds plus three of slack. */
+const OPPONENT_URGENT_SECONDS = WARNING_SECONDS + 3;
 /** Wait before sending a blocked roll's pass again, when it did not get through. */
 const PASS_RETRY_MS = 2000;
 /**
@@ -102,6 +107,7 @@ const TablaGame: React.FC = () => {
     const api = useMemo(() => ({
         searchGame: tablaService.searchGame,
         getInitialState: tablaService.getInitialState,
+        getActiveGame: tablaService.getActiveGame,
         surrender: tablaService.surrender,
     }), []);
 
@@ -116,7 +122,7 @@ const TablaGame: React.FC = () => {
     }, []);
 
     const session = useGameSession<TablaState>({ gameKey: 'tabla', username, api, onState });
-    const { state, isConnected, isSearching, startSearch, leaveGame, finishAndReturn } = session;
+    const { state, isConnected, isSearching, isResuming, startSearch, leaveGame, finishAndReturn } = session;
 
     // How far each cube has turned, and whether it is still in the air. The
     // landing rotation comes from the server's values, so the animation cannot
@@ -442,6 +448,12 @@ const TablaGame: React.FC = () => {
 
     /* ---------------- lobby ---------------- */
 
+    // Asking whether a game is already under way: one that is goes straight
+    // to the board, without the way in showing for a moment first.
+    if (!state && isResuming) {
+        return <StatusScreen tone="neutral" icon="cards" title="Свързване…" />;
+    }
+
     if (!state) {
         return (
             <main className="screen screen--flow">
@@ -499,6 +511,17 @@ const TablaGame: React.FC = () => {
                         <span className="sr-only">Пипове с {COLOR_LABEL[otherColor]}: </span>
                         <span className="tabla-hud__pip tabular">{state.opponentPipCount}</span>
                     </span>
+                    {/* Their time while they must act — their turn, or their
+                        opening throw — burning down from the server's moments. */}
+                    {!state.winnerUsername && (
+                        <TurnBar
+                            startedAt={state.opponentTurnStartedAt}
+                            deadline={state.opponentDeadline}
+                            urgentSeconds={OPPONENT_URGENT_SECONDS}
+                            className="tabla-hud__turnbar"
+                            label={opponentName}
+                        />
+                    )}
                 </span>
 
                 <button

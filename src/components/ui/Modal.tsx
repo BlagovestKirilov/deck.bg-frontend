@@ -3,6 +3,13 @@ import Icon from './Icon';
 
 interface ModalProps {
     title?: string;
+    /** The dialog's name for screen readers when it has no visible title. */
+    label?: string;
+    /**
+     * Show the corner close button. Default true. Turn it off only when the
+     * dialog has its own way out in `actions`; Escape still closes it.
+     */
+    closeButton?: boolean;
     /** Omit to make the dialog non-dismissible (e.g. a forced choice). */
     onClose?: () => void;
     children: React.ReactNode;
@@ -28,6 +35,8 @@ const FOCUSABLE =
  */
 const Modal: React.FC<ModalProps> = ({
     title,
+    label,
+    closeButton = true,
     onClose,
     children,
     actions,
@@ -96,6 +105,7 @@ const Modal: React.FC<ModalProps> = ({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby={title ? titleId : undefined}
+                aria-label={title ? undefined : label}
                 tabIndex={-1}
                 onKeyDown={onKeyDown}
                 className={[
@@ -108,7 +118,7 @@ const Modal: React.FC<ModalProps> = ({
                     .filter(Boolean)
                     .join(' ')}
             >
-                {(title || onClose) && (
+                {(title || (onClose && closeButton)) && (
                     <div className="panel__header">
                         {title ? (
                             <h2
@@ -121,7 +131,7 @@ const Modal: React.FC<ModalProps> = ({
                         ) : (
                             <span />
                         )}
-                        {onClose && (
+                        {onClose && closeButton && (
                             <button
                                 type="button"
                                 className="btn btn--icon"

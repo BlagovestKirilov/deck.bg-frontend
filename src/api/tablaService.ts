@@ -9,6 +9,9 @@ export const tablaService = {
 
     getInitialState: () => apiClient.get('/tabla/state'),
 
+    /** The game this player is already in: 202 and its id on the search topic, or 204. */
+    getActiveGame: () => apiClient.get('/tabla/active'),
+
     /** This player's die of the opening roll — who starts. */
     openingThrow: () => apiClient.post('/tabla/opening-throw'),
     roll: () => apiClient.post('/tabla/roll'),

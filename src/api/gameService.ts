@@ -22,6 +22,10 @@ export const gameService = {
     getInitialState: () =>
         apiClient.get(`/santase/state`),
 
+    /** The game this player is already in: 202 and its id on the search topic, or 204. */
+    getActiveGame: () =>
+        apiClient.get('/santase/active'),
+
     surrender: () =>
         apiClient.post(`/santase/surrender`),
 

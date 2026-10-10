@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { userService } from '../api/userService';
-import { useAuth } from '../hooks/useAuth';
-import { REMEMBERED_USERNAME } from '../context/AuthContext';
+import { REMEMBERED_USERNAME, useAuthContext } from '../context/AuthContext';
 import StatusScreen from './ui/StatusScreen';
 
 /**
@@ -16,7 +15,7 @@ import StatusScreen from './ui/StatusScreen';
  */
 const ConfirmDeletion: React.FC = () => {
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout } = useAuthContext();
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token');
 

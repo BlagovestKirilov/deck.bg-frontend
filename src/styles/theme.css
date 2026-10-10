@@ -14,8 +14,21 @@
     --surface-raised:#1a2c21;
     --scrim:         rgba(3, 10, 6, 0.78);
 
-    /* felt gradient used by full-screen game/auth backdrops */
-    --felt: radial-gradient(ellipse at 50% 38%, #1d5333 0%, #10361f 44%, #061609 100%);
+    /* The felt every full-screen backdrop is laid on: the table green, lit
+       from above, with the four suits pressed into it tone on tone — a
+       shadow a pixel below each and a faint light on it, the way a club's
+       own table is stamped. Felt first, the stamp over it. */
+    --felt-stamp: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120' viewBox='0 0 120 120'%3E%3Cpath fill='rgba(0,0,0,0.22)' transform='translate(12 13)' d='M10 1C13 5 19 8 19 12C19 15 16.5 16.5 14 15.5C12.8 15 11.6 14 11 13C11.3 15.5 12 17.5 13.5 19H6.5C8 17.5 8.7 15.5 9 13C8.4 14 7.2 15 6 15.5C3.5 16.5 1 15 1 12C1 8 7 5 10 1Z'/%3E%3Cpath fill='rgba(0,0,0,0.22)' transform='translate(72 13)' d='M10 18C3 12.5 1 9.5 1 6.2C1 3.3 3.2 1 5.8 1C7.6 1 9.1 2.1 10 3.7C10.9 2.1 12.4 1 14.2 1C16.8 1 19 3.3 19 6.2C19 9.5 17 12.5 10 18Z'/%3E%3Cpath fill='rgba(0,0,0,0.22)' transform='translate(42 73)' d='M10 1a4.2 4.2 0 0 1 3.1 7A4.2 4.2 0 1 1 11 14.6C11.3 16.4 12 17.8 13.5 19H6.5C8 17.8 8.7 16.4 9 14.6A4.2 4.2 0 1 1 6.9 8A4.2 4.2 0 0 1 10 1Z'/%3E%3Cpath fill='rgba(0,0,0,0.22)' transform='translate(102 73)' d='M10 1L17.5 10L10 19L2.5 10Z'/%3E%3Cpath fill='rgba(255,255,255,0.045)' transform='translate(12 12)' d='M10 1C13 5 19 8 19 12C19 15 16.5 16.5 14 15.5C12.8 15 11.6 14 11 13C11.3 15.5 12 17.5 13.5 19H6.5C8 17.5 8.7 15.5 9 13C8.4 14 7.2 15 6 15.5C3.5 16.5 1 15 1 12C1 8 7 5 10 1Z'/%3E%3Cpath fill='rgba(255,255,255,0.045)' transform='translate(72 12)' d='M10 18C3 12.5 1 9.5 1 6.2C1 3.3 3.2 1 5.8 1C7.6 1 9.1 2.1 10 3.7C10.9 2.1 12.4 1 14.2 1C16.8 1 19 3.3 19 6.2C19 9.5 17 12.5 10 18Z'/%3E%3Cpath fill='rgba(255,255,255,0.045)' transform='translate(42 72)' d='M10 1a4.2 4.2 0 0 1 3.1 7A4.2 4.2 0 1 1 11 14.6C11.3 16.4 12 17.8 13.5 19H6.5C8 17.8 8.7 16.4 9 14.6A4.2 4.2 0 1 1 6.9 8A4.2 4.2 0 0 1 10 1Z'/%3E%3Cpath fill='rgba(255,255,255,0.045)' transform='translate(102 72)' d='M10 1L17.5 10L10 19L2.5 10Z'/%3E%3C/svg%3E");
+    --felt:
+        var(--felt-stamp) center / 120px 120px repeat,
+        radial-gradient(ellipse at 50% 38%, #1d5333 0%, #10361f 44%, #061609 100%);
+    /* The felt's own lit green, laid over the stamp where a table wants a
+       plain middle to put cards down on. */
+    --felt-calm:   rgba(27, 78, 48, 0.88);
+    /* The site's own spade, pressed into the felt in the middle of a table the
+       way the small ones are stamped all over it: the same shadow a hair
+       below and the same faint light on it, only large. */
+    --felt-emblem: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20.4'%3E%3Cpath fill='rgba(0,0,0,0.2)' transform='translate(0 0.18)' d='M10 1C13 5 19 8 19 12C19 15 16.5 16.5 14 15.5C12.8 15 11.6 14 11 13C11.3 15.5 12 17.5 13.5 19H6.5C8 17.5 8.7 15.5 9 13C8.4 14 7.2 15 6 15.5C3.5 16.5 1 15 1 12C1 8 7 5 10 1Z'/%3E%3Cpath fill='rgba(255,255,255,0.035)' d='M10 1C13 5 19 8 19 12C19 15 16.5 16.5 14 15.5C12.8 15 11.6 14 11 13C11.3 15.5 12 17.5 13.5 19H6.5C8 17.5 8.7 15.5 9 13C8.4 14 7.2 15 6 15.5C3.5 16.5 1 15 1 12C1 8 7 5 10 1Z'/%3E%3C/svg%3E");
 
     /* ---- text ---- */
     --text-1: #f1f6f2;   /* primary       ~15:1 on --bg */
@@ -63,6 +76,7 @@
     --line:        rgba(255, 255, 255, 0.10);
     --line-strong: rgba(255, 255, 255, 0.18);
     --line-gold:   rgba(227, 191, 93, 0.42);
+    --line-gold-soft: rgba(227, 191, 93, 0.24);
 
     /* ---- focus ---- */
     --focus-ring: #7fd3ff;
@@ -739,14 +753,115 @@ code, kbd, samp { font-family: var(--font-mono); }
     100% { opacity: 0; scale: 0.98; }
 }
 
-@keyframes shimmer-sweep {
-    from { transform: translateX(-110%); }
-    to   { transform: translateX(110%); }
-}
-
 @keyframes legend-pulse {
     0%, 100% { transform: scale(1);    filter: brightness(1); }
     50%      { transform: scale(1.05); filter: brightness(1.16); }
+}
+
+/* Something announced at a seat: it arrives, is read, and goes — the same
+   life a santase +20 has. No fill mode, so with reduced motion it simply
+   stands there until the table takes it away. */
+@keyframes announce-life {
+    0%   { scale: 0.6; opacity: 0; }
+    10%  { scale: 1.12; opacity: 1; }
+    18%  { scale: 1; }
+    85%  { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* The plate of whoever took the trick, flaring as the pile reaches them. */
+@keyframes plate-take {
+    0%   { box-shadow: inset 0 0 0 1px var(--line), var(--sh-2); }
+    35%  { box-shadow: inset 0 0 0 2px var(--gold-bright), 0 0 0 6px rgba(227, 191, 93, 0.28), var(--sh-2); scale: 1.06; }
+    100% { box-shadow: inset 0 0 0 1px var(--line), var(--sh-2); scale: 1; }
+}
+
+/* A card arriving in a hand. `translate` rather than `transform`, which the
+   hand already uses to fan the card out. */
+@keyframes deal-in {
+    from { translate: 0 var(--deal-from, 48px); opacity: 0; }
+    to   { translate: 0 0; opacity: 1; }
+}
+
+/* A card turned over in the hand: back up at the start, lifted a little as
+   it comes edge-on, face up and settled at the end. */
+@keyframes card-turn-over {
+    from { transform: perspective(900px) translateY(0) rotateY(180deg); }
+    45%  { transform: perspective(900px) translateY(-16px) rotateY(95deg) scale(1.04); }
+    to   { transform: perspective(900px) translateY(0) rotateY(0deg) scale(1); }
+}
+
+/* A card put on the table, slid in from the side it was played from. */
+@keyframes card-arrive {
+    from { translate: var(--from-x, 0) var(--from-y, 0); scale: 1.08; opacity: 0; }
+    to   { translate: 0 0; scale: 1; opacity: 1; }
+}
+
+/* The cut, in the spread deck: the part above the chosen card is lifted,
+   carried round to the other end and put down there, while the rest slides
+   along to meet it. `translate` rather than `transform`, which centres
+   each card. */
+@keyframes cut-lift {
+    0%   { translate: 0 0; rotate: 0deg; }
+    25%  { translate: 0 -46px; rotate: -7deg; }
+    70%  { translate: var(--shift, 0) -46px; rotate: 5deg; }
+    90%  { translate: var(--shift, 0) 3px; rotate: 0deg; }
+    100% { translate: var(--shift, 0) 0; rotate: 0deg; }
+}
+@keyframes cut-slide {
+    0%, 25%  { translate: 0 0; }
+    75%, 100% { translate: var(--shift, 0) 0; }
+}
+
+/* The deck opened into a spread, each card slid out from the middle a beat
+   after the one before — a dealer running it across the felt. */
+@keyframes spread-in {
+    from { translate: var(--home, 0) 0; opacity: 0; }
+    to   { translate: 0 0; opacity: 1; }
+}
+/* After the cut, squared back up into one deck to deal from. */
+@keyframes spread-gather {
+    from { translate: var(--shift, 0) 0; }
+    to   { translate: var(--home, 0) 0; }
+}
+
+/* A packet dealt across the table, landing on the hand it is for and
+   handing over to it. */
+@keyframes deal-fly {
+    0% {
+        transform: translate(-50%, calc(-50% + var(--depth, 0px))) rotate(0deg) scale(1);
+        opacity: 1;
+    }
+    /* The top of the arc: off to one side, lifted towards the eye. */
+    50% {
+        transform: translate(calc(-50% + var(--mx, 0px)), calc(-50% + var(--my, 0px)))
+            rotate(calc(var(--rot, 0deg) / 2 + var(--spin, 0deg))) scale(1.14);
+    }
+    85% {
+        transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)))
+            rotate(var(--rot, 0deg)) scale(0.96);
+        opacity: 1;
+    }
+    to {
+        transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)))
+            rotate(var(--rot, 0deg)) scale(0.96);
+        opacity: 0;
+    }
+}
+
+/* A countdown drawn as a line burning down. */
+@keyframes fuse-burn {
+    from { transform: scaleX(1); }
+    to   { transform: scaleX(0); }
+}
+
+/* A decided trick, gathered towards whoever took it. Where to is set by the
+   table, in --collect-x and --collect-y; this only says how it goes. */
+@keyframes trick-collect {
+    to {
+        transform: translate(var(--collect-x, 0), var(--collect-y, 0)) scale(0.4);
+        opacity: 0;
+    }
 }
 
 @keyframes tooltip-in {
@@ -758,23 +873,26 @@ code, kbd, samp { font-family: var(--font-mono); }
    Game-table pieces used by SantaseGame
    ===================================================================== */
 
-/* freshly drawn card gets one sweep of light, then never again */
-.card-shimmer { position: relative; overflow: hidden; isolation: isolate; }
-.card-shimmer::before {
-    content: '';
+/* A freshly drawn card lands back up and is turned over in its place — the
+   turn a dealt card gets at the belot table, so both games say "this one is
+   new" the same way. The face and the back are two sides of one card: each
+   hides when it faces away. */
+.card-flip {
+    position: relative;
+    display: block;
+    transform-style: preserve-3d;
+}
+.card-flip > .pcard { backface-visibility: hidden; }
+.card-flip__back {
     position: absolute;
     inset: 0;
-    background: linear-gradient(100deg, transparent 20%,
-                rgba(87,198,125,.55) 42%, rgba(255,255,255,.85) 50%,
-                rgba(87,198,125,.55) 58%, transparent 80%);
-    /* Parked past the card's right edge. The sweep runs once, and with no
-       resting place it fell back to transform:none when it finished — the
-       gradient sitting square across the card, a green band that never left.
-       "both" holds this same spot at the end, and the declared transform
-       covers the case where the animation never runs at all (reduced motion). */
-    transform: translateX(110%);
-    animation: shimmer-sweep 620ms var(--ease-out) both;
-    pointer-events: none;
+    border-radius: var(--r-md);
+    backface-visibility: hidden;
+    transform: rotateY(180deg);
+}
+.card-flip.is-turning {
+    animation: card-turn-over 720ms cubic-bezier(0.45, 0.05, 0.25, 1) both;
+    will-change: transform;
 }
 
 .bonus-bubble {
@@ -845,6 +963,14 @@ code, kbd, samp { font-family: var(--font-mono); }
 .pcard--playable:hover,
 .pcard--playable:focus-visible,
 .pcard--selected { z-index: 2; }
+/* The card that took the trick, while both are still on the table: the ring
+   the belot table puts on the winning card, so both games answer "whose is
+   it" the same way, before anybody has to read the popup. No lift: a lifted
+   ring is the marriage you are about to call. */
+.pcard--taken {
+    box-shadow: 0 0 0 3px var(--gold), var(--glow-gold);
+    transition: box-shadow var(--dur) var(--ease-out);
+}
 .pcard__corner {
     display: flex;
     flex-direction: column;
@@ -860,6 +986,22 @@ code, kbd, samp { font-family: var(--font-mono); }
    overflow:hidden held the ratio, and it clipped its lower index instead. One
    card shorter than the rest, all of them cut off at the bottom. */
 .pcard__pip { align-self: center; opacity: 0.92; line-height: 1; }
+/* A number card's pips (ui/CardCentre), printed as a real deck prints them:
+   two columns between the two corner indices and a centre line, the lower
+   half upside down. Laid over the face rather than in its column, so the
+   corners keep exactly the places they have on every other card. */
+.pcard__pips {
+    position: absolute;
+    inset: 17% 31%;
+    line-height: 1;
+    opacity: 0.92;
+    pointer-events: none;
+}
+.pcard__pips > span {
+    position: absolute;
+    translate: -50% -50%;
+}
+.pcard__pips > .is-turned { rotate: 180deg; }
 
 /* The stock, and the trump lying crosswise under it.
 
@@ -1473,6 +1615,71 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* The cube still turns to the right face; it simply gets there at once. */
 @media (prefers-reduced-motion: reduce) {
     .die__cube { transition: none; translate: none; }
+}
+
+/* ---- turn bar: a turn's time, burning down (ui/TurnBar) ----
+   The look lives here, once, for every table; where it sits is each table's
+   own (.belot__turnbar, .opponent-hand__time, .tabla-hud__turnbar). Placed
+   absolutely everywhere, so a bar coming and going with each turn moves
+   nothing around it. */
+.turnbar {
+    display: block;
+    height: var(--turnbar-h, 5px);
+    border-radius: var(--r-pill);
+    background: rgba(4, 13, 8, 0.7);
+    box-shadow: inset 0 0 0 1px var(--line);
+    overflow: hidden;
+    pointer-events: none;
+}
+.turnbar__fill {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--gold);
+    transform-origin: 0 50%;
+    transition: transform 250ms linear, background-color var(--dur) var(--ease-out);
+}
+.turnbar.is-urgent .turnbar__fill { background: var(--danger); }
+
+/* Santase: their time on the felt under their hand, where a waiting player
+   looks. The slot is always there — an empty track on your move — so the
+   hand does not jump each turn. The row the hand sits in is 20vh and clips,
+   so on a short screen the backs give up what the slot needs instead of
+   being cut off: their height is capped at the row less the slot. */
+.opponent-hand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-2);
+}
+.opponent-hand__card {
+    width: min(clamp(50px, 13vw, 116px),
+               calc((20vh - var(--sp-2) - var(--turnbar-h, 5px) - var(--sp-2)) * 71 / 103));
+}
+.opponent-hand__time {
+    width: clamp(96px, 30vw, 260px);
+    height: var(--turnbar-h, 5px);
+}
+@media (min-width: 900px) {
+    .opponent-hand { --turnbar-h: 6px; }
+}
+/* Phones: the row also clears the scoreboard above it (SantaseGame pads it
+   by the same clamp), so that comes off the room the hand has too. */
+@media (max-width: 768px) {
+    .opponent-hand__card {
+        width: min(clamp(50px, 13vw, 116px),
+                   max(30px, calc((20vh - clamp(66px, 17vw, 78px) - var(--sp-2) - var(--turnbar-h, 5px) - var(--sp-2)) * 71 / 103)));
+    }
+}
+
+/* Tabla: under the opponent's name and pip count. */
+.tabla-hud__name { position: relative; }
+.tabla-hud__turnbar {
+    position: absolute;
+    left: 0;
+    top: calc(100% + 2px);
+    /* As wide as the name, and never shorter than a glance can read. */
+    width: max(100%, clamp(80px, 22vw, 160px));
 }
 
 .tabla-hud {

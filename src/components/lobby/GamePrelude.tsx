@@ -13,17 +13,22 @@ interface GamePreludeProps {
     onBack: () => void;
     /** Anything the player settles before the clock starts (табла's checker colour). */
     children?: React.ReactNode;
+    /** What the button finds. One opponent at the two-player games. */
+    startLabel?: string;
+    /** Said while the search is on. */
+    searchingText?: string;
 }
 
 /**
  * The screen before a game: the game lying on the table, and one button that
  * finds someone to play.
  *
- * Shared by Сантасе and Табла so the two cannot drift apart; everything that
- * differs between them comes in as props.
+ * Shared by Сантасе, Табла and Белот so they cannot drift apart; everything
+ * that differs between them comes in as props.
  */
 const GamePrelude: React.FC<GamePreludeProps> = ({
     title, rule, Art, isSearching, onStart, onBack, children,
+    startLabel = 'Намери противник', searchingText = 'Търсим противник…',
 }) => (
     <div className="lobby prelude">
         <nav className="prelude__bar">
@@ -51,13 +56,13 @@ const GamePrelude: React.FC<GamePreludeProps> = ({
                 onClick={onStart}
                 className="prelude__start"
             >
-                Намери противник
+                {startLabel}
             </Button>
 
             {/* Always rendered, so the line is reserved and nothing jumps when
                 the search starts; empty until then. */}
             <p className="prelude__status" role="status">
-                {isSearching ? 'Търсим противник…' : ''}
+                {isSearching ? searchingText : ''}
             </p>
         </div>
     </div>

@@ -4,15 +4,17 @@ import { useAuthContext } from '../context/AuthContext';
 import { userService } from '../api/userService';
 import { takeUnavailableNote } from '../api/unavailable';
 import { rankIn, remember as rememberRank } from '../api/rankBaseline';
+import { belotService } from '../api/belotService';
 import { useAvailableServices } from '../hooks/useAvailableServices';
 import { GameKey, GameStats } from '../types/user.types';
+import { BelotProfile } from '../types/belot.types';
 import { RankMedal, rankName } from './RankBadge';
 import Brand from './ui/Brand';
 import Button from './ui/Button';
 import Modal from './ui/Modal';
 import Toast from './ui/Toast';
 import ProfilePage from './ProfilePage';
-import { SantaseArt, TablaArt } from './lobby/GameArt';
+import { BelotArt, SantaseArt, TablaArt } from './lobby/GameArt';
 
 interface GameCard {
     key: GameKey;
@@ -25,6 +27,13 @@ interface GameCard {
 }
 
 const GAMES: GameCard[] = [
+    {
+        key: 'BELOT',
+        title: 'Белот',
+        tagline: 'Двама срещу двама, до 151',
+        Art: BelotArt,
+        path: '/play/belot',
+    },
     {
         key: 'SANTASE',
         title: 'Сантасе',
@@ -68,6 +77,11 @@ const GameHub: React.FC = () => {
     // game rather than one account-wide number.
     const [stats, setStats] = useState<Partial<Record<GameKey, GameStats>> | null>(null);
 
+    // Belot keeps its own record in its own schema, so it is asked
+    // separately — and only when belot is being offered at all, which for
+    // now is a handful of testers.
+    const [belot, setBelot] = useState<BelotProfile | null>(null);
+
     useEffect(() => {
         const controller = new AbortController();
         userService
@@ -88,6 +102,23 @@ const GameHub: React.FC = () => {
             });
         return () => controller.abort();
     }, []);
+
+    const offersBelot = offered.some((game) => game.key === 'BELOT');
+
+    useEffect(() => {
+        if (!offersBelot) return undefined;
+
+        const controller = new AbortController();
+        belotService.profile(controller.signal)
+            .then((profile) => {
+                if (!controller.signal.aborted) setBelot(profile);
+            })
+            .catch(() => {
+                // An older server, or none reachable: the card simply shows no
+                // record, which is what a player with no games would see anyway.
+            });
+        return () => controller.abort();
+    }, [offersBelot]);
 
     // screen--flow, not the pinned .screen: the hub scrolls the document, which
     // is what lets a phone pull down to refresh.
@@ -146,7 +177,9 @@ const GameHub: React.FC = () => {
                                 <span className="game-pick__text">
                                     <span className="game-pick__name">{title}</span>
                                     <span className="game-pick__rule">{tagline}</span>
-                                    {stats?.[key] && <GameRecord stats={stats[key]!} />}
+                                    {key === 'BELOT'
+                                        ? belot && <GameRecord stats={belot} />
+                                        : stats?.[key] && <GameRecord stats={stats[key]!} />}
                                 </span>
                             </button>
                         </li>
@@ -180,6 +213,9 @@ const GameHub: React.FC = () => {
 /**
  * The rank line on a game card. Purely presentational — the card itself is the
  * button, so this must not contain one.
+ *
+ * Belot goes through here too: its record is kept in another schema and asked
+ * for separately, but it is the same ladder, so it reads the same on the card.
  */
 const GameRecord: React.FC<{ stats: GameStats }> = ({ stats }) => {
     const { rank, placementGamesRemaining } = stats;

@@ -25,6 +25,8 @@ export interface GameState {
     isClosed: boolean;
     winnerUsername?: string;
     trickWinnerUsername?: string;
+    /** Who takes the trick whose two cards are on the table, sent with those two cards. */
+    trickTakenBy?: string;
     trickFirstPlayerScore?: number;
     trickSecondPlayerScore?: number;
     bonus?: number;
@@ -34,4 +36,7 @@ export interface GameState {
     surrenderPlayerUsername?: string;
     inactivityCount?: number;
     nextMoveTimeInSeconds?: number;
+    /** The opponent's turn while it is theirs: when it began and when it runs out (ISO). */
+    opponentTurnStartedAt?: string;
+    opponentDeadline?: string;
 }

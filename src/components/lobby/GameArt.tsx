@@ -13,8 +13,13 @@ const INK = '#1d1b18';
 const RED = '#b4232c';
 const EDGE = 'rgba(0, 0, 0, 0.2)';
 
-/** The index face used on the card art: the lobby's condensed display face. */
-const INDEX_FONT = "'Sofia Sans Extra Condensed', 'Sofia Sans', sans-serif";
+/**
+ * The index face on the card art: the one the cards at the table print their
+ * corners in, so the picture shows the cards the player will hold. The lobby's
+ * condensed face drew J as a bare stem with a stub of a hook, which read as
+ * a letter cut off on the left.
+ */
+const INDEX_FONT = "'Fredoka', 'Segoe UI', system-ui, sans-serif";
 
 interface FanCardProps {
     rank: string;
@@ -48,7 +53,7 @@ const FanCard: React.FC<FanCardProps> = ({ rank, suit, red, angle, className }) 
         <g transform={`rotate(${angle} ${PIVOT_X} ${PIVOT_Y})`}>
             <g className={`art-card ${className}`}>
                 <rect x={x} y={y} width={CARD_W} height={CARD_H} rx="4.5" fill={CARD_FILL} stroke={EDGE} />
-                <text x={x + 5} y={y + 14} fill={ink} fontFamily={INDEX_FONT} fontWeight={800} fontSize="13">
+                <text x={x + 5} y={y + 14} fill={ink} fontFamily={INDEX_FONT} fontWeight={600} fontSize="13">
                     {rank}
                 </text>
                 <text x={x + 4.5} y={y + 25} fill={ink} fontSize="9.5">{suit}</text>
@@ -74,6 +79,26 @@ export const SantaseArt: React.FC = () => (
             <FanCard rank="А" suit="♥" red angle={-9} className="art-card--2" />
             <FanCard rank="А" suit="♣" red={false} angle={9} className="art-card--3" />
             <FanCard rank="А" suit="♦" red angle={27} className="art-card--4" />
+        </g>
+    </svg>
+);
+
+/**
+ * Белот: the four jacks, fanned — the highest trump whichever suit is called,
+ * and a carré worth 200. Colours alternate the way a hand is sorted.
+ */
+export const BelotArt: React.FC = () => (
+    <svg viewBox="0 0 160 120" aria-hidden="true" focusable="false" className="art-fan">
+        <defs>
+            <filter id="belot-art-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.45" />
+            </filter>
+        </defs>
+        <g filter="url(#belot-art-shadow)">
+            <FanCard rank="J" suit="♠" red={false} angle={-24} className="art-card--1" />
+            <FanCard rank="J" suit="♥" red angle={-8} className="art-card--2" />
+            <FanCard rank="J" suit="♣" red={false} angle={8} className="art-card--3" />
+            <FanCard rank="J" suit="♦" red angle={24} className="art-card--4" />
         </g>
     </svg>
 );

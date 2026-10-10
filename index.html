@@ -2,7 +2,12 @@
 <html lang="bg">
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/svg+xml" href="/spades.ico" />
+  <!-- The DECK.bg badge: favicon.ico carries 16, 32 and 48px for the tab;
+       iOS takes the square apple-touch-icon for the home screen and rounds
+       its corners itself; the manifest carries the rest. -->
+  <link rel="icon" href="/favicon.ico" sizes="any" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
   <!-- viewport-fit=cover exposes the safe-area insets the layout pads with.
        Zoom is deliberately NOT disabled: blocking it fails WCAG 1.4.4. -->
   <!-- interactive-widget=resizes-content makes the on-screen keyboard shrink the

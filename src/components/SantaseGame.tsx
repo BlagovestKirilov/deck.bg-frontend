@@ -15,6 +15,9 @@ import RankIcon, { getRankLabel } from './RankIcon';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
 import Modal from './ui/Modal';
+import TurnBar from './ui/TurnBar';
+import StatusScreen from './ui/StatusScreen';
+import CardCentre from './ui/CardCentre';
 import GamePrelude from './lobby/GamePrelude';
 import { SantaseArt } from './lobby/GameArt';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
@@ -57,6 +60,13 @@ const SUIT_LABEL_BG: Record<Suit, string> = {
 /** The one or two characters a card shows in its corner. */
 const rankGlyph = (rank: string) => rank === 'NINE' ? '9' : rank === 'TEN' ? '10' : rank[0];
 
+/** The opponent's bar turns red once they are being asked whether they are still
+ *  there: the server's deadline is that question's ten seconds plus three of slack. */
+const OPPONENT_URGENT_SECONDS = 13;
+
+/** The deck's column in the middle row — and the empty one balancing it on the right. */
+const DECK_SIDE_WIDTH = 'clamp(80px, 22vw, 120px)';
+
 /**
  * A playing card.
  *
@@ -72,31 +82,41 @@ const CardComponent: React.FC<{
     isSelected?: boolean;
     isSmall?: boolean;
     isLastDrawn?: boolean;
+    /** A card in your hand: the only place a card arrives to be turned over. */
+    inHand?: boolean;
+    /** The card on the table that has just taken the trick. */
+    isTaken?: boolean;
     /** Overrides the size step. The trump has to match the pile exactly. */
     width?: string;
-}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false, width: fixedWidth}) => {
+}> = ({card, onClick, isPlayable = true, isSelected, isSmall, isLastDrawn = false, inHand = false, isTaken = false, width: fixedWidth}) => {
     const suit = SUIT_MAP[card.suit] || {symbol: '?', color: SUIT_COLOR.black};
     const displayRank = rankGlyph(card.rank);
     const name = `${RANK_LABEL_BG[card.rank] ?? card.rank} ${SUIT_LABEL_BG[card.suit] ?? ''}`.trim();
 
     const width = fixedWidth ?? (isSmall ? 'clamp(52px, 14vw, 98px)' : 'clamp(74px, 20vw, 104px)');
-    const cornerSize = isSmall ? 'clamp(0.85rem, 3vw, 1.5rem)' : 'clamp(1rem, 3.6vw, 1.4rem)';
-    const pipSize = isSmall ? 'clamp(1.4rem, 5.2vw, 2.7rem)' : 'clamp(1.8rem, 6.4vw, 2.6rem)';
+    // The face is a share of the card's own width — the same proportions as
+    // a belot card — so a card is the same card on a phone as on a desk, only
+    // smaller. Sized on the screen instead, the corner shrank faster than the
+    // card did and a phone's hand read as a fainter deck.
+    const cornerSize = `calc(${width} * 0.185)`;
+    const pipSize = `calc(${width} * 0.34)`;
+    const padding = `calc(${width} * 0.065)`;
 
     const interactive = isPlayable && !!onClick;
 
-    /* The sweep belongs to the moment the card arrives, not to the card.
+    /* A drawn card lands back up and is turned over in its place, as a dealt
+       card is at the belot table — so the eye finds it wherever the sort put it.
+       The turn belongs to the moment the card arrives, not to the card.
        isLastDrawn stays set on it until the next draw, and playing a card
        reorders the hand — React moves the remaining nodes, and re-inserting a
-       node restarts any CSS animation on it. So the drawn card swept again on
-       every play. It now sweeps once and drops the class when the animation
-       reports itself done. */
-    const [sweeping, setSweeping] = useState(isLastDrawn);
-    const swept = useRef(isLastDrawn);
+       node restarts any CSS animation on it. So it turns once, and drops the
+       class when the animation reports itself done. */
+    const [turning, setTurning] = useState(isLastDrawn);
+    const turned = useRef(isLastDrawn);
     useEffect(() => {
-        if (isLastDrawn && !swept.current) {
-            swept.current = true;
-            setSweeping(true);
+        if (isLastDrawn && !turned.current) {
+            turned.current = true;
+            setTurning(true);
         }
     }, [isLastDrawn]);
 
@@ -105,17 +125,17 @@ const CardComponent: React.FC<{
         interactive ? 'pcard--playable' : '',
         !isPlayable ? 'pcard--blocked' : '',
         isSelected ? 'pcard--selected' : '',
-        sweeping ? 'card-shimmer' : '',
+        isTaken ? 'pcard--taken' : '',
     ].filter(Boolean).join(' ');
 
-    // The sweep runs on ::before, and its end bubbles to the card. Named, so a
-    // future animation on the same element cannot cut this one short.
+    // Named, so another animation ending inside the card cannot cut this one short.
     const onAnimationEnd = (e: React.AnimationEvent) => {
-        if (e.animationName === 'shimmer-sweep') setSweeping(false);
+        if (e.animationName === 'card-turn-over') setTurning(false);
     };
 
     const style: React.CSSProperties = {
         width,
+        padding,
         aspectRatio: '71 / 103',
         color: suit.color,
     };
@@ -126,9 +146,7 @@ const CardComponent: React.FC<{
                 <span>{displayRank}</span>
                 <span>{suit.symbol}</span>
             </span>
-            <span className="pcard__pip" style={{fontSize: pipSize}} aria-hidden="true">
-                {suit.symbol}
-            </span>
+            <CardCentre glyph={displayRank} symbol={suit.symbol} width={width} pipSize={pipSize} />
             <span
                 className="pcard__corner"
                 style={{alignSelf: 'flex-end', fontSize: cornerSize, transform: 'rotate(180deg)'}}
@@ -140,21 +158,30 @@ const CardComponent: React.FC<{
         </>
     );
 
+    // The card always sits in the same wrapper, so the turn coming and going
+    // never re-mounts it — a button that lost focus, or a hover cut short.
+    // Only a hand card has one: the trump and the table keep their own markup.
+    const flip = (card: React.ReactNode) => !inHand ? card : (
+        <span className={turning ? 'card-flip is-turning' : 'card-flip'} onAnimationEnd={onAnimationEnd}>
+            {card}
+            {turning && <span className="card-back card-flip__back" aria-hidden="true" />}
+        </span>
+    );
+
     if (!interactive) {
-        return (
-            <div className={className} style={style} role="img" aria-label={name} onAnimationEnd={onAnimationEnd}>
+        return flip(
+            <div className={className} style={style} role="img" aria-label={name}>
                 {face}
             </div>
         );
     }
 
-    return (
+    return flip(
         <button
             type="button"
             className={className}
             style={style}
             onClick={onClick}
-            onAnimationEnd={onAnimationEnd}
             aria-label={`Изиграй ${name}`}
         >
             {face}
@@ -263,6 +290,8 @@ const SantaseGame: React.FC = () => {
     const {user, logout} = useAuthContext();
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isSearching, setIsSearching] = useState(false);
+    // Opening the screen: asking whether a game is already under way.
+    const [isResuming, setIsResuming] = useState(true);
     const [announcedSuit, setAnnouncedSuit] = useState<Suit | null>(null);
     const [confirmAction, setConfirmAction] = useState<null | {
         title: string;
@@ -292,10 +321,15 @@ const SantaseGame: React.FC = () => {
     const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(20);
     const [isInWarningPhase, setIsInWarningPhase] = useState<boolean>(false);
     const [showInactivityPopup, setShowInactivityPopup] = useState<boolean>(false);
-    const [opponentLowOnTime, setOpponentLowOnTime] = useState<boolean>(false);
     const turnTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const opponentTimerRef = useRef<NodeJS.Timeout | null>(null);
-    const opponentTurnStartRef = useRef<number | null>(null);
+    // The countdown as the interval reads it. The interval decides what
+    // happens at nought from this, not from inside a state update: React may
+    // run an update function twice (it does on purpose in development), and a
+    // server call made inside one went out twice.
+    const turnTimeRemainingRef = useRef<number>(20);
+    useEffect(() => {
+        turnTimeRemainingRef.current = turnTimeRemaining;
+    }, [turnTimeRemaining]);
 
     // One-time rank-up popup handling
     const rankPopupShownRef = useRef<boolean>(false); // prevents duplicate popups in a session
@@ -664,26 +698,28 @@ const SantaseGame: React.FC = () => {
         lastTurnStateRef.current = gameState.isOnTurn;
         lastHadPlayedCardRef.current = hasPlayedCard;
 
-        // Start the countdown interval
+        // Start the countdown interval. Reaching nought calls the server, so it
+        // is decided here and runs once — never inside a state update, which
+        // React may run twice: the doubled timeout report it caused let the
+        // server surrender a player who had pressed Continue.
         turnTimerRef.current = setInterval(() => {
-            setTurnTimeRemaining(prev => {
-                if (prev <= 1) {
-                    if (!isInWarningPhase) {
-                        // Main phase ended - call inactivity endpoint
-                        clearInterval(turnTimerRef.current!);
-                        turnTimerRef.current = null;
-                        handleInactivityTimeout();
-                        return 0;
-                    } else {
-                        // Warning phase ended - auto surrender
-                        clearInterval(turnTimerRef.current!);
-                        turnTimerRef.current = null;
-                        handleInactivitySurrender();
-                        return 0;
-                    }
+            const remaining = turnTimeRemainingRef.current;
+            if (remaining <= 1) {
+                clearInterval(turnTimerRef.current!);
+                turnTimerRef.current = null;
+                turnTimeRemainingRef.current = 0;
+                setTurnTimeRemaining(0);
+                if (!isInWarningPhase) {
+                    // Main phase ended - call inactivity endpoint
+                    handleInactivityTimeout();
+                } else {
+                    // Warning phase ended - auto surrender
+                    handleInactivitySurrender();
                 }
-                return prev - 1;
-            });
+                return;
+            }
+            turnTimeRemainingRef.current = remaining - 1;
+            setTurnTimeRemaining(remaining - 1);
         }, 1000);
 
         return () => {
@@ -693,49 +729,6 @@ const SantaseGame: React.FC = () => {
             }
         };
     }, [gameState?.isOnTurn, gameState?.winnerUsername, gameState?.playedCard, gameState?.nextMoveTimeInSeconds, trickResult, isConnected, finalWinner, isInWarningPhase]);
-
-    // Opponent timer effect - track when opponent is taking too long
-    useEffect(() => {
-        // Clear any existing timer
-        if (opponentTimerRef.current) {
-            clearInterval(opponentTimerRef.current);
-            opponentTimerRef.current = null;
-        }
-        setOpponentLowOnTime(false);
-
-        // Only run when: game exists, it's opponent's turn, no winner yet, connected
-        const shouldTrackOpponent = gameState && 
-            !gameState.isOnTurn && 
-            !gameState.winnerUsername && 
-            !trickResult && 
-            isConnected &&
-            !finalWinner;
-
-        if (!shouldTrackOpponent) {
-            opponentTurnStartRef.current = null;
-            return;
-        }
-
-        // Record when opponent's turn started
-        opponentTurnStartRef.current = Date.now();
-
-        // Check every second if opponent is low on time
-        opponentTimerRef.current = setInterval(() => {
-            if (opponentTurnStartRef.current) {
-                const elapsed = (Date.now() - opponentTurnStartRef.current) / 1000;
-                if (elapsed >= 15) {
-                    setOpponentLowOnTime(true);
-                }
-            }
-        }, 1000);
-
-        return () => {
-            if (opponentTimerRef.current) {
-                clearInterval(opponentTimerRef.current);
-                opponentTimerRef.current = null;
-            }
-        };
-    }, [gameState?.isOnTurn, gameState?.winnerUsername, trickResult, isConnected, finalWinner]);
 
     // Auto-reconnect on mount if we have an active game
     useEffect(() => {
@@ -1067,7 +1060,7 @@ const SantaseGame: React.FC = () => {
         });
     };
 
-    const connectWebSocket = async (isReconnect: boolean = false) => {
+    const connectWebSocket = async (isReconnect: boolean = false, resumeOnly: boolean = false) => {
         // Prevent multiple simultaneous connection attempts
         if (connectionLockRef.current) {
             return;
@@ -1170,6 +1163,7 @@ const SantaseGame: React.FC = () => {
                 } else if (!gameIdRef.current) {
                     // If no active game (searching), reset searching state
                     setIsSearching(false);
+                    setIsResuming(false);
                 }
             }
         }, 3000);
@@ -1322,6 +1316,26 @@ const SantaseGame: React.FC = () => {
                         });
                     }
                 });
+                // Opening the screen: a game already under way is joined at
+                // once — its id comes on the search topic above — and only a
+                // player in none is offered a search. Nobody is queued by it.
+                if (resumeOnly) {
+                    const offerSearch = () => {
+                        try { client.disconnect(); } catch { /* already gone */ }
+                        try { socket.close(); } catch { /* already gone */ }
+                        stompClient.current = null;
+                        socketRef.current = null;
+                        if (connectionCheckIntervalRef.current) {
+                            clearInterval(connectionCheckIntervalRef.current);
+                            connectionCheckIntervalRef.current = null;
+                        }
+                        setIsResuming(false);
+                    };
+                    gameService.getActiveGame()
+                        .then((response) => { if (response.status === 204) offerSearch(); })
+                        .catch(offerSearch);
+                    return;
+                }
                 gameService.searchGame().catch((error: any) => {
                     setIsSearching(false);
                     // A 404 here is the server saying сантасе is not on offer —
@@ -1338,6 +1352,7 @@ const SantaseGame: React.FC = () => {
         const onError = (error: any) => {
             console.error('WebSocket connection error:', error);
             setIsConnected(false);
+            setIsResuming(false);
             connectionLockRef.current = false;
 
             // Clear connection timeout
@@ -1368,6 +1383,20 @@ const SantaseGame: React.FC = () => {
 
         client.connect({'Authorization': `Bearer ${sockToken}`}, onConnect, onError);
     };
+
+    // On opening the screen: back into the game the player is already in.
+    useEffect(() => {
+        if (!username) {
+            setIsResuming(false);
+            return;
+        }
+        void connectWebSocket(false, true);
+        // Once, for this player: every later connection is a search or a reconnect.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [username]);
+    useEffect(() => {
+        if (gameState) setIsResuming(false);
+    }, [gameState]);
 
     const startSearch = () => {
         if (isSearching) return;
@@ -1494,7 +1523,9 @@ const SantaseGame: React.FC = () => {
                 </div>
             )}
 
-            {!gameState ? (
+            {!gameState && isResuming ? (
+                <StatusScreen tone="neutral" icon="cards" title="Свързване…" />
+            ) : !gameState ? (
                 <div style={styles.lobby}>
                     <GamePrelude
                         title="Сантасе"
@@ -1576,18 +1607,34 @@ const SantaseGame: React.FC = () => {
                                     // clears the absolutely positioned scoreboard on phones
                                     paddingTop: isMobile ? 'clamp(66px, 17vw, 78px)' : '0',
                                 }}>
-                                    <div
-                                        style={{...styles.handOpponent, gap: 'clamp(-14px, -3vw, -8px)'}}
-                                        role="img"
-                                        aria-label={`Карти у опонента: ${gameState.opponentPlayerCardsCount || 0}`}
-                                    >
-                                        {Array.from({length: gameState.opponentPlayerCardsCount || 0}).map((_, i) => (
-                                            <div
-                                                key={i}
-                                                className="card-back"
-                                                style={{width: 'clamp(50px, 13vw, 116px)', aspectRatio: '71 / 103'}}
-                                            />
-                                        ))}
+                                    <div className="opponent-hand">
+                                        <div
+                                            style={{...styles.handOpponent, gap: 'clamp(-14px, -3vw, -8px)'}}
+                                            role="img"
+                                            aria-label={`Карти у опонента: ${gameState.opponentPlayerCardsCount || 0}`}
+                                        >
+                                            {Array.from({length: gameState.opponentPlayerCardsCount || 0}).map((_, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="card-back opponent-hand__card"
+                                                    style={{aspectRatio: '71 / 103'}}
+                                                />
+                                            ))}
+                                        </div>
+                                        {/* Their time on the felt under their hand, burning down
+                                            while the move is theirs: the server's own two moments,
+                                            so a Continue on their side refills it here. The slot
+                                            is always there, so the hand never moves between turns. */}
+                                        <div className="opponent-hand__time">
+                                            {!gameState.winnerUsername && (
+                                                <TurnBar
+                                                    startedAt={gameState.opponentTurnStartedAt}
+                                                    deadline={gameState.opponentDeadline}
+                                                    urgentSeconds={OPPONENT_URGENT_SECONDS}
+                                                    label={isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
+                                                />
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -1598,7 +1645,7 @@ const SantaseGame: React.FC = () => {
                                 }}>
                                     <div style={{
                                         ...styles.deckSide,
-                                        width: 'clamp(80px, 22vw, 120px)',
+                                        width: DECK_SIDE_WIDTH,
                                         justifyContent: 'flex-start',
                                     }}>
                                         {gameState.remainingCardsCount > 0 && !gameState.isClosed ? (
@@ -1694,14 +1741,29 @@ const SantaseGame: React.FC = () => {
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                         }}>{gameState.opponentPlayedCard &&
-                                            <CardComponent card={gameState.opponentPlayedCard} isPlayable={true}/>}</div>
+                                            <CardComponent
+                                                card={gameState.opponentPlayedCard}
+                                                isPlayable={true}
+                                                isTaken={!!gameState.trickTakenBy && gameState.trickTakenBy !== username}
+                                            />}</div>
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                         }}>{gameState.playedCard &&
-                                            <CardComponent card={gameState.playedCard} isPlayable={true}/>}</div>
+                                            <CardComponent
+                                                card={gameState.playedCard}
+                                                isPlayable={true}
+                                                isTaken={gameState.trickTakenBy === username}
+                                            />}</div>
                                     </div>
+                                    {/* The deck's twin on the right, empty. With the deck alone
+                                        on the left the trick was centred in what was left of the
+                                        row — half a deck right of the hands above and below it.
+                                        Not on a phone, where the middle cannot spare the room. */}
+                                    {!isMobile && (
+                                        <div aria-hidden="true" style={{width: DECK_SIDE_WIDTH, flex: 'none'}}/>
+                                    )}
                                 </div>
 
                                 <div style={{
@@ -1813,8 +1875,12 @@ const SantaseGame: React.FC = () => {
                                                        the strip is never below 44px however the card
                                                        scales. Six cards still fit: at 320px the hand
                                                        is 74 + 5x44 = 294px inside ~300px of room. */
+                                                    // As much of each card shows as on a
+                                                    // belot hand of the same size: six fit
+                                                    // at 320px (74 + 5 x 44 = 294px) and
+                                                    // every card's middle stays in view.
                                                     marginLeft: isMobile && index > 0
-                                                        ? 'calc(clamp(44px, 13vw, 64px) - clamp(74px, 20vw, 104px))'
+                                                        ? 'calc(clamp(74px, 20vw, 104px) * -0.4)'
                                                         : '0',
                                                 }}
                                             >
@@ -1823,6 +1889,7 @@ const SantaseGame: React.FC = () => {
                                                     isPlayable={card.isPlayable && gameState.isOnTurn}
                                                     isSelected={announcedSuit === card.suit && (card.rank === 'KING' || card.rank === 'QUEEN')}
                                                     isLastDrawn={card.isLastDrawn}
+                                                    inHand
                                                     onClick={() => handlePlayCard(card)}
                                                 />
                                             </div>
