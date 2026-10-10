@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 import { AuthProvider } from './context/AuthContext';
 
 const root = ReactDOM.createRoot(
@@ -13,7 +14,9 @@ root.render(
         <BrowserRouter>
             {/* Wrapping App in AuthProvider is essential for useAuthContext to work */}
             <AuthProvider>
-                <App />
+                <ErrorBoundary>
+                    <App />
+                </ErrorBoundary>
             </AuthProvider>
         </BrowserRouter>
     </React.StrictMode>
