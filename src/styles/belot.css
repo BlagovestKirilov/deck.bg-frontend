@@ -517,29 +517,13 @@
     display: grid;
     place-items: center;
     flex: none;
-    width: 16px;
-    height: 16px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     background: var(--gold-wash);
     box-shadow: inset 0 0 0 1px var(--line-gold);
     color: var(--gold);
-    font-size: 10px;
-    font-weight: 800;
-    line-height: 1;
-}
-/* The letter, not its line, is what is centred. A line keeps room above a
-   capital for accents and below it for descenders, unevenly, so the Р sat
-   high — by a pixel and a half on a phone, at that size the whole gap. Cut
-   down to the capital's own height, the box is the letter, and centring
-   the box centres it in any face. */
-.belot__dealer-mark {
-    display: block;
-    text-box: trim-both cap alphabetic;
-}
-/* Where that cut is not supported: the same correction, measured for this
-   face — the letter sat 0.17em above the middle. */
-@supports not (text-box: trim-both cap alphabetic) {
-    .belot__dealer-mark { translate: 0 0.17em; }
+    font-size: 14px;
 }
 
 .belot__name {

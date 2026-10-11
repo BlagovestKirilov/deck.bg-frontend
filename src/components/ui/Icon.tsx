@@ -33,6 +33,7 @@ export type IconName =
     | 'plugOff'
     | 'spade'
     | 'cards'
+    | 'dealer'
     | 'logout'
     | 'search'
     | 'compass'
@@ -181,6 +182,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
             <rect x="3.2" y="6.4" width="10.4" height="14" rx="2" />
             <path d="M8.2 4.6h8.6a2 2 0 0 1 2 2v11" />
         </>
+    ),
+    // A hand fanned out from the dealer's fingers: three solid cards, the
+    // back two lighter, so it reads as cards dealt and not as "copy".
+    dealer: (
+        <g stroke="none" fill="currentColor">
+            <rect x="5.5" y="5" width="8" height="12" rx="1.5" opacity="0.45" transform="rotate(-24 9.5 20)" />
+            <rect x="8" y="4" width="8" height="12" rx="1.5" opacity="0.7" />
+            <rect x="10.5" y="5" width="8" height="12" rx="1.5" transform="rotate(24 14.5 20)" />
+        </g>
     ),
     logout: (
         <>

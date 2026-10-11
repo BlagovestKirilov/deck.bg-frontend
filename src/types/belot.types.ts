@@ -111,6 +111,8 @@ export interface BelotDealRow {
     callerScore: number | null;
     opponentScore: number | null;
     result: BelotDealResult;
+    /** The side that took every trick (капо), or null. Its 90 is inside its points. */
+    capotBy: BelotTeam | null;
 }
 
 /**
