@@ -320,7 +320,7 @@ test.describe('the admin page', () => {
         const sheet = page.getByRole('dialog');
         await expect(sheet.getByRole('heading', { name: 'boss' })).toBeVisible();
         await expect(sheet.getByText(/Непотвърден/)).toHaveCount(1);
-        await expect(sheet).toContainText('Влизал за последно: няма данни');
+        await expect(sheet).not.toContainText('Влизал за последно');
         await expect(sheet).not.toContainText('Тест достъп');
     });
 
