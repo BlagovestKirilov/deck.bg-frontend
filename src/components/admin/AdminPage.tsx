@@ -101,7 +101,7 @@ const AdminPage: React.FC = () => {
                                     <h2 id="admin-games" className="sr-only">Игри</h2>
                                     <p className="admin__lead">
                                         Изключената игра спира новите маси, а започналите се довършват. Игра
-                                        „само бета“ виждат само бета тестерите.
+                                        с тест достъп виждат само играчите, на които си го дал.
                                     </p>
                                     {status === 'ready' ? (
                                         <AdminGames games={games} onChanged={changed} />
@@ -125,7 +125,7 @@ const AdminPage: React.FC = () => {
                                     <h2 id="admin-players" className="sr-only">Играчи</h2>
                                     <p className="admin__lead">
                                         Търси по част от потребителското име и стесни списъка по роля и достъп.
-                                        Отвори играч, за да видиш резултатите му и да го направиш бета тестер.
+                                        Отвори играч, за да видиш резултатите му и да му дадеш тест достъп.
                                     </p>
                                     {/* Only once the server has let this account in: the
                                         list is asked for after the games answer. */}

@@ -765,9 +765,12 @@ code, kbd, samp { font-family: var(--font-mono); }
     background: rgba(0, 0, 0, 0.22);
     box-shadow: inset 0 0 0 1px var(--line);
 }
+/* The options fit their row rather than spill out of it: the side padding
+   gives first, and on the narrowest screens a label breaks inside its pill. */
 .choice__option {
+    min-width: 0;
     min-height: calc(var(--tap) - 6px);
-    padding: 0 var(--sp-4);
+    padding: var(--sp-1) clamp(var(--sp-3), 3.5vw, var(--sp-4));
     border: 0;
     border-radius: var(--r-pill);
     background: none;
@@ -775,7 +778,8 @@ code, kbd, samp { font-family: var(--font-mono); }
     font: inherit;
     font-size: var(--fs-sm);
     font-weight: 700;
-    white-space: nowrap;
+    line-height: 1.2;
+    text-wrap: balance;
     cursor: pointer;
     touch-action: manipulation;
     transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);

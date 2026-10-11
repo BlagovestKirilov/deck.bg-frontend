@@ -12,30 +12,39 @@ import { PlayerMarks } from './AdminPlayers';
 import ConfirmChange, { PendingChange } from './ConfirmChange';
 
 const ACCESS: { value: Scope; label: string }[] = [
-    { value: 'PUBLIC', label: 'Обикновен играч' },
-    { value: 'BETA', label: 'Бета тестер' },
+    { value: 'PUBLIC', label: 'Обикновен' },
+    { value: 'BETA', label: 'Тест' },
 ];
 
-const day = new Intl.DateTimeFormat('bg-BG', { day: 'numeric', month: 'long', year: 'numeric' });
-const moment = new Intl.DateTimeFormat('bg-BG', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+const two = (n: number) => String(n).padStart(2, '0');
 
-function when(iso: string | null, format: Intl.DateTimeFormat): string {
-    return iso ? format.format(new Date(iso)) : '—';
+/** 25.09.2026 г. — the way a date is written in Bulgarian. */
+function day(iso: string | null): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${two(d.getDate())}.${two(d.getMonth() + 1)}.${d.getFullYear()} г.`;
+}
+
+/** 25.09.2026 г., 14:30 */
+function moment(iso: string | null): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    return `${day(iso)}, ${two(d.getHours())}:${two(d.getMinutes())}`;
 }
 
 /** The question for changing a player's access, naming the player. */
 function accessChange(username: string, scope: Scope, run: () => void): PendingChange {
     return scope === 'BETA'
         ? {
-            title: `Направи ${username} бета тестер?`,
-            text: `${username} ще вижда и игрите, които са отворени само за бета тестерите.`,
-            confirmLabel: 'Направи бета',
+            title: `Дай тест достъп на ${username}?`,
+            text: `${username} ще вижда и игрите, които още не са отворени за всички.`,
+            confirmLabel: 'Дай достъп',
             run,
         }
         : {
-            title: `Върни ${username} като обикновен играч?`,
-            text: `${username} вече няма да вижда игрите само за бета тестерите. Игра, която вече е започнал, ще може да довърши.`,
-            confirmLabel: 'Върни',
+            title: `Махни тест достъпа на ${username}?`,
+            text: `${username} ще вижда само игрите, отворени за всички. Игра, която вече е започнал, ще може да довърши.`,
+            confirmLabel: 'Махни',
             danger: true,
             run,
         };
@@ -113,15 +122,17 @@ const AdminPlayerSheet: React.FC<AdminPlayerSheetProps> = ({ username, onClose, 
                                     )}
                                 </p>
                                 <p className="admin-sheet__since">
-                                    Регистриран на {when(detail.account.createdAt, day)}
+                                    Регистриран на {day(detail.account.createdAt)}
                                 </p>
-                                <PlayerMarks player={detail.account} />
+                                {/* The email line above already says whether it is confirmed,
+                                    and the access choice below says which games they see. */}
+                                <PlayerMarks player={detail.account} email={false} access={false} />
                             </div>
                         </div>
 
                         <div className="admin-sheet__access">
                             <Choice
-                                legend="Достъп"
+                                legend="Достъп до игрите"
                                 options={ACCESS}
                                 value={detail.account.scope}
                                 disabled={saving}
@@ -130,7 +141,7 @@ const AdminPlayerSheet: React.FC<AdminPlayerSheetProps> = ({ username, onClose, 
                             {saved === 'ok' && (
                                 <Note tone="success">
                                     {detail.account.scope === 'BETA'
-                                        ? 'Вече вижда и бета игрите.'
+                                        ? 'Вече вижда и игрите с тест достъп.'
                                         : 'Вече вижда само игрите за всички.'}
                                 </Note>
                             )}
@@ -181,7 +192,7 @@ const GameDetail: React.FC<{ game: AdminGameDetail }> = ({ game }) => {
                 <ol className="admin-recent" aria-label={`Последни игри на ${title}`}>
                     {game.recent.map((row) => (
                         <li key={row.gameId} className="admin-recent__row">
-                            <span className="admin-recent__when">{when(row.finishedAt, moment)}</span>
+                            <span className="admin-recent__when">{moment(row.finishedAt)}</span>
                             <span className="admin-recent__with">{row.others.join(', ')}</span>
                             <span className={`admin-recent__result admin-recent__result--${row.won ? 'won' : 'lost'}`}>
                                 {row.won ? 'Победа' : row.surrendered ? 'Предаде' : 'Загуба'}

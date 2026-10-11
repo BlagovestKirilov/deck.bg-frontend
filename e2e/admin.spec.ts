@@ -137,6 +137,7 @@ async function signedIn(page: Page, role: 'ADMIN' | 'USER'): Promise<{ writes: R
         return route.fulfill({ json: pageOf(url) });
     });
     await page.route(`${API}/admin/players/petko91`, (route) => route.fulfill({ json: DETAIL }));
+    await page.route(`${API}/admin/players/boss`, (route) => route.fulfill({ json: { ...DETAIL, account: BOSS } }));
     await page.route(`${API}/admin/players/petko91/scope`, (route) =>
         route.fulfill({ json: { ...PETKO, scope: route.request().postDataJSON().scope } }));
     return { writes, lists };
@@ -236,15 +237,15 @@ test.describe('the admin page', () => {
         await page.goto('/admin');
 
         const belot = card(page, 'Белот');
-        await belot.getByRole('button', { name: 'Всички' }).click();
+        await belot.getByRole('button', { name: 'Всички', exact: true }).click();
         await expect(page.getByRole('dialog').getByRole('heading', { name: 'Покажи Белот на всички?' })).toBeVisible();
         await page.getByRole('dialog').getByRole('button', { name: 'Отказ' }).click();
-        await expect(belot.getByRole('button', { name: 'Само бета' })).toHaveAttribute('aria-pressed', 'true');
+        await expect(belot.getByRole('button', { name: 'Тест', exact: true })).toHaveAttribute('aria-pressed', 'true');
         expect(writes).toEqual([]);
 
-        await belot.getByRole('button', { name: 'Всички' }).click();
+        await belot.getByRole('button', { name: 'Всички', exact: true }).click();
         await page.getByRole('dialog').getByRole('button', { name: 'Покажи', exact: true }).click();
-        await expect(belot.getByRole('button', { name: 'Всички' })).toHaveAttribute('aria-pressed', 'true');
+        await expect(belot.getByRole('button', { name: 'Всички', exact: true })).toHaveAttribute('aria-pressed', 'true');
         expect(writes.map((request) => request.postDataJSON())).toEqual([{ state: 'ON', requiredScope: 'PUBLIC' }]);
     });
 
@@ -285,10 +286,10 @@ test.describe('the admin page', () => {
         expect(lists.at(-1)!.searchParams.get('role')).toBe('ADMIN');
 
         await page.getByLabel('Роля').selectOption('');
-        await page.getByLabel('Достъп').selectOption('BETA');
+        await page.getByLabel('Достъп до игрите').selectOption('BETA');
         await expect(rows).toHaveText(['boss']);
 
-        await page.getByLabel('Достъп').selectOption('');
+        await page.getByLabel('Достъп до игрите').selectOption('');
         await page.getByLabel('Подреди').selectOption('username,asc');
         await expect(rows.first()).toHaveText('boss');
         expect(lists.at(-1)!.searchParams.get('sort')).toBe('username,asc');
@@ -297,7 +298,22 @@ test.describe('the admin page', () => {
         await expect(page.getByText('Никой играч не отговаря на тези филтри.')).toBeVisible();
     });
 
-    test('making a player a beta tester asks first, naming them', async ({ page }) => {
+    test('an unconfirmed email is said once in the sheet, and marked in the list', async ({ page }) => {
+        await signedIn(page, 'ADMIN');
+        await page.goto('/admin/players');
+        await page.getByLabel('Потребителско име').fill('boss');
+
+        const row = page.getByRole('button', { name: /boss/ });
+        await expect(row).toContainText('Непотвърден имейл');
+        await expect(row).toContainText('Тест достъп');
+        await row.click();
+        const sheet = page.getByRole('dialog');
+        await expect(sheet.getByRole('heading', { name: 'boss' })).toBeVisible();
+        await expect(sheet.getByText(/Непотвърден/)).toHaveCount(1);
+        await expect(sheet).not.toContainText('Тест достъп');
+    });
+
+    test('giving a player early access asks first, naming them', async ({ page }) => {
         const { writes } = await signedIn(page, 'ADMIN');
         await page.goto('/admin/players');
 
@@ -307,10 +323,11 @@ test.describe('the admin page', () => {
         await expect(sheet).toContainText('1611');
         await expect(sheet).toContainText('Играе в момента');
         await expect(sheet).toContainText('Предаде');
+        await expect(sheet).toContainText('Регистриран на 01.09.2026 г.');
         await expect(sheet).toContainText('a, b, c');
 
-        await sheet.getByRole('button', { name: 'Бета тестер' }).click();
-        const question = page.getByRole('dialog', { name: 'Направи petko91 бета тестер?' });
+        await sheet.getByRole('button', { name: 'Тест', exact: true }).click();
+        const question = page.getByRole('dialog', { name: 'Дай тест достъп на petko91?' });
         await expect(question).toContainText('petko91 ще вижда');
         expect(writes).toEqual([]);
 
@@ -320,12 +337,12 @@ test.describe('the admin page', () => {
         await expect(sheet.getByRole('heading', { name: 'petko91' })).toBeVisible();
         expect(writes).toEqual([]);
 
-        await sheet.getByRole('button', { name: 'Бета тестер' }).click();
-        await page.getByRole('button', { name: 'Направи бета' }).click();
-        await expect(sheet).toContainText('Вече вижда и бета игрите');
+        await sheet.getByRole('button', { name: 'Тест', exact: true }).click();
+        await page.getByRole('button', { name: 'Дай достъп' }).click();
+        await expect(sheet).toContainText('Вече вижда и игрите с тест достъп');
         expect(writes.map((request) => request.postDataJSON())).toEqual([{ scope: 'BETA' }]);
 
         await page.keyboard.press('Escape');
-        await expect(page.getByRole('button', { name: /petko91/ })).toContainText('Бета');
+        await expect(page.getByRole('button', { name: /petko91/ })).toContainText('Тест достъп');
     });
 });
