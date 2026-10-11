@@ -23,6 +23,8 @@ export type IconName =
     | 'eye'
     | 'eyeOff'
     | 'arrowLeft'
+    | 'arrowRight'
+    | 'chevronDown'
     | 'info'
     | 'shield'
     | 'trash'
@@ -120,6 +122,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
             <path d="m11 5.6-5.8 6.4 5.8 6.4" />
         </>
     ),
+    arrowRight: (
+        <>
+            <path d="M5 12h13.6" />
+            <path d="m13 5.6 5.8 6.4-5.8 6.4" />
+        </>
+    ),
+    chevronDown: <path d="m6 9.5 6 6 6-6" />,
     info: (
         <>
             <circle cx="12" cy="12" r="9" />
