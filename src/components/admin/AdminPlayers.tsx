@@ -26,6 +26,7 @@ const ACCESS: { value: Scope | ''; label: string }[] = [
 const ORDERS: { value: PlayerSort; label: string }[] = [
     { value: 'createdAt,desc', label: 'Най-нови' },
     { value: 'createdAt,asc', label: 'Най-стари' },
+    { value: 'lastLoginAt,desc', label: 'Активни' },
     { value: 'username,asc', label: 'Име А–Я' },
     { value: 'username,desc', label: 'Име Я–А' },
 ];

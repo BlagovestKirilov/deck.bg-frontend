@@ -124,6 +124,11 @@ const AdminPlayerSheet: React.FC<AdminPlayerSheetProps> = ({ username, onClose, 
                                 <p className="admin-sheet__since">
                                     Регистриран на {day(detail.account.createdAt)}
                                 </p>
+                                <p className="admin-sheet__since">
+                                    {detail.account.lastLoginAt
+                                        ? `Влизал за последно на ${moment(detail.account.lastLoginAt)}`
+                                        : 'Влизал за последно: няма данни'}
+                                </p>
                                 {/* The email line above already says whether it is confirmed,
                                     and the access choice below says which games they see. */}
                                 <PlayerMarks player={detail.account} email={false} access={false} />
