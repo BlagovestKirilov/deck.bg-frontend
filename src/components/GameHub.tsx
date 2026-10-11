@@ -96,13 +96,13 @@ const GameHub: React.FC = () => {
         <main className="screen screen--flow lobby" style={{ alignItems: 'flex-start' }}>
             <div className="hub">
                 <nav className="hub-nav" aria-label="Профил">
-                    <Brand />
+                    <Brand home />
                     <div className="hub-nav__actions">
                         {isAdmin && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                icon="shield"
+                                icon="userCog"
                                 className="btn--icon-on-phone"
                                 onClick={() => navigate('/admin')}
                                 aria-label="Админ"

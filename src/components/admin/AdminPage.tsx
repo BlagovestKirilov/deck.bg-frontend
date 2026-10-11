@@ -67,7 +67,7 @@ const AdminPage: React.FC = () => {
         <main className="screen screen--flow lobby" style={{ alignItems: 'flex-start' }}>
             <div className="hub admin">
                 <nav className="hub-nav" aria-label="Админ">
-                    <Brand />
+                    <Brand home />
                     <Button variant="ghost" size="sm" icon="arrowLeft" onClick={() => navigate('/')}>
                         Към игрите
                     </Button>
