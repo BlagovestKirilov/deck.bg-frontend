@@ -158,7 +158,7 @@ test.describe('the admin page', () => {
         await signedIn(page, 'ADMIN');
         await page.goto('/admin');
         await expect(page).toHaveURL(/\/admin\/games$/);
-        await expect(page.getByRole('link', { name: 'Игри' })).toHaveAttribute('aria-current', 'page');
+        await expect(page.getByRole('link', { name: 'Игри', exact: true })).toHaveAttribute('aria-current', 'page');
         await expect(page.locator('.admin-player')).toHaveCount(0);
 
         await page.getByRole('link', { name: 'Играчи' }).click();
@@ -169,6 +169,20 @@ test.describe('the admin page', () => {
         await page.goBack();
         await expect(page).toHaveURL(/\/admin\/games$/);
         await expect(page.getByRole('heading', { name: 'Сантасе' })).toBeVisible();
+    });
+
+    test('the logo leads back to the games once signed in', async ({ page }) => {
+        await signedIn(page, 'ADMIN');
+        await page.goto('/admin/players');
+        await page.getByRole('link', { name: 'DECK.bg, към игрите' }).click();
+        await expect(page).toHaveURL(/\/$/);
+        await expect(page.getByRole('heading', { name: 'Избери игра' })).toBeVisible();
+    });
+
+    test('on the sign-in card the logo is only a name', async ({ page }) => {
+        await page.goto('/');
+        await expect(page.getByRole('img', { name: 'DECK.bg' })).toBeVisible();
+        await expect(page.getByRole('link', { name: 'DECK.bg, към игрите' })).toHaveCount(0);
     });
 
     test('a player who is not an admin sees no way in', async ({ page }) => {

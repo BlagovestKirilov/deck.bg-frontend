@@ -36,6 +36,7 @@ export type IconName =
     | 'logout'
     | 'search'
     | 'compass'
+    | 'userCog'
     | 'dice';
 
 interface IconProps {
@@ -204,6 +205,25 @@ const PATHS: Record<IconName, React.ReactNode> = {
         <>
             <circle cx="12" cy="12" r="9" />
             <path d="m15.2 8.8-1.9 4.5-4.5 1.9 1.9-4.5 4.5-1.9Z" />
+        </>
+    ),
+    // A person with a gear at the shoulder: the account that runs the site.
+    // Six teeth rather than eight, so the gear stays a gear at button size.
+    // Open shoulders (no base line) and placed by its ink, not its box: the
+    // weight of the strokes falls on the centre of the grid, so it sits
+    // centred in a square button.
+    userCog: (
+        <>
+            <circle cx="9.2" cy="6.4" r="4" />
+            <path d="M2.7 19.9v-1a5 5 0 0 1 5-5h3.5" />
+            <circle cx="16.7" cy="16.4" r="3.2" />
+            <circle cx="16.7" cy="16.4" r="1.2" />
+            <path d="M19.9 16.4h1.3" />
+            <path d="m18.3 19.17.65 1.13" />
+            <path d="m15.1 19.17-.65 1.13" />
+            <path d="M13.5 16.4h-1.3" />
+            <path d="m15.1 13.63-.65-1.13" />
+            <path d="m18.3 13.63.65-1.13" />
         </>
     ),
 };

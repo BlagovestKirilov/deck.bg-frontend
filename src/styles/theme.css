@@ -685,6 +685,21 @@ code, kbd, samp { font-family: var(--font-mono); }
 .badge--success { background: var(--success-wash); color: var(--success); }
 .badge--danger  { background: var(--danger-wash);  color: var(--danger-bright); }
 
+/* The wordmark as the way back to the games: a 44px target around it,
+   nothing drawn until it is hovered or focused. */
+.brand-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    margin-left: calc(var(--sp-2) * -1);
+    padding: 0 var(--sp-2);
+    border-radius: var(--r-md);
+    color: inherit;
+    text-decoration: none;
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+.brand-link:hover { background: rgba(255, 255, 255, 0.05); }
+
 /* =====================================================================
    Switch and choice — controls that act the moment they are pressed
    ===================================================================== */
@@ -1258,20 +1273,24 @@ code, kbd, samp { font-family: var(--font-mono); }
 .hub-nav .btn:first-of-type { flex: 0 1 auto; min-width: 0; }
 .hub-nav .btn:first-of-type .btn__label { min-width: 0; overflow: hidden; }
 
-/* Phones: ИЗХОД drops to its icon in a square button.
+/* Phones (the same 768px line the game screens use): АДМИН and ИЗХОД drop to
+   their icons in square buttons; the name stays the one labelled button.
    The whole label element goes, not the text inside it — hiding only the text
    left the label wrapper as a flex item, so `.btn`'s gap between icon and label
    survived and pushed the icon half a gap off centre. With the wrapper gone the
    icon is the only child and centres exactly. */
-@media (max-width: 420px) {
-    .hub-nav .truncate { max-width: 7ch; }
-
+@media (max-width: 768px) {
     .hub-nav .btn--icon-on-phone .btn__label { display: none; }
     .hub-nav .btn--icon-on-phone {
         width: var(--tap);
         min-width: var(--tap);
         padding-inline: 0;
     }
+}
+
+/* Narrow phones: the name gives way too. */
+@media (max-width: 420px) {
+    .hub-nav .truncate { max-width: 7ch; }
 }
 
 /* =====================================================================
