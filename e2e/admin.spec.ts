@@ -267,11 +267,11 @@ test.describe('the admin page', () => {
         expect(lists[0].searchParams.get('size')).toBe('8');
 
         await page.getByRole('button', { name: 'Следваща' }).click();
-        await expect(page.getByText('Страница 2 от 4')).toBeVisible();
+        await expect(page.getByText('2 от 4', { exact: true })).toBeVisible();
         await expect(rows).toHaveCount(8);
         await page.getByRole('button', { name: 'Следваща' }).click();
         await page.getByRole('button', { name: 'Следваща' }).click();
-        await expect(page.getByText('Страница 4 от 4')).toBeVisible();
+        await expect(page.getByText('4 от 4', { exact: true })).toBeVisible();
         await expect(rows).toHaveCount(1);
         await expect(rows.last()).toHaveText('boss');
         await expect(page.getByRole('button', { name: 'Следваща' })).toBeDisabled();

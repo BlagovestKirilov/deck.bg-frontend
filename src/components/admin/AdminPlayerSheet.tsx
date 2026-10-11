@@ -25,11 +25,11 @@ function day(iso: string | null): string {
     return `${two(d.getDate())}.${two(d.getMonth() + 1)}.${d.getFullYear()} г.`;
 }
 
-/** 25.09.2026 г., 14:30 */
+/** 25.09.2026 г. 14:30 */
 function moment(iso: string | null): string {
     if (!iso) return '—';
     const d = new Date(iso);
-    return `${day(iso)}, ${two(d.getHours())}:${two(d.getMinutes())}`;
+    return `${day(iso)} ${two(d.getHours())}:${two(d.getMinutes())}`;
 }
 
 /** The question for changing a player's access, naming the player. */
