@@ -6,7 +6,7 @@ import { BelotBidView, BelotState } from '../../types/belot.types';
  * long enough to read the last "Пас" at the seat that said it, and the
  * auction around it, before cards start moving.
  */
-export const AUCTION_HELD_MS = 1800;
+export const AUCTION_HELD_MS = 1200;
 
 /**
  * The table as it stood when the bidding closed, for a moment after.
