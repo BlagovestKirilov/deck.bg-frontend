@@ -32,6 +32,7 @@ import BelotResult from './BelotResult';
 import BelotScoreSheet from './BelotScoreSheet';
 import { ContractMark } from './ContractMark';
 import { sortedHand } from './handOrder';
+import { useAuctionHold } from './useAuctionHold';
 import '../../styles/belot.css';
 
 /** Play runs counter-clockwise, so the seat after yours sits to your right. */
@@ -160,7 +161,9 @@ const BelotGame: React.FC = () => {
     const { user } = useAuthContext();
     const username = user?.username ?? '';
 
-    const { state, noTable, searching, startSearch, unavailable } = useBelotTable(username);
+    const { state: live, noTable, searching, startSearch, unavailable } = useBelotTable(username);
+    // The bidding's last word stays on the table a moment before the hand goes on.
+    const state = useAuctionHold(live);
 
     // One clock for the screen: the seat that is being waited for shows it,
     // and it is the server’s deadline rather than a timer of our own.
@@ -414,6 +417,11 @@ const BelotGame: React.FC = () => {
     // cards arriving under the count read as the table moving on without
     // anyone. And nothing is dealt at all once the game is over.
     const dealing = handJustCounted || !!closing || !!handResult || state.status === 'FINISHED';
+    // The score as it stood before the hand that is being counted, until its
+    // count has been seen and closed: the hand that ends a hand already
+    // carries the new totals, and the score bar told the table the outcome
+    // while the last trick was still being taken.
+    const scored = handJustCounted || !!closing || !!handResult ? beforeLastHand(state) : state;
 
     return (
         <main className="screen belot">
@@ -452,11 +460,11 @@ const BelotGame: React.FC = () => {
                 >
                     <span className="belot__score-col">
                         <span className="belot__side">ние</span>
-                        <span className="belot__points">{scoreOf(state, ourTeam)}</span>
+                        <span className="belot__points">{scoreOf(scored, ourTeam)}</span>
                     </span>
                     <span className="belot__score-col">
                         <span className="belot__side">вие</span>
-                        <span className="belot__points">{scoreOf(state, theirTeam)}</span>
+                        <span className="belot__points">{scoreOf(scored, theirTeam)}</span>
                     </span>
                     {contract && (
                         <span className="belot__declared">
@@ -567,7 +575,7 @@ const BelotGame: React.FC = () => {
                 />
             </section>
 
-            {sheetOpen && <BelotScoreSheet state={state} onClose={() => setSheetOpen(false)} />}
+            {sheetOpen && <BelotScoreSheet state={scored} onClose={() => setSheetOpen(false)} />}
 
             {confirmGiveUp && (
                 <Modal
@@ -733,7 +741,8 @@ const Fan: React.FC<{ cards: number }> = ({ cards }) => (
  * A round counter rather than the word: it is read once, so it does not want
  * the same room as what somebody has just announced. As a word on a line of
  * its own it put three labels under one player and turned the seat into a
- * list.
+ * list. It shows a fan of dealt cards, not a letter: the Cyrillic Р read as a
+ * Latin P.
  *
  * Only while the hand is bid for — the dealer is what tells you who speaks
  * first. Once the cards are being played it answers nothing.
@@ -765,8 +774,8 @@ const Hurry: React.FC<{ secondsLeft: number; missed: number }> = ({ secondsLeft,
 };
 
 const Dealer: React.FC = () => (
-    <span className="belot__dealer" role="img" aria-label="раздава">
-        <span className="belot__dealer-mark">Р</span>
+    <span className="belot__dealer" role="img" aria-label="раздава" title="Раздава">
+        <Icon name="dealer" />
     </span>
 );
 
@@ -953,6 +962,22 @@ const Bidding: React.FC<{ state: BelotState }> = ({ state }) => {
 
 function scoreOf(state: BelotState, team: BelotTeam): number {
     return team === 'NORTH_SOUTH' ? state.northSouthScore : state.eastWestScore;
+}
+
+/** The table as it stood before its newest line went on the sheet. */
+function beforeLastHand(state: BelotState): BelotState {
+    const last = state.sheet[state.sheet.length - 1];
+    if (!last) return state;
+    const toCaller = last.callerScore ?? 0;
+    const toOpponents = last.opponentScore ?? 0;
+    const northSouth = last.callerTeam === 'NORTH_SOUTH' ? toCaller : toOpponents;
+    const eastWest = last.callerTeam === 'EAST_WEST' ? toCaller : toOpponents;
+    return {
+        ...state,
+        northSouthScore: state.northSouthScore - northSouth,
+        eastWestScore: state.eastWestScore - eastWest,
+        sheet: state.sheet.slice(0, -1),
+    };
 }
 
 export default BelotGame;

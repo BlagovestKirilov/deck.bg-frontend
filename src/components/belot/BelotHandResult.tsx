@@ -7,6 +7,9 @@ import { ContractMark } from './ContractMark';
 /** How long the count stays up before the table carries on without it. */
 const SHOWN_FOR_SECONDS = 8;
 
+/** What капо adds, on top of the cards (the backend's `CardPoints.CAPOT`). */
+const CAPOT_POINTS = 90;
+
 const CALL_WORD: Record<BelotDealRow['contract'], string> = {
     CLUBS: 'СПАТИЯ',
     DIAMONDS: 'КАРО',
@@ -51,11 +54,16 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
     const calledByUs = row.callerTeam === ourTeam;
     const side = (ours: boolean) => {
         const caller = ours === calledByUs;
+        const team = caller ? row.callerTeam : (row.callerTeam === 'NORTH_SOUTH' ? 'EAST_WEST' : 'NORTH_SOUTH');
         const points = (caller ? row.callerPoints : row.opponentPoints) ?? 0;
         const announced = caller ? row.callerDeclarations : row.opponentDeclarations;
+        // The tricks are the cards alone: a капо's ninety has a line of its
+        // own, and the total is all three added up.
+        const capot = row.capotBy === team ? CAPOT_POINTS : 0;
         return {
             announced,
-            tricks: points - announced,
+            tricks: points - announced - capot,
+            capot,
             total: points,
             written: (caller ? row.callerScore : row.opponentScore) ?? 0,
         };
@@ -106,6 +114,14 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
                     <span className="hand-result__label">От ръце</span>
                     <span className="hand-result__cell">{ours.tricks}</span>
                     <span className="hand-result__cell hand-result__cell--theirs">{theirs.tricks}</span>
+
+                    {row.capotBy && (
+                        <>
+                            <span className="hand-result__label">Бонус капо</span>
+                            <span className="hand-result__cell">{ours.capot}</span>
+                            <span className="hand-result__cell hand-result__cell--theirs">{theirs.capot}</span>
+                        </>
+                    )}
 
                     <span className="hand-result__label">Общо</span>
                     <span className="hand-result__cell">{ours.total}</span>
