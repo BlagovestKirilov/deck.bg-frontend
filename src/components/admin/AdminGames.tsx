@@ -11,12 +11,12 @@ import ConfirmChange, { PendingChange } from './ConfirmChange';
 
 const SCOPES: { value: Scope; label: string }[] = [
     { value: 'PUBLIC', label: 'Всички' },
-    { value: 'BETA', label: 'Само бета' },
+    { value: 'BETA', label: 'Тест' },
 ];
 
 function stateLine(game: AdminGameSwitch): string {
     if (game.state === 'OFF') return 'Затворена. Нови игри не започват.';
-    return game.requiredScope === 'PUBLIC' ? 'Отворена за всички играчи.' : 'Отворена само за бета тестерите.';
+    return game.requiredScope === 'PUBLIC' ? 'Отворена за всички играчи.' : 'Отворена само с тест достъп.';
 }
 
 function titleOf(game: AdminGameSwitch): string {
@@ -39,7 +39,7 @@ function switchChange(game: AdminGameSwitch, on: boolean, run: () => void): Pend
         title: `Включи ${title}?`,
         text: game.requiredScope === 'PUBLIC'
             ? `${title} се отваря за всички играчи и те могат да започват нови игри.`
-            : `${title} се отваря за бета тестерите. Обикновените играчи все още няма да я виждат.`,
+            : `${title} се отваря за играчите с тест достъп. Останалите все още няма да я виждат.`,
         confirmLabel: 'Включи',
         run,
     };
@@ -60,11 +60,11 @@ function scopeChange(game: AdminGameSwitch, scope: Scope, run: () => void): Pend
         };
     }
     return {
-        title: `Остави ${title} само за бета тестерите?`,
+        title: `Остави ${title} само с тест достъп?`,
         text: open
-            ? `Обикновените играчи вече няма да виждат ${title}. Игрите, които вече се играят, се довършват.`
-            : `${title} е изключена. Когато я включиш, ще я виждат само бета тестерите.`,
-        confirmLabel: 'Само за бета',
+            ? `Играчите без тест достъп вече няма да виждат ${title}. Игрите, които вече се играят, се довършват.`
+            : `${title} е изключена. Когато я включиш, ще я виждат само играчите с тест достъп.`,
+        confirmLabel: 'Ограничи',
         danger: open,
         run,
     };
@@ -137,6 +137,11 @@ const AdminGames: React.FC<AdminGamesProps> = ({ games, onChanged }) => {
                                     onChange={(next) => setPending(switchChange(game, next,
                                         () => save(game, next ? 'ON' : 'OFF', game.requiredScope)))}
                                 />
+                            </div>
+
+                            {/* A row of its own under the picture, so on a phone the
+                                options have the card's whole width. */}
+                            <div className="admin-game__scope">
                                 <Choice
                                     legend="Кой я вижда"
                                     options={SCOPES}

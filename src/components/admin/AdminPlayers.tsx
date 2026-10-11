@@ -20,7 +20,7 @@ const ROLES: { value: AccountRole | ''; label: string }[] = [
 const ACCESS: { value: Scope | ''; label: string }[] = [
     { value: '', label: 'Всеки достъп' },
     { value: 'PUBLIC', label: 'Обикновен' },
-    { value: 'BETA', label: 'Бета тестер' },
+    { value: 'BETA', label: 'Тест достъп' },
 ];
 
 const ORDERS: { value: PlayerSort; label: string }[] = [
@@ -105,7 +105,7 @@ const AdminPlayers: React.FC = () => {
                     />
                 </div>
                 <Select label="Роля" options={ROLES} value={query.role} onChange={(role) => narrow({ role })} />
-                <Select label="Достъп" options={ACCESS} value={query.scope} onChange={(scope) => narrow({ scope })} />
+                <Select label="Достъп до игрите" options={ACCESS} value={query.scope} onChange={(scope) => narrow({ scope })} />
                 <Select label="Подреди" options={ORDERS} value={query.sort} onChange={(sort) => narrow({ sort })} />
             </div>
 
@@ -195,18 +195,24 @@ const AdminPlayers: React.FC = () => {
 };
 
 /**
- * What sets a player apart from the rest: an admin, a tester, an email not yet
- * confirmed. Most players have none, and then nothing is drawn at all.
+ * What sets a player apart from the rest: an admin, early access, an email not
+ * yet confirmed. Most players have none, and then nothing is drawn at all.
+ * `email={false}` and `access={false}` leave those out, where the screen
+ * already says them another way.
  */
-export const PlayerMarks: React.FC<{ player: AdminPlayerRow }> = ({ player }) => {
+export const PlayerMarks: React.FC<{ player: AdminPlayerRow; email?: boolean; access?: boolean }> = ({
+    player,
+    email = true,
+    access = true,
+}) => {
     const admin = player.role === 'ADMIN';
-    const beta = player.scope === 'BETA';
-    const unconfirmed = !player.emailConfirmed;
+    const beta = access && player.scope === 'BETA';
+    const unconfirmed = email && !player.emailConfirmed;
     if (!admin && !beta && !unconfirmed) return null;
     return (
         <span className="admin-marks">
             {admin && <span className="admin-mark admin-mark--admin">Админ</span>}
-            {beta && <span className="admin-mark admin-mark--beta">Бета</span>}
+            {beta && <span className="admin-mark admin-mark--beta">Тест достъп</span>}
             {unconfirmed && <span className="admin-mark admin-mark--unconfirmed">Непотвърден имейл</span>}
         </span>
     );

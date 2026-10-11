@@ -143,7 +143,11 @@
 }
 .admin-game--off .admin-game__state { color: var(--text-3); }
 .admin-game__body .switch { margin-left: calc(var(--sp-1) * -1); }
-.admin-game__body .choice { margin-top: var(--sp-1); }
+
+/* Who sees the game: across the whole card, the two options sharing it. */
+.admin-game__scope { grid-column: 1 / -1; }
+.admin-game__scope .choice__options { display: flex; }
+.admin-game__scope .choice__option { flex: 1 1 auto; }
 
 .admin-game--ghost { pointer-events: none; }
 .admin-game__ghost-art { display: block; aspect-ratio: 4 / 3; border-radius: 12px; }
