@@ -25,4 +25,7 @@ export interface ProfileResponse {
 
     /** Per-game record, keyed by game type. Absent on older servers. */
     stats?: Partial<Record<GameKey, GameStats>>;
+
+    /** USER or ADMIN. Absent on older servers, which have no admins. */
+    role?: 'USER' | 'ADMIN';
 }

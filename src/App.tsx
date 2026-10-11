@@ -15,6 +15,7 @@ import AccountDeletionInfo from './components/AccountDeletionInfo';
 import ConfirmDeletion from './components/ConfirmDeletion';
 import DeletionSuccess from './components/DeletionSuccess';
 import NotFound from './components/NotFound';
+import AdminPage from './components/admin/AdminPage';
 import './index.css';
 
 /**
@@ -60,6 +61,8 @@ const App: React.FC = () => {
                             : <AuthPage />
                     }
                 />
+                {/* The server decides who gets in; the page shows its refusal. */}
+                <Route path="/admin/*" element={isAuthenticated ? <AdminPage /> : <AuthPage />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
         </div>

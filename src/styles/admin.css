@@ -1,0 +1,382 @@
+/* =====================================================================
+   Admin — the other side of the table.
+
+   The same room as the hub: the felt, the header, the games drawn as the
+   hub draws them, and the two jobs — the games, the players — each on a
+   tab of their own. A game switched off keeps its picture, gone grey under
+   a closed sign, and everything else stays as quiet as the hub around it.
+
+   Scoped under .admin (the page) and .admin-sheet (a player, in the shared
+   modal); nothing here reaches the tables. Colours, spacing, radii and
+   timings are theme.css tokens.
+   ===================================================================== */
+
+/* The two jobs, one tab each, under the title: the names set as large as
+   the games' own, the open one underlined in gold like a rail. */
+.admin-tabs {
+    display: flex;
+    gap: clamp(20px, 6vw, 36px);
+    margin-top: clamp(12px, 4vw, 28px);
+    border-bottom: 1px solid var(--line);
+}
+.admin-tab {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap);
+    padding-bottom: var(--sp-2);
+    margin-bottom: -1px;
+    border-bottom: 3px solid transparent;
+    color: var(--text-3);
+    font-family: var(--lobby-display);
+    font-size: clamp(1.7rem, 7vw, 2.2rem);
+    font-weight: 800;
+    line-height: 1;
+    text-decoration: none;
+    transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.admin-tab:hover { color: var(--text-2); }
+.admin-tab[aria-current='page'] { color: var(--text-1); border-bottom-color: var(--gold); }
+
+.admin__section {
+    margin-top: clamp(20px, 5vw, 32px);
+}
+.admin__lead {
+    max-width: 60ch;
+    margin: var(--sp-2) 0 var(--sp-5);
+    font-size: var(--fs-md);
+    line-height: var(--lh-body);
+    color: var(--text-2);
+}
+.admin__note { margin-bottom: var(--sp-4); }
+.admin__retry {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+}
+
+/* ---------------------------------------------------------------------
+   The games. One per row on a phone, the picture beside the controls;
+   three across on a wide screen, the picture on top — as on the hub.
+   --------------------------------------------------------------------- */
+
+.admin-games {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--sp-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.admin-game {
+    display: grid;
+    grid-template-columns: clamp(104px, 30vw, 140px) 1fr;
+    align-items: start;
+    gap: var(--sp-4);
+    padding: var(--sp-3);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.035);
+    transition: background-color var(--dur) var(--ease-out);
+}
+/* Out of play: the cloth around it dims a little with the picture. */
+.admin-game--off { background: rgba(0, 0, 0, 0.16); }
+
+/* The game's own picture. Switched off, the colour goes out of it and the
+   light drops, under a closed sign: the game is still recognisable, and
+   nobody could take it for open. */
+.admin-game__art {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    border-radius: 12px;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 50% 60%, #1d5333, #0c2817);
+    transition: background var(--dur-slow) var(--ease-out);
+}
+.admin-game__art > svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    transition: filter var(--dur-slow) var(--ease-out), opacity var(--dur-slow) var(--ease-out);
+}
+.admin-game--off .admin-game__art { background: radial-gradient(ellipse at 50% 60%, #1f2a23, #0b120e); }
+.admin-game--off .admin-game__art > svg { filter: grayscale(1) brightness(0.62); opacity: 0.7; }
+.admin-game__closed {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    padding: var(--sp-1) var(--sp-3);
+    border-radius: var(--r-pill);
+    background: rgba(4, 12, 7, 0.84);
+    box-shadow: inset 0 0 0 1px var(--line-strong);
+    color: var(--text-1);
+    font-family: var(--lobby-display);
+    font-size: clamp(0.95rem, 3.4vw, 1.3rem);
+    font-weight: 800;
+    white-space: nowrap;
+    transform: translate(-50%, -50%);
+}
+
+.admin-game__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-2);
+    min-width: 0;
+}
+.admin-game__name {
+    font-family: var(--lobby-display);
+    font-size: clamp(1.8rem, 7.5vw, 2.2rem);
+    font-weight: 800;
+    line-height: 1;
+    color: var(--text-1);
+}
+.admin-game__state {
+    font-size: var(--fs-sm);
+    line-height: 1.4;
+    color: var(--text-2);
+    text-wrap: balance;
+}
+.admin-game--off .admin-game__state { color: var(--text-3); }
+.admin-game__body .switch { margin-left: calc(var(--sp-1) * -1); }
+.admin-game__body .choice { margin-top: var(--sp-1); }
+
+.admin-game--ghost { pointer-events: none; }
+.admin-game__ghost-art { display: block; aspect-ratio: 4 / 3; border-radius: 12px; }
+.admin-game__ghost-line { display: block; height: 22px; width: 60%; }
+
+@media (min-width: 820px) {
+    .admin-games { grid-template-columns: repeat(3, 1fr); gap: var(--sp-5); }
+    .admin-game {
+        grid-template-columns: 1fr;
+        padding: var(--sp-4);
+    }
+    /* Two lines kept for the state, so the three switches sit in one row
+       whichever game says the most. */
+    .admin-game__state { min-height: 2.8em; }
+}
+
+/* ---------------------------------------------------------------------
+   The players
+   --------------------------------------------------------------------- */
+
+/* The search and the drop-downs. On a phone the name takes the row and the
+   three choices share the rows under it; on a wide screen they are one row,
+   the name widest. */
+.admin-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--sp-3);
+    margin-bottom: var(--sp-5);
+}
+.admin-filters__name { grid-column: 1 / -1; }
+@media (min-width: 820px) {
+    .admin-filters {
+        grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+        align-items: end;
+    }
+    .admin-filters__name { grid-column: auto; }
+}
+
+/* How many match, and the way back to everyone when a filter is on. */
+.admin-count {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--sp-3);
+    min-height: var(--tap);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--text-2);
+}
+.admin-count .btn--link { min-height: var(--tap); padding-inline: 0; }
+
+.admin-players {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--line);
+}
+.admin-players > li { border-bottom: 1px solid var(--line); }
+
+/* A player is a row of the list, the whole row the way in. */
+/* Two columns on every screen: the name on the left, what sets the player
+   apart on the right. On a narrow screen the marks stack in their column
+   rather than dropping under the name. */
+.admin-player {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--sp-3) var(--sp-4);
+    width: 100%;
+    min-height: 64px;
+    padding: var(--sp-3) var(--sp-2);
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    color: var(--text-1);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color var(--dur-fast) var(--ease-out);
+}
+.admin-player:hover { background: rgba(255, 255, 255, 0.045); }
+.admin-player:active { background: rgba(255, 255, 255, 0.07); }
+.admin-player__who {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+.admin-player__name {
+    font-family: var(--lobby-display);
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1;
+    overflow-wrap: anywhere;
+}
+.admin-player__email {
+    font-size: var(--fs-sm);
+    color: var(--text-2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.admin-player--ghost {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: var(--sp-2);
+    cursor: default;
+}
+.admin-player__ghost-name  { display: block; height: 22px; width: 38%; }
+.admin-player__ghost-email { display: block; height: 14px; width: 62%; }
+
+/* Marks: only what sets a player apart, so most rows carry none. */
+.admin-marks {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: var(--sp-2);
+}
+.admin-mark {
+    display: inline-flex;
+    align-items: center;
+    min-height: 26px;
+    padding: 0 var(--sp-3);
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    white-space: nowrap;
+}
+.admin-mark--admin       { background: var(--gold-wash);   color: var(--gold-bright); box-shadow: inset 0 0 0 1px var(--line-gold); }
+.admin-mark--beta        { background: var(--accent-wash); color: var(--accent-bright); }
+.admin-mark--unconfirmed { background: var(--danger-wash); color: var(--danger-bright); }
+
+.admin-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+    padding: var(--sp-6) 0;
+    max-width: 60ch;
+    color: var(--text-2);
+}
+
+/* The next page on its way: the one showing stays, quieter, until it lands. */
+.admin-players--loading { opacity: 0.55; transition: opacity var(--dur) var(--ease-out); }
+
+.admin-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-3);
+    margin-top: var(--sp-5);
+}
+.admin-pager__where {
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--text-2);
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+/* ---------------------------------------------------------------------
+   A player, in the shared modal — the profile's sheet and records, with
+   what only an admin sees added.
+   --------------------------------------------------------------------- */
+
+.admin-sheet__since {
+    margin: var(--sp-1) 0 0;
+    font-size: var(--fs-sm);
+    color: var(--text-3);
+}
+.admin-sheet .admin-marks { margin-top: var(--sp-3); }
+/* In a row of the list the marks keep to the right, and wrap there. */
+.admin-player .admin-marks {
+    justify-content: flex-end;
+    max-width: min(52vw, 26rem);
+}
+.admin-sheet__access {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--sp-3);
+}
+.admin-sheet__ghost { flex: 1; display: flex; flex-direction: column; gap: var(--sp-2); }
+.admin-sheet__ghost-name { height: 34px; width: 46%; }
+.admin-sheet__ghost-line { height: 14px; width: 70%; }
+
+.admin-live {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-2);
+    font-size: var(--fs-sm);
+    font-weight: 700;
+    color: var(--success);
+}
+/* The one thing on the sheet that moves: a game is going on right now. */
+.admin-live__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 0 var(--success-wash);
+    animation: admin-live 1.8s var(--ease-out) infinite;
+}
+@keyframes admin-live {
+    0%   { box-shadow: 0 0 0 0 rgba(87, 198, 125, 0.45); }
+    100% { box-shadow: 0 0 0 9px rgba(87, 198, 125, 0); }
+}
+
+.admin-recent {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.admin-recent__row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
+    gap: var(--sp-3);
+    padding: var(--sp-2) 0;
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-sm);
+}
+.admin-recent__when {
+    color: var(--text-3);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.admin-recent__with {
+    min-width: 0;
+    color: var(--text-1);
+    overflow-wrap: anywhere;
+}
+.admin-recent__result { font-weight: 700; white-space: nowrap; }
+.admin-recent__result--won  { color: var(--success); }
+.admin-recent__result--lost { color: var(--danger-bright); }

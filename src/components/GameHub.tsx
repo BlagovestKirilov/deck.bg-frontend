@@ -14,41 +14,7 @@ import Button from './ui/Button';
 import Modal from './ui/Modal';
 import Toast from './ui/Toast';
 import ProfilePage from './ProfilePage';
-import { BelotArt, SantaseArt, TablaArt } from './lobby/GameArt';
-
-interface GameCard {
-    key: GameKey;
-    title: string;
-    /** How the game is won. The title says which game it is; this says what
-     *  you are trying to do, which is the part a newcomer does not know. */
-    tagline: string;
-    Art: React.FC;
-    path: string;
-}
-
-const GAMES: GameCard[] = [
-    {
-        key: 'BELOT',
-        title: 'Белот',
-        tagline: 'Двама срещу двама, до 151',
-        Art: BelotArt,
-        path: '/play/belot',
-    },
-    {
-        key: 'SANTASE',
-        title: 'Сантасе',
-        tagline: 'Първият до 66 точки печели',
-        Art: SantaseArt,
-        path: '/play/santase',
-    },
-    {
-        key: 'TABLA',
-        title: 'Табла',
-        tagline: 'Изведи всички пулове пръв',
-        Art: TablaArt,
-        path: '/play/tabla',
-    },
-];
+import { GAMES } from './lobby/gameCatalogue';
 
 /**
  * Picks a game. Deliberately a dumb picker: each game keeps its own lobby, so
@@ -58,6 +24,9 @@ const GameHub: React.FC = () => {
     const navigate = useNavigate();
     const { user, logout } = useAuthContext();
     const [showProfile, setShowProfile] = useState(false);
+    // The way to the admin page. Only shown, never trusted: the page asks the
+    // server, which reads the role from the database.
+    const [isAdmin, setIsAdmin] = useState(false);
     const [confirmLogout, setConfirmLogout] = useState(false);
     const username = user?.username ?? '';
 
@@ -89,6 +58,7 @@ const GameHub: React.FC = () => {
             .then((profile) => {
                 if (controller.signal.aborted) return;
                 setStats(profile.stats ?? {});
+                setIsAdmin(profile.role === 'ADMIN');
 
                 // The rank each game screen will compare against when a game of
                 // its own ends. Recorded here because this profile is already in
@@ -128,6 +98,18 @@ const GameHub: React.FC = () => {
                 <nav className="hub-nav" aria-label="Профил">
                     <Brand />
                     <div className="hub-nav__actions">
+                        {isAdmin && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                icon="shield"
+                                className="btn--icon-on-phone"
+                                onClick={() => navigate('/admin')}
+                                aria-label="Админ"
+                            >
+                                Админ
+                            </Button>
+                        )}
                         {/* The same component as Изход, so the two cannot drift
                             apart: one border, one height, one hover. */}
                         <Button
