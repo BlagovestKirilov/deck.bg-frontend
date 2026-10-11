@@ -32,15 +32,16 @@ interface Row {
     scope: 'PUBLIC' | 'BETA';
     emailConfirmed: boolean;
     createdAt: string;
+    lastLoginAt: string | null;
 }
 
 const PETKO: Row = {
     username: 'petko91', email: 'petko@deck.bg', role: 'USER', scope: 'PUBLIC',
-    emailConfirmed: true, createdAt: '2026-09-01T10:00:00Z',
+    emailConfirmed: true, createdAt: '2026-09-01T10:00:00Z', lastLoginAt: '2026-10-10T19:30:00Z',
 };
 const BOSS: Row = {
     username: 'boss', email: 'boss@deck.bg', role: 'ADMIN', scope: 'BETA',
-    emailConfirmed: false, createdAt: '2026-01-05T09:00:00Z',
+    emailConfirmed: false, createdAt: '2026-01-05T09:00:00Z', lastLoginAt: null,
 };
 
 /** Two named players, and enough others to need a second page. */
@@ -54,6 +55,7 @@ const PLAYERS: Row[] = [
         scope: 'PUBLIC' as const,
         emailConfirmed: true,
         createdAt: `2026-03-${String(i + 1).padStart(2, '0')}T12:00:00Z`,
+        lastLoginAt: `2026-04-${String(i + 1).padStart(2, '0')}T12:00:00Z`,
     })),
 ];
 
@@ -93,8 +95,12 @@ function pageOf(url: URL) {
         .filter((player) => !role || player.role === role)
         .filter((player) => !scope || player.scope === scope)
         .sort((a, b) => {
-            const key = field as 'createdAt' | 'username';
-            const order = a[key].localeCompare(b[key]);
+            const key = field as 'createdAt' | 'username' | 'lastLoginAt';
+            // As the server does: an account never seen comes last either way.
+            const x = a[key];
+            const y = b[key];
+            if (x === null || y === null) return (x === null ? 1 : 0) - (y === null ? 1 : 0);
+            const order = x.localeCompare(y);
             return direction === 'desc' ? -order : order;
         });
     return {
@@ -261,11 +267,11 @@ test.describe('the admin page', () => {
         expect(lists[0].searchParams.get('size')).toBe('8');
 
         await page.getByRole('button', { name: 'Следваща' }).click();
-        await expect(page.getByText('Страница 2 от 4')).toBeVisible();
+        await expect(page.getByText('2 от 4', { exact: true })).toBeVisible();
         await expect(rows).toHaveCount(8);
         await page.getByRole('button', { name: 'Следваща' }).click();
         await page.getByRole('button', { name: 'Следваща' }).click();
-        await expect(page.getByText('Страница 4 от 4')).toBeVisible();
+        await expect(page.getByText('4 от 4', { exact: true })).toBeVisible();
         await expect(rows).toHaveCount(1);
         await expect(rows.last()).toHaveText('boss');
         await expect(page.getByRole('button', { name: 'Следваща' })).toBeDisabled();
@@ -294,6 +300,10 @@ test.describe('the admin page', () => {
         await expect(rows.first()).toHaveText('boss');
         expect(lists.at(-1)!.searchParams.get('sort')).toBe('username,asc');
 
+        await page.getByLabel('Подреди').selectOption('lastLoginAt,desc');
+        await expect(rows.first()).toHaveText('petko91');
+        expect(lists.at(-1)!.searchParams.get('sort')).toBe('lastLoginAt,desc');
+
         await page.getByLabel('Потребителско име').fill('zzz');
         await expect(page.getByText('Никой играч не отговаря на тези филтри.')).toBeVisible();
     });
@@ -310,6 +320,7 @@ test.describe('the admin page', () => {
         const sheet = page.getByRole('dialog');
         await expect(sheet.getByRole('heading', { name: 'boss' })).toBeVisible();
         await expect(sheet.getByText(/Непотвърден/)).toHaveCount(1);
+        await expect(sheet).not.toContainText('Влизал за последно');
         await expect(sheet).not.toContainText('Тест достъп');
     });
 
@@ -324,6 +335,7 @@ test.describe('the admin page', () => {
         await expect(sheet).toContainText('Играе в момента');
         await expect(sheet).toContainText('Предаде');
         await expect(sheet).toContainText('Регистриран на 01.09.2026 г.');
+        await expect(sheet).toContainText('Влизал за последно на 10.10.2026 г.');
         await expect(sheet).toContainText('a, b, c');
 
         await sheet.getByRole('button', { name: 'Тест', exact: true }).click();

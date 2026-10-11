@@ -294,11 +294,12 @@
 /* The next page on its way: the one showing stays, quieter, until it lands. */
 .admin-players--loading { opacity: 0.55; transition: opacity var(--dur) var(--ease-out); }
 
+/* Centred, the buttons either side of the numbers they move between. */
 .admin-pager {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--sp-3);
+    justify-content: center;
+    gap: var(--sp-4);
     margin-top: var(--sp-5);
 }
 .admin-pager__where {
@@ -307,6 +308,17 @@
     color: var(--text-2);
     font-variant-numeric: tabular-nums;
     text-align: center;
+    white-space: nowrap;
+}
+/* The narrowest phones: the buttons keep their arrows and their names for a
+   screen reader, and give the row back. */
+@media (max-width: 360px) {
+    .admin-pager .btn__label { display: none; }
+    .admin-pager .btn {
+        width: var(--tap);
+        min-width: var(--tap);
+        padding-inline: 0;
+    }
 }
 
 /* ---------------------------------------------------------------------

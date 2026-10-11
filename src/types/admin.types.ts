@@ -27,6 +27,11 @@ export interface AdminPlayerRow {
     emailConfirmed: boolean;
     /** ISO moment. */
     createdAt: string | null;
+    /**
+     * ISO moment of the last login or token refresh. Null for an account not
+     * seen since the server began keeping it.
+     */
+    lastLoginAt: string | null;
 }
 
 /** One page of the player list, as the server cuts it. `page` counts from 0. */
@@ -39,7 +44,12 @@ export interface AdminPlayerPage {
 }
 
 /** The orders the server sorts the list by: a field and a direction. */
-export type PlayerSort = 'createdAt,desc' | 'createdAt,asc' | 'username,asc' | 'username,desc';
+export type PlayerSort =
+    | 'createdAt,desc'
+    | 'createdAt,asc'
+    | 'lastLoginAt,desc'
+    | 'username,asc'
+    | 'username,desc';
 
 /** Which players to list. An empty part lets every player through on it. */
 export interface PlayerQuery {

@@ -25,11 +25,11 @@ function day(iso: string | null): string {
     return `${two(d.getDate())}.${two(d.getMonth() + 1)}.${d.getFullYear()} г.`;
 }
 
-/** 25.09.2026 г., 14:30 */
+/** 25.09.2026 г. 14:30 */
 function moment(iso: string | null): string {
     if (!iso) return '—';
     const d = new Date(iso);
-    return `${day(iso)}, ${two(d.getHours())}:${two(d.getMinutes())}`;
+    return `${day(iso)} ${two(d.getHours())}:${two(d.getMinutes())}`;
 }
 
 /** The question for changing a player's access, naming the player. */
@@ -124,6 +124,13 @@ const AdminPlayerSheet: React.FC<AdminPlayerSheetProps> = ({ username, onClose, 
                                 <p className="admin-sheet__since">
                                     Регистриран на {day(detail.account.createdAt)}
                                 </p>
+                                {/* Only when there is a date: an account not seen since the
+                                    server began keeping it simply has no such line. */}
+                                {detail.account.lastLoginAt && (
+                                    <p className="admin-sheet__since">
+                                        Влизал за последно на {moment(detail.account.lastLoginAt)}
+                                    </p>
+                                )}
                                 {/* The email line above already says whether it is confirmed,
                                     and the access choice below says which games they see. */}
                                 <PlayerMarks player={detail.account} email={false} access={false} />
