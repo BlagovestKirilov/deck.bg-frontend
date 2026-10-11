@@ -156,15 +156,8 @@
         left: 50%;
         margin: 0 0 0 -4px;
     }
-    /* The dealer's mark on the plate's inner corner, so it never moves the
-       plate off the edge it is pinned to. */
-    .screen.belot .belot__seat--left .belot__dealer,
-    .screen.belot .belot__seat--right .belot__dealer {
-        position: absolute;
-        top: calc(var(--sp-2) * -1);
-    }
-    .screen.belot .belot__seat--left .belot__dealer { right: calc(var(--sp-2) * -1); }
-    .screen.belot .belot__seat--right .belot__dealer { left: calc(var(--sp-2) * -1); }
+    /* The dealer's mark on the plate's inner corner. */
+    .screen.belot .belot__seat--right .belot__dealer { right: auto; left: calc(var(--sp-2) * -1); }
 
     /* The calls at the size of a desk, in the middle of the table: a call is
        a target the hand finds without looking. */
@@ -512,18 +505,24 @@
 .belot__hurry .sheet__text { margin: 0; }
 
 /* Sits by their elbow for the whole hand and is read once, so it is a
-   counter rather than a label competing with what was just announced. */
+   counter rather than a label competing with what was just announced.
+   On the plate's top corner at every seat — the inner one at the two side
+   seats — so it never widens a plate. Solid gold with a dark ring, so it
+   stands off the plate and the cloth behind it and is found at a glance. */
 .belot__dealer {
+    position: absolute;
+    top: calc(var(--sp-2) * -1);
+    right: calc(var(--sp-2) * -1);
+    z-index: 1;
     display: grid;
     place-items: center;
-    flex: none;
-    width: 20px;
-    height: 20px;
+    width: 24px;
+    height: 24px;
     border-radius: 50%;
-    background: var(--gold-wash);
-    box-shadow: inset 0 0 0 1px var(--line-gold);
-    color: var(--gold);
-    font-size: 14px;
+    background: var(--gold);
+    color: var(--bg-deep);
+    font-size: 15px;
+    box-shadow: 0 0 0 2px var(--bg-deep), 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 .belot__name {
@@ -1611,11 +1610,6 @@ button.belot__spread:focus-visible {
     }
     .belot__you { font-size: var(--fs-md); }
     .belot__turnbar { --turnbar-h: 6px; }
-    .belot__dealer {
-        width: 20px;
-        height: 20px;
-        font-size: 12px;
-    }
     .belot__points { font-size: var(--fs-2xl); }
     .belot__side { font-size: var(--fs-sm); }
 
@@ -1697,13 +1691,7 @@ button.belot__spread:focus-visible {
     .belot__seat--right .belot__plate { padding-inline: var(--sp-2); }
     .belot__seat--left .belot__name,
     .belot__seat--right .belot__name { max-width: 8ch; }
-    .belot__seat--left .belot__dealer,
-    .belot__seat--right .belot__dealer {
-        position: absolute;
-        top: calc(var(--sp-2) * -1);
-    }
-    .belot__seat--left .belot__dealer { right: calc(var(--sp-2) * -1); }
-    .belot__seat--right .belot__dealer { left: calc(var(--sp-2) * -1); }
+    .belot__seat--right .belot__dealer { right: auto; left: calc(var(--sp-2) * -1); }
 
     /* Your hand: the top of every card — the corner it is read by, and the
        suit in its middle — above the bottom of the screen, the rest below
