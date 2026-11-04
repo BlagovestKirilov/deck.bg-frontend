@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { belotService } from '../../api/belotService';
 import { BelotCard, BelotSeatName, BelotState } from '../../types/belot.types';
+import { playShuffleSound } from '../../utils/sounds';
 
 /** Where each seat is drawn, once the table is turned so you are at the bottom. */
 export type DealPlace = 'you' | 'right' | 'partner' | 'left';
@@ -152,6 +153,8 @@ export function useDealRun(
             packets,
         };
         setRun(next);
+        // A new hand is shuffled while the deck is spread to be cut.
+        if (fresh) playShuffleSound();
         if (!fresh) deal(packets);
         // Keyed on the deal and its stage: those are what a run is for.
     }, [dealNumber, status, blocked]);
