@@ -21,7 +21,7 @@ import CardCentre from './ui/CardCentre';
 import GamePrelude from './lobby/GamePrelude';
 import { SantaseArt } from './lobby/GameArt';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
-import { isSoundOn, playSound, setSoundOn } from '../utils/sounds';
+import { isSoundOn, playCardSound, playSound, setSoundOn } from '../utils/sounds';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -951,6 +951,14 @@ const SantaseGame: React.FC = () => {
             setTimeout(() => {
                 setNotifications(prev => prev.filter(n => n.id !== notificationId));
             }, 3000);
+        }
+
+        // A card put on the table, by either player: the one that was not
+        // there before. Not on the first state, which is a table being opened.
+        if (prevState) {
+            const mineNew = nextState.playedCard && nextState.playedCard.id !== prevState.playedCard?.id;
+            const theirsNew = nextState.opponentPlayedCard && nextState.opponentPlayedCard.id !== prevState.opponentPlayedCard?.id;
+            if (mineNew || theirsNew) playCardSound();
         }
 
         // Detect deck closing - isClosed changed from false to true

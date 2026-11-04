@@ -261,6 +261,12 @@
     position: relative;
     z-index: 2;
 }
+/* The sound and the way out, side by side at the bar's far end. */
+.belot__bar-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+}
 
 /* ---- the score, as the sheet it is kept on ----
    Belot is scored in two ruled columns, ours and theirs, and a player reads
