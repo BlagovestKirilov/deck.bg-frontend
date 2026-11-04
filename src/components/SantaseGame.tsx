@@ -21,7 +21,7 @@ import CardCentre from './ui/CardCentre';
 import GamePrelude from './lobby/GamePrelude';
 import { SantaseArt } from './lobby/GameArt';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
-import { isSoundOn, playCardSound, playSound, setSoundOn } from '../utils/sounds';
+import { isSoundOn, playCardSound, playShuffleSound, playSound, setSoundOn } from '../utils/sounds';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -959,6 +959,12 @@ const SantaseGame: React.FC = () => {
             const mineNew = nextState.playedCard && nextState.playedCard.id !== prevState.playedCard?.id;
             const theirsNew = nextState.opponentPlayedCard && nextState.opponentPlayedCard.id !== prevState.opponentPlayedCard?.id;
             if (mineNew || theirsNew) playCardSound();
+        }
+
+        // A new deal: the stock only ever shrinks within a deal, so more cards
+        // left than a moment ago is a fresh deck — shuffled before it is dealt.
+        if (prevState && nextState.remainingCardsCount > prevState.remainingCardsCount) {
+            playShuffleSound();
         }
 
         // Detect deck closing - isClosed changed from false to true
