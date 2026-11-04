@@ -1244,6 +1244,15 @@ code, kbd, samp { font-family: var(--font-mono); }
     backdrop-filter: blur(8px);
 }
 .round-btn--danger:hover:not(:disabled) { background: rgba(150, 32, 32, 0.85); }
+/* A setting rather than an act — the sound on or off: the glass of the HUD,
+   not a colour of its own. */
+.round-btn--quiet {
+    background: rgba(4, 12, 7, 0.55);
+    border: 1px solid var(--line-strong);
+    color: var(--text-1);
+    backdrop-filter: blur(8px);
+}
+.round-btn--quiet:hover:not(:disabled) { background: rgba(4, 12, 7, 0.75); }
 .round-btn:disabled { opacity: 0.38; }
 
 /* =====================================================================

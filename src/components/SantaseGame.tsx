@@ -21,6 +21,7 @@ import CardCentre from './ui/CardCentre';
 import GamePrelude from './lobby/GamePrelude';
 import { SantaseArt } from './lobby/GameArt';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
+import { isSoundOn, playSound, setSoundOn } from '../utils/sounds';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -311,6 +312,11 @@ const SantaseGame: React.FC = () => {
     }>(null);
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
     const [activeBonuses, setActiveBonuses] = useState<{ id: number, val: number, isOpponent: boolean }[]>([]);
+    const [soundOn, setSoundOnState] = useState(isSoundOn);
+    const toggleSound = () => {
+        setSoundOn(!soundOn);
+        setSoundOnState(!soundOn);
+    };
     const [notifications, setNotifications] = useState<{ id: number, message: string }[]>([]);
     const {isMobile, isSmallMobile} = useLayout();
     const [isConnected, setIsConnected] = useState<boolean>(false);
@@ -892,6 +898,8 @@ const SantaseGame: React.FC = () => {
         }
 
         if (newBubbles.length > 0) {
+            // Said as it is shown: "двайсет" or "четирсет", once per call.
+            newBubbles.forEach((bubble) => playSound(bubble.val === 40 ? 'forty' : 'twenty'));
             setActiveBonuses(prev => [...prev, ...newBubbles]);
             setTimeout(() => {
                 setActiveBonuses(prev => prev.filter(b => !newBubbles.find(nb => nb.id === b.id)));
@@ -951,6 +959,7 @@ const SantaseGame: React.FC = () => {
             const closedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
             const notificationId = Date.now();
             setNotifications(prev => [...prev, {id: notificationId, message: `${closedBy} затвори тестето`}]);
+            playSound('closed');
             setTimeout(() => {
                 setNotifications(prev => prev.filter(n => n.id !== notificationId));
             }, 3000);
@@ -1617,6 +1626,24 @@ const SantaseGame: React.FC = () => {
                         }}
                     >
                         <Icon name="x" size={20}/>
+                    </button>
+
+                    {/* The sound on or off, beside the way out: both are about the
+                        session rather than the hand. */}
+                    <button
+                        type="button"
+                        onClick={toggleSound}
+                        className="round-btn round-btn--quiet"
+                        aria-label={soundOn ? 'Изключи звука' : 'Включи звука'}
+                        aria-pressed={!soundOn}
+                        style={{
+                            position: 'absolute',
+                            top: 'calc(var(--sa-top) + clamp(10px, 2.5vw, 20px))',
+                            right: 'calc(var(--sa-right) + clamp(10px, 2.5vw, 20px) + var(--tap) + var(--sp-2))',
+                            zIndex: 'var(--z-hud)' as unknown as number,
+                        }}
+                    >
+                        <Icon name={soundOn ? 'volume' : 'volumeOff'} size={20}/>
                     </button>
 
 
