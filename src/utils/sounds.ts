@@ -37,6 +37,9 @@ const FILES = {
 /** A card put on the cloth — shared by both card games. Four takes, in turn. */
 const CARD_FILES = ['/sounds/cards/card-1.mp3', '/sounds/cards/card-2.mp3', '/sounds/cards/card-3.mp3', '/sounds/cards/card-4.mp3'];
 
+/** A packet slid across the table to a player: the two slide takes, in turn. */
+const DEAL_FILES = ['/sounds/cards/card-3.mp3', '/sounds/cards/card-4.mp3'];
+
 /** The deck shuffled before a hand is dealt — the riffle, about as long as belot's cut. Both card games. */
 const SHUFFLE_FILES = ['/sounds/cards/shuffle.mp3'];
 
@@ -141,6 +144,7 @@ const SAME_SOUND_GAP_MS = 60;
 let cards: (() => void) | null = null;
 let dice: (() => void) | null = null;
 let shuffle: (() => void) | null = null;
+let dealt: (() => void) | null = null;
 
 /** A card put down on the table, in santase or belot. */
 export function playCardSound(): void {
@@ -150,6 +154,14 @@ export function playCardSound(): void {
 /** The deck shuffled: as a belot hand's cut begins, and as a new santase deal is set up. */
 export function playShuffleSound(): void {
     (shuffle ??= rotation(SHUFFLE_FILES, 0.8))();
+}
+
+/**
+ * A packet dealt to a player, in belot. Softer than a card played: eight of
+ * them in a second and a half are the sound of dealing, not a burst of noise.
+ */
+export function playDealSound(): void {
+    (dealt ??= rotation(DEAL_FILES, 0.5))();
 }
 
 /** The dice thrown, in tabla — the opening roll's too. */

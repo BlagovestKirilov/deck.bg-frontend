@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { belotService } from '../../api/belotService';
 import { BelotCard, BelotSeatName, BelotState } from '../../types/belot.types';
-import { playShuffleSound } from '../../utils/sounds';
+import { playDealSound, playShuffleSound } from '../../utils/sounds';
 
 /** Where each seat is drawn, once the table is turned so you are at the bottom. */
 export type DealPlace = 'you' | 'right' | 'partner' | 'left';
@@ -16,6 +16,8 @@ const GATHER_MS = 380;
 const PACKET_MS = 170;
 /** How long a packet takes to cross the table. */
 const FLY_MS = 460;
+/** How far ahead of a packet's landing its slide is heard, so the sound ends as it lands. */
+const DEAL_SOUND_LEAD_MS = 180;
 /** Between the cards of one packet, so three read as three and not as one. */
 const CARD_MS = 30;
 
@@ -97,6 +99,7 @@ export function useDealRun(
     const deal = useCallback((packets: DealRun['packets']) => {
         clearTimers();
         packets.forEach((packet, i) => {
+            timers.current.push(window.setTimeout(playDealSound, i * PACKET_MS + FLY_MS - DEAL_SOUND_LEAD_MS));
             timers.current.push(window.setTimeout(() => setShown((counts) => counts && {
                 ...counts,
                 [packet.place]: counts[packet.place] + packet.count,
