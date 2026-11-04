@@ -37,6 +37,9 @@ const FILES = {
 /** A card put on the cloth — shared by both card games. Four takes, in turn. */
 const CARD_FILES = ['/sounds/cards/card-1.mp3', '/sounds/cards/card-2.mp3', '/sounds/cards/card-3.mp3', '/sounds/cards/card-4.mp3'];
 
+/** A trick gathered up and pushed to whoever took it. Four takes, in turn. */
+const TAKE_FILES = ['/sounds/cards/take-1.mp3', '/sounds/cards/take-2.mp3', '/sounds/cards/take-3.mp3', '/sounds/cards/take-4.mp3'];
+
 /** A packet slid across the table to a player: the two slide takes, in turn. */
 const DEAL_FILES = ['/sounds/cards/card-3.mp3', '/sounds/cards/card-4.mp3'];
 
@@ -145,6 +148,7 @@ let cards: (() => void) | null = null;
 let dice: (() => void) | null = null;
 let shuffle: (() => void) | null = null;
 let dealt: (() => void) | null = null;
+let taken: (() => void) | null = null;
 
 /** A card put down on the table, in santase or belot. */
 export function playCardSound(): void {
@@ -162,6 +166,11 @@ export function playShuffleSound(): void {
  */
 export function playDealSound(): void {
     (dealt ??= rotation(DEAL_FILES, 0.5))();
+}
+
+/** A trick taken: its cards swept to the player who won it, in santase or belot. */
+export function playTrickTakenSound(): void {
+    (taken ??= rotation(TAKE_FILES, 0.6))();
 }
 
 /** The dice thrown, in tabla — the opening roll's too. */

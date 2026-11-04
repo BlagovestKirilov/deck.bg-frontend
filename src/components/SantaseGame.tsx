@@ -21,7 +21,7 @@ import CardCentre from './ui/CardCentre';
 import GamePrelude from './lobby/GamePrelude';
 import { SantaseArt } from './lobby/GameArt';
 import { SUIT_COLOR, SUIT_ON_DARK } from '../styles/tokens';
-import { isSoundOn, playCardSound, playShuffleSound, playSound, setSoundOn } from '../utils/sounds';
+import { isSoundOn, playCardSound, playDealSound, playShuffleSound, playSound, playTrickTakenSound, setSoundOn } from '../utils/sounds';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
@@ -945,6 +945,10 @@ const SantaseGame: React.FC = () => {
             prevState.remainingCardsCount === nextState.remainingCardsCount &&
             prevState.remainingCardsCount < 12 && prevState.remainingCardsCount > 2) {
             // Card was replaced - determine who replaced it
+            // The nine slid out from under the deck and the trump slid into the hand:
+            // two slides, a beat apart (the same gap stops them being heard as one).
+            playDealSound();
+            setTimeout(playDealSound, 220);
             const replacedBy = nextState.isOnTurn ? username : (nextState.firstPlayerUsername === username ? nextState.secondPlayerUsername : nextState.firstPlayerUsername);
             const notificationId = Date.now();
             setNotifications(prev => [...prev, {id: notificationId, message: `${replacedBy} замени карта`}]);
@@ -983,6 +987,9 @@ const SantaseGame: React.FC = () => {
             setGameState(nextState);
             setIsUiLocked(true);
             await new Promise(resolve => setTimeout(resolve, 1500));
+            // The trick is taken as its two cards leave the table: heard then,
+            // for a trick both cards of which were played while this was open.
+            if (prevState && nextState.playedCard && nextState.opponentPlayedCard) playTrickTakenSound();
             setIsUiLocked(false);
             setAnnouncedSuit(null); // Fix for reset highlight
         } else {

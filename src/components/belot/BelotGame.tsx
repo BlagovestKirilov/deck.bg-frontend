@@ -26,7 +26,7 @@ import StatusScreen from '../ui/StatusScreen';
 import TurnBar from '../ui/TurnBar';
 import BelotCardFace from './BelotCardFace';
 import Announced, { announcementsBySeat, soundOfAnnouncement } from './BelotDeclarations';
-import { isSoundOn, playCardSound, playSound, setSoundOn, Sound } from '../../utils/sounds';
+import { isSoundOn, playCardSound, playSound, playTrickTakenSound, setSoundOn, Sound } from '../../utils/sounds';
 import { DealOverlay, useDealRun } from './BelotDealAnimation';
 import BelotHandResult from './BelotHandResult';
 import BelotResult from './BelotResult';
@@ -95,6 +95,14 @@ const ANNOUNCED_FOR_MS = 3500;
  * the longer hold of `.belot__trick.is-last`, its sweep, and a beat after.
  */
 const LAST_TRICK_FOR_MS = 2500;
+
+/**
+ * When a trick's sweep begins after it is complete: the animation-delay of
+ * `.belot__trick.is-collected`, and of the last trick's longer hold
+ * (`.is-collected.is-last`). The sweep is heard as it starts.
+ */
+const SWEEP_STARTS_MS = 1100;
+const LAST_SWEEP_STARTS_MS = 1800;
 
 /**
  * How long a finished trick is being taken: held, then swept to whoever took
@@ -377,8 +385,13 @@ const BelotGame: React.FC = () => {
     }, [trickKey, onTable]);
     const closingDeal = closing?.dealNumber ?? null;
     useEffect(() => {
-        if (closingDeal !== null) playCardSound();
+        if (closingDeal === null) return;
+        playCardSound();
+        // The last trick of the hand is swept too, after its longer hold.
+        const sweep = window.setTimeout(playTrickTakenSound, LAST_SWEEP_STARTS_MS);
+        return () => window.clearTimeout(sweep);
     }, [closingDeal]);
+
 
     // Every bid is said out loud as it is made, the one that closes the auction
     // too (the hold adds it). What was bid before this screen opened is taken
@@ -419,6 +432,21 @@ const BelotGame: React.FC = () => {
         return () => window.clearTimeout(settle);
     }, [takenKey]);
     const trickBeingTaken = takenKey !== null && settledKey !== takenKey;
+
+    // A trick taken: heard as its cards are swept to whoever took it. Not a
+    // trick already taken when the table opened.
+    const sweptHeard = useRef<string | null | undefined>(undefined);
+    const hasTable = !!state;
+    useEffect(() => {
+        if (!state) return;
+        const before = sweptHeard.current;
+        sweptHeard.current = takenKey;
+        if (before === undefined || !takenKey || takenKey === before) return;
+        const sweep = window.setTimeout(playTrickTakenSound, SWEEP_STARTS_MS);
+        return () => window.clearTimeout(sweep);
+        // Keyed on the trick taken — one sweep each — and on the table having
+        // come at all, so the first one is not taken for one seen on opening.
+    }, [takenKey, hasTable]);
 
     const lastCalls = useMemo(() => {
         const bySeat = new Map<BelotSeatName, BelotBidView>();
