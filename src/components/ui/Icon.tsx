@@ -16,6 +16,8 @@ export type IconName =
     | 'check'
     | 'checkCircle'
     | 'x'
+    | 'volume'
+    | 'volumeOff'
     | 'xCircle'
     | 'close'
     | 'trophy'
@@ -81,6 +83,20 @@ const PATHS: Record<IconName, React.ReactNode> = {
         </>
     ),
     x: <path d="M6.2 6.2 17.8 17.8M17.8 6.2 6.2 17.8" />,
+    // A speaker and its sound; struck through when off.
+    volume: (
+        <>
+            <path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" />
+            <path d="M15.6 9.2a4 4 0 0 1 0 5.6" />
+            <path d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8" />
+        </>
+    ),
+    volumeOff: (
+        <>
+            <path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" />
+            <path d="m16 9.5 5 5M21 9.5l-5 5" />
+        </>
+    ),
     xCircle: (
         <>
             <circle cx="12" cy="12" r="9" />
