@@ -25,7 +25,8 @@ import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import TurnBar from '../ui/TurnBar';
 import BelotCardFace from './BelotCardFace';
-import Announced, { announcementsBySeat } from './BelotDeclarations';
+import Announced, { announcementsBySeat, soundOfAnnouncement } from './BelotDeclarations';
+import { isSoundOn, playCardSound, playSound, setSoundOn, Sound } from '../../utils/sounds';
 import { DealOverlay, useDealRun } from './BelotDealAnimation';
 import BelotHandResult from './BelotHandResult';
 import BelotResult from './BelotResult';
@@ -137,6 +138,25 @@ function placeOf(seat: BelotSeatName, you: BelotSeatName | null): Place {
     return (['you', 'right', 'partner', 'left'] as Place[])[steps];
 }
 
+/** The recording of a bid, said the way the table says it. */
+const CONTRACT_SOUND: Record<BelotContract, Sound> = {
+    CLUBS: 'clubs',
+    DIAMONDS: 'diamonds',
+    HEARTS: 'hearts',
+    SPADES: 'spades',
+    NO_TRUMPS: 'noTrumps',
+    ALL_TRUMPS: 'allTrumps',
+};
+
+function soundOfBid(bid: BelotBidView): Sound | undefined {
+    switch (bid.kind) {
+        case 'PASS': return 'pass';
+        case 'CONTRA': return 'contra';
+        case 'RECONTRA': return 'recontra';
+        case 'BID': return bid.contract ? CONTRACT_SOUND[bid.contract] : undefined;
+    }
+}
+
 function callLabel(bid: BelotBidView): string {
     switch (bid.kind) {
         case 'PASS': return 'Пас';
@@ -194,6 +214,11 @@ const BelotGame: React.FC = () => {
     }, [secondsLeft, deadline]);
 
     const [sheetOpen, setSheetOpen] = useState(false);
+    const [soundOn, setSoundOnState] = useState(isSoundOn);
+    const toggleSound = () => {
+        setSoundOn(!soundOn);
+        setSoundOnState(!soundOn);
+    };
     const [confirmGiveUp, setConfirmGiveUp] = useState(false);
 
     // The count of the hand that has just ended, shown once when its line
@@ -324,12 +349,55 @@ const BelotGame: React.FC = () => {
         if (newly.length === 0) return;
 
         newly.forEach((heard) => seen.add(heard.key));
+        newly.forEach((heard) => {
+            const sound = soundOfAnnouncement(heard.word);
+            if (sound) playSound(sound);
+        });
         setFresh((shown) => [...shown, ...newly]);
         const said = new Set(newly.map((heard) => heard.key));
         fadeTimers.current.push(window.setTimeout(
             () => setFresh((shown) => shown.filter((heard) => !said.has(heard.key))),
             ANNOUNCED_FOR_MS));
     }, [announced, state]);
+    // A card put on the table: one more on it than there was, in the same
+    // trick, or the first of a new one. The card that ends a hand never
+    // reaches play — it is drawn from lastTrick as the hand closes, so that
+    // one is heard as the closing trick goes up. Not on the first state.
+    const cardsHeard = useRef<{ trick: string | null; count: number } | undefined>(undefined);
+    const onTable = state?.play?.onTable.length ?? 0;
+    const trickKey = state?.play ? `${state.dealNumber}:${state.play.trickNo}` : null;
+    useEffect(() => {
+        if (!state) return;
+        const before = cardsHeard.current;
+        cardsHeard.current = { trick: trickKey, count: onTable };
+        if (before === undefined || trickKey === null) return;
+        const more = before.trick === trickKey ? onTable > before.count : onTable > 0;
+        if (more) playCardSound();
+        // Keyed on the trick and how many are on it: those are what a card changes.
+    }, [trickKey, onTable]);
+    const closingDeal = closing?.dealNumber ?? null;
+    useEffect(() => {
+        if (closingDeal !== null) playCardSound();
+    }, [closingDeal]);
+
+    // Every bid is said out loud as it is made, the one that closes the auction
+    // too (the hold adds it). What was bid before this screen opened is taken
+    // as already heard, as the announcements are.
+    const bidsHeard = useRef<{ deal: number; count: number } | null>(null);
+    useEffect(() => {
+        if (!state) return;
+        const said = state.bidding?.said ?? [];
+        const deal = state.dealNumber ?? -1;
+        const before = bidsHeard.current;
+        bidsHeard.current = { deal, count: said.length };
+        if (before === null) return;
+        const from = before.deal === deal ? before.count : 0;
+        said.slice(from).forEach((bid) => {
+            const sound = soundOfBid(bid);
+            if (sound) playSound(sound);
+        });
+    }, [state]);
+
     const saying = useMemo(() => {
         const bySeat = new Map<BelotSeatName, string[]>();
         fresh.forEach((heard) => bySeat.set(heard.seat, [...(bySeat.get(heard.seat) ?? []), heard.word]));
@@ -482,16 +550,29 @@ const BelotGame: React.FC = () => {
                     )}
                 </button>
                 </div>
-                {state.status !== 'FINISHED' && (
+                <div className="belot__bar-actions">
+                    {/* The sound on or off, beside the way out: both are about
+                        the session rather than the hand. */}
                     <button
                         type="button"
-                        className="round-btn round-btn--danger"
-                        onClick={() => setConfirmGiveUp(true)}
-                        aria-label="Предай играта и излез"
+                        className="round-btn round-btn--quiet"
+                        onClick={toggleSound}
+                        aria-label={soundOn ? 'Изключи звука' : 'Включи звука'}
+                        aria-pressed={!soundOn}
                     >
-                        <Icon name="x" size={20} />
+                        <Icon name={soundOn ? 'volume' : 'volumeOff'} size={20} />
                     </button>
-                )}
+                    {state.status !== 'FINISHED' && (
+                        <button
+                            type="button"
+                            className="round-btn round-btn--danger"
+                            onClick={() => setConfirmGiveUp(true)}
+                            aria-label="Предай играта и излез"
+                        >
+                            <Icon name="x" size={20} />
+                        </button>
+                    )}
+                </div>
             </header>
 
             <div className="belot__table">

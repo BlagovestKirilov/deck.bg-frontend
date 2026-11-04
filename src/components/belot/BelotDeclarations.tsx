@@ -1,5 +1,6 @@
 import React from 'react';
 import { BelotDeclarationKind, BelotSeatName, BelotState } from '../../types/belot.types';
+import { Sound } from '../../utils/sounds';
 
 /**
  * What each one is called out as at a table.
@@ -15,6 +16,21 @@ const KIND_WORD: Record<BelotDeclarationKind, string> = {
     CARRE: 'Каре',
     BELOTE: 'Белот',
 };
+
+/** The recording of each, said the way the word above is. */
+const KIND_SOUND: Record<BelotDeclarationKind, Sound> = {
+    TERZ: 'terz',
+    QUARTE: 'quarte',
+    QUINTE: 'quinte',
+    CARRE: 'carre',
+    BELOTE: 'belote',
+};
+
+/** The recording for an announcement as it is shown, or none for a word that has none. */
+export function soundOfAnnouncement(word: string): Sound | undefined {
+    const kind = (Object.keys(KIND_WORD) as BelotDeclarationKind[]).find((each) => KIND_WORD[each] === word);
+    return kind && KIND_SOUND[kind];
+}
 
 /**
  * Who announced what, in the order the server listed it.

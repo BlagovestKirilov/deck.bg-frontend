@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { OpeningThrow } from '../../types/tabla.types';
 import { prefersReducedMotion, THROW_MS, useDiceRoll } from '../../hooks/useDiceRoll';
 import { Die } from './TablaBoard';
+import { playDiceSound } from '../../utils/sounds';
 
 /** How long a tie stays on the table before both players throw again. */
 const TIE_HOLD_MS = 1300;
@@ -103,6 +104,15 @@ const OpeningRoll: React.FC<{
     // throw as the game's dice, landing when its own player throws.
     const myThrow = useDiceRoll(myDie, myDie).dice[0];
     const theirThrow = useDiceRoll(theirDie, theirDie).dice[1];
+
+    // Each die heard as its player throws it — not one already down when the
+    // opening came up.
+    const heard = useRef({ mine: myDie, theirs: theirDie });
+    useEffect(() => {
+        const before = heard.current;
+        heard.current = { mine: myDie, theirs: theirDie };
+        if ((myDie != null && before.mine == null) || (theirDie != null && before.theirs == null)) playDiceSound();
+    }, [myDie, theirDie]);
 
     const tie = !!showing && showing.mine === showing.opponent;
     const decided = !!showing && settled && !tie;

@@ -18,6 +18,7 @@ import StatusScreen from './ui/StatusScreen';
 import TurnBar from './ui/TurnBar';
 import GamePrelude from './lobby/GamePrelude';
 import { TablaArt } from './lobby/GameArt';
+import { isSoundOn, playDiceSound, setSoundOn } from '../utils/sounds';
 
 /** What the badge's colour is called aloud; the badge itself is decoration. */
 const COLOR_LABEL: Record<CheckerColor, string> = { white: 'белите', black: 'черните' };
@@ -73,6 +74,11 @@ const TablaGame: React.FC = () => {
     const [showPass, setShowPass] = useState(false);
     /** Leaving forfeits the game, so it is confirmed first — as in Сантасе. */
     const [confirmLeave, setConfirmLeave] = useState(false);
+    const [soundOn, setSoundOnState] = useState(isSoundOn);
+    const toggleSound = () => {
+        setSoundOn(!soundOn);
+        setSoundOnState(!soundOn);
+    };
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState(TURN_SECONDS);
@@ -129,6 +135,18 @@ const TablaGame: React.FC = () => {
     // present a face that was not rolled. Above the early returns, like every
     // other hook.
     const diceRoll = useDiceRoll(state?.die1, state?.die2);
+
+    // The dice heard as they are thrown: a new pair where there was none, or
+    // a different pair. Not the dice already down when the table opens, and
+    // not before the table has come at all.
+    const diceKey = !state ? null : state.die1 != null && state.die2 != null ? `${state.die1}-${state.die2}` : '';
+    const diceHeard = useRef<string | null>(null);
+    useEffect(() => {
+        if (diceKey === null) return;
+        const before = diceHeard.current;
+        diceHeard.current = diceKey;
+        if (before !== null && diceKey !== '' && diceKey !== before) playDiceSound();
+    }, [diceKey]);
 
     /* ---------------- actions ---------------- */
 
@@ -524,14 +542,27 @@ const TablaGame: React.FC = () => {
                     )}
                 </span>
 
-                <button
-                    type="button"
-                    className="round-btn round-btn--danger"
-                    onClick={() => setConfirmLeave(true)}
-                    aria-label="Напусни играта"
-                >
-                    <Icon name="x" size={20} />
-                </button>
+                <div className="tabla-hud__actions">
+                    {/* The sound on or off, beside the way out: both are about
+                        the session rather than the turn. */}
+                    <button
+                        type="button"
+                        className="round-btn round-btn--quiet"
+                        onClick={toggleSound}
+                        aria-label={soundOn ? 'Изключи звука' : 'Включи звука'}
+                        aria-pressed={!soundOn}
+                    >
+                        <Icon name={soundOn ? 'volume' : 'volumeOff'} size={20} />
+                    </button>
+                    <button
+                        type="button"
+                        className="round-btn round-btn--danger"
+                        onClick={() => setConfirmLeave(true)}
+                        aria-label="Напусни играта"
+                    >
+                        <Icon name="x" size={20} />
+                    </button>
+                </div>
             </div>
 
             <div className={`tabla-fit ${showOpening ? 'tabla-fit--opening' : ''}`}>

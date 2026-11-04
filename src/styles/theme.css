@@ -1829,6 +1829,13 @@ code, kbd, samp { font-family: var(--font-mono); }
     max-width: min(100%, 46rem);
     padding: var(--sp-2) var(--sp-3);
 }
+/* The sound and the way out, side by side at the HUD's far end. */
+.tabla-hud__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-2);
+    flex: none;
+}
 .tabla-hud__name {
     display: flex;
     flex-direction: column;
