@@ -167,6 +167,7 @@ const TablaBoard: React.FC<Props> = ({ state, selected, onSelect, onMove, onComb
         moverSide,
         moverSide === mySide ? myColor : otherColor,
         moverSide === mySide ? otherColor : myColor,
+        !!state.winnerUsername,
     );
 
     const comboHops = state.comboHops ?? [];
