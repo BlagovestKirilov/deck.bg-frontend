@@ -6,8 +6,9 @@
  * the announcements as they are said — "петдесет" and "сто", not the names
  * of the sequences. Santase and belot: a card put on the table. Tabla: the
  * dice thrown, and a checker landing. The card, dice and checker sounds are
- * real recordings (Kenney's Casino Audio, CC0), taken in turn so no two in a
- * row sound the same.
+ * real recordings (Kenney's Casino Audio, CC0). Most are several takes, taken
+ * in turn so no two in a row sound the same; a plain checker move is one take,
+ * so a move and its Върни are heard as the same checker.
  *
  * Off is remembered per browser and shared by every game, because a player
  * who turns the sound off at work does not want it back on the next table.
@@ -50,8 +51,11 @@ const SHUFFLE_FILES = ['/sounds/cards/shuffle.mp3'];
 /** Two dice thrown onto the board. Three takes, in turn. */
 const DICE_FILES = ['/sounds/tabla/dice-1.mp3', '/sounds/tabla/dice-2.mp3', '/sounds/tabla/dice-3.mp3'];
 
-/** A checker set down on a point. Three takes, in turn. */
-const CHECKER_FILES = ['/sounds/tabla/checker-1.mp3', '/sounds/tabla/checker-2.mp3', '/sounds/tabla/checker-3.mp3'];
+/**
+ * A checker set down on a point. One take on purpose: the pack's three differ
+ * enough in pitch that moving a checker up and back sounded like different things.
+ */
+const CHECKER_FILES = ['/sounds/tabla/checker.mp3'];
 
 /** A checker knocked off its point. Four takes, in turn. */
 const HIT_FILES = ['/sounds/tabla/hit-1.mp3', '/sounds/tabla/hit-2.mp3', '/sounds/tabla/hit-3.mp3', '/sounds/tabla/hit-4.mp3'];
