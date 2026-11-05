@@ -1,8 +1,15 @@
 import { useLayoutEffect, useRef } from 'react';
 import { BAR, CheckerColor, Hop, OFF, Side } from '../types/tabla.types';
+import { playCheckerBackSound, playCheckerHitSound, playCheckerOffSound, playCheckerSound } from '../utils/sounds';
 
 /** How long a checker takes to travel. The same for every hop, always. */
 export const HOP_MS = 340;
+/**
+ * When a sliding checker is heard landing. Earlier than the slide's end: the
+ * curve eases out, so at this point the checker is all but there, and a sound
+ * at the very end would come after the eye has already seen it arrive.
+ */
+const HEARD_LANDING_MS = HOP_MS * 0.7;
 /** Consecutive checkers in a stack overlap by 18%, so this is one stack step. */
 const STACK_STEP = 0.82;
 
@@ -182,6 +189,18 @@ function slide(board: HTMLElement, hop: Hop, moverSide: Side,
     release();
 }
 
+/**
+ * The sound of hops that have just been played. Two in one update are one
+ * slide on the board, so they are one sound too; a hit among them is the one
+ * worth hearing.
+ */
+function hearLanding(added: Hop[], delay: number): void {
+    const play = added.some((hop) => hop.isHit) ? playCheckerHitSound
+        : added[added.length - 1].to === OFF ? playCheckerOffSound
+            : playCheckerSound;
+    window.setTimeout(play, delay);
+}
+
 function prefersReducedMotion(): boolean {
     try {
         return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -198,7 +217,9 @@ function prefersReducedMotion(): boolean {
  * the position rearranged when the turn ends.
  *
  * Only what changed since the last render is drawn: hops added are played
- * forwards, hops taken back are played in reverse.
+ * forwards, hops taken back are played in reverse. Each is heard as well, unless
+ * it was already on the board when the board opened. Sound is not motion, so it
+ * stays when the player has asked for reduced motion.
  *
  * The mover is remembered with them. Committing a turn empties the pending
  * list at the same moment as the turn changes hands, and an emptied list on its
@@ -214,28 +235,44 @@ export function useHopAnimation(
     moverSide: Side,
     moverColor: CheckerColor,
     victimColor: CheckerColor,
+    gameOver: boolean,
 ): void {
     const seen = useRef<{ hops: Hop[]; mover: Side }>({ hops: [], mover: moverSide });
+    const opening = useRef(true);
 
     useLayoutEffect(() => {
         const previous = seen.current.hops;
         const sameTurn = seen.current.mover === moverSide;
         seen.current = { hops: pendingHops, mover: moverSide };
+        const isOpening = opening.current;
+        opening.current = false;
 
         // The turn changed hands. Whatever the pending list did, it was not a
         // move within a turn, and its hops no longer mean what they say.
         if (!sameTurn) return;
 
-        if (prefersReducedMotion()) return;
-
-        const board = boardRef.current;
-        if (!board) return;
+        // The end of the game empties the list too, and on the loser's screen
+        // the mover has not changed: read alone, that is the opponent taking
+        // their whole turn back.
+        if (gameOver) return;
 
         const shorter = Math.min(previous.length, pendingHops.length);
         const sharedPrefix = previous.slice(0, shorter)
             .every((h, i) => hopKey(h) === hopKey(pendingHops[i]));
         // A list that changed its prefix is a different turn, not a move.
         if (!sharedPrefix) return;
+
+        const still = prefersReducedMotion();
+        const heardAfter = still ? 0 : HEARD_LANDING_MS;
+        if (!isOpening) {
+            if (pendingHops.length > previous.length) hearLanding(pendingHops.slice(previous.length), heardAfter);
+            if (pendingHops.length < previous.length) window.setTimeout(playCheckerBackSound, heardAfter);
+        }
+
+        if (still) return;
+
+        const board = boardRef.current;
+        if (!board) return;
 
         if (pendingHops.length > previous.length) {
             // Normally one hop arrives at a time. If two land in the same
@@ -269,5 +306,5 @@ export function useHopAnimation(
                     moverSide, victimColor, moverColor);
             }
         }
-    }, [pendingHops, moverSide, moverColor, victimColor, boardRef]);
+    }, [pendingHops, moverSide, moverColor, victimColor, gameOver, boardRef]);
 }

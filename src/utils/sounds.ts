@@ -5,8 +5,9 @@
  * Santase: twenty, forty, and the close of the deck. Belot: every bid, and
  * the announcements as they are said — "петдесет" and "сто", not the names
  * of the sequences. Santase and belot: a card put on the table. Tabla: the
- * dice thrown. The card and dice sounds are real recordings (Kenney's Casino
- * Audio, CC0), taken in turn so no two in a row sound the same.
+ * dice thrown, and a checker landing. The card, dice and checker sounds are
+ * real recordings (Kenney's Casino Audio, CC0), taken in turn so no two in a
+ * row sound the same.
  *
  * Off is remembered per browser and shared by every game, because a player
  * who turns the sound off at work does not want it back on the next table.
@@ -48,6 +49,15 @@ const SHUFFLE_FILES = ['/sounds/cards/shuffle.mp3'];
 
 /** Two dice thrown onto the board. Three takes, in turn. */
 const DICE_FILES = ['/sounds/tabla/dice-1.mp3', '/sounds/tabla/dice-2.mp3', '/sounds/tabla/dice-3.mp3'];
+
+/** A checker set down on a point. Three takes, in turn. */
+const CHECKER_FILES = ['/sounds/tabla/checker-1.mp3', '/sounds/tabla/checker-2.mp3', '/sounds/tabla/checker-3.mp3'];
+
+/** A checker knocked off its point. Four takes, in turn. */
+const HIT_FILES = ['/sounds/tabla/hit-1.mp3', '/sounds/tabla/hit-2.mp3', '/sounds/tabla/hit-3.mp3', '/sounds/tabla/hit-4.mp3'];
+
+/** A checker borne off into the tray. Three takes, in turn. */
+const OFF_FILES = ['/sounds/tabla/off-1.mp3', '/sounds/tabla/off-2.mp3', '/sounds/tabla/off-3.mp3'];
 
 export type Sound = keyof typeof FILES;
 
@@ -149,6 +159,10 @@ let dice: (() => void) | null = null;
 let shuffle: (() => void) | null = null;
 let dealt: (() => void) | null = null;
 let taken: (() => void) | null = null;
+let checker: (() => void) | null = null;
+let checkerBack: (() => void) | null = null;
+let checkerHit: (() => void) | null = null;
+let checkerOff: (() => void) | null = null;
 
 /** A card put down on the table, in santase or belot. */
 export function playCardSound(): void {
@@ -161,8 +175,9 @@ export function playShuffleSound(): void {
 }
 
 /**
- * A packet dealt to a player, in belot. Softer than a card played: eight of
- * them in a second and a half are the sound of dealing, not a burst of noise.
+ * A packet dealt to a player, in belot, and the two slides of santase's trump
+ * swap. Softer than a card played: eight of them in a second and a half are
+ * the sound of dealing, not a burst of noise.
  */
 export function playDealSound(): void {
     (dealt ??= rotation(DEAL_FILES, 0.5))();
@@ -176,6 +191,26 @@ export function playTrickTakenSound(): void {
 /** The dice thrown, in tabla — the opening roll's too. */
 export function playDiceSound(): void {
     (dice ??= rotation(DICE_FILES, 0.9))();
+}
+
+/** A checker landing on a point, in tabla: either player's. */
+export function playCheckerSound(): void {
+    (checker ??= rotation(CHECKER_FILES, 0.7))();
+}
+
+/** A hop taken back with Върни: the same checker, put back more quietly. */
+export function playCheckerBackSound(): void {
+    (checkerBack ??= rotation(CHECKER_FILES, 0.4))();
+}
+
+/** A checker landing on one it sends to the bar. The loudest of the three: it changes the game. */
+export function playCheckerHitSound(): void {
+    (checkerHit ??= rotation(HIT_FILES, 0.95))();
+}
+
+/** A checker borne off. */
+export function playCheckerOffSound(): void {
+    (checkerOff ??= rotation(OFF_FILES, 0.7))();
 }
 
 /**
