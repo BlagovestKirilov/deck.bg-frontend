@@ -1678,7 +1678,10 @@ button.belot__spread:focus-visible {
         transform-origin: 50% -130%;
         transform: rotate(calc(var(--fan-step, 0) * -7deg));
     }
-    .belot__seat--partner > .belot__said { top: calc(50% + var(--tap) / 2 + var(--sp-1)); }
+    /* Below the clock that hangs under the plate (4px down, 6px tall —
+       .belot__turnbar), not on it: at the plate's edge, a "Каро" covered the
+       time the partner had left. */
+    .belot__seat--partner > .belot__said { top: calc(50% + var(--tap) / 2 + 4px + 6px + var(--sp-1)); }
 
     /* The two either side: most of the fan off the glass, the inner part of
        it under their plate. Mirrors of each other. */
