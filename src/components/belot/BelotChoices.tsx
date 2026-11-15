@@ -1,8 +1,6 @@
 import React from 'react';
-import { BelotAnnouncement, BelotCard, BelotDeclarationView, BelotRank, BelotSuit } from '../../types/belot.types';
-import Button from '../ui/Button';
+import { BelotAnnouncement, BelotDeclarationView, BelotRank } from '../../types/belot.types';
 import Choice from '../ui/Choice';
-import Modal from '../ui/Modal';
 
 /** A carré by what it is four of, the way it is said at the table. */
 const CARRE_OF: Partial<Record<BelotRank, string>> = {
@@ -33,54 +31,42 @@ function label(option: BelotAnnouncement): string {
 }
 
 /**
- * What to announce with the first card: the ways the hand can be read, the
- * richest first and chosen already, and "Нищо" for keeping it to yourself.
- * Shown on the felt above your name only while that first card is to be
- * played; the choice goes with the card.
+ * What is said with the card about to be played, on the felt above your
+ * name, in one panel and one style: with the first card, which way to
+ * announce the hand (the richest chosen already); and, once a card that
+ * would say a belote has been tapped, whether to say it — both rows at once
+ * when that card is the first. Picking a белот answer plays the card.
  */
-export const AnnounceChoice: React.FC<{
-    options: BelotAnnouncement[];
-    value: string;
-    onChange: (key: string) => void;
-}> = ({ options, value, onChange }) => (
+export const SayPanel: React.FC<{
+    announcements: BelotAnnouncement[];
+    announce: string | null;
+    onAnnounce: (key: string) => void;
+    /** Set while a belote card is waiting to be played. */
+    onBelote?: (sayIt: boolean) => void;
+}> = ({ announcements, announce, onAnnounce, onBelote }) => (
     <div className="belot__announce">
-        <Choice
-            legend="Обявяваш с първата карта"
-            options={options.map((option) => ({ value: option.key, label: label(option) }))}
-            value={value}
-            onChange={onChange}
-        />
+        {announcements.length > 0 && announce && (
+            <Choice
+                legend="Обявяваш"
+                options={announcements.map((option) => ({ value: option.key, label: label(option) }))}
+                value={announce}
+                onChange={onAnnounce}
+            />
+        )}
+        {onBelote && (
+            // Answers rather than a setting: either one plays the card, so
+            // neither is shown as already chosen.
+            <fieldset className="choice">
+                <legend className="choice__legend">Белот</legend>
+                <div className="choice__options">
+                    <button type="button" className="choice__option" onClick={() => onBelote(true)}>
+                        Белот (20)
+                    </button>
+                    <button type="button" className="choice__option" onClick={() => onBelote(false)}>
+                        Без белот
+                    </button>
+                </div>
+            </fieldset>
+        )}
     </div>
-);
-
-const QUEEN_OR_KING: Partial<Record<BelotRank, string>> = { KING: 'попа', QUEEN: 'дамата' };
-const SUIT_OF: Record<BelotSuit, string> = { SPADES: 'пика', HEARTS: 'купа', DIAMONDS: 'каро', CLUBS: 'спатия' };
-
-/**
- * Asked when the card about to be played would say a belote: say it, or play
- * the card quietly so the table does not learn the other one is in your hand.
- * Closing it plays nothing.
- */
-export const BeloteQuestion: React.FC<{
-    card: BelotCard;
-    onAnswer: (sayIt: boolean) => void;
-    onCancel: () => void;
-}> = ({ card, onAnswer, onCancel }) => (
-    <Modal
-        title="Белот?"
-        width="narrow"
-        className="belot sheet"
-        onClose={onCancel}
-        actions={
-            <>
-                <Button variant="ghost" onClick={() => onAnswer(false)}>Играй без белот</Button>
-                <Button variant="gold" onClick={() => onAnswer(true)}>Играй с белот</Button>
-            </>
-        }
-    >
-        <p className="belot__belote-ask">
-            Играеш {QUEEN_OR_KING[card.rank] ?? 'картата'} {SUIT_OF[card.suit]}. С белот печелиш 20 точки, но
-            всички разбират, че другата карта е у теб. Без белот не можеш да го кажеш по-късно.
-        </p>
-    </Modal>
 );

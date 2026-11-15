@@ -25,7 +25,7 @@ import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import TurnBar from '../ui/TurnBar';
 import BelotCardFace from './BelotCardFace';
-import { AnnounceChoice, BeloteQuestion } from './BelotChoices';
+import { SayPanel } from './BelotChoices';
 import Announced, { announcementsBySeat, soundOfAnnouncement } from './BelotDeclarations';
 import { isSoundOn, playCardSound, playSound, playTrickTakenSound, setSoundOn, Sound } from '../../utils/sounds';
 import { DealOverlay, useDealRun } from './BelotDealAnimation';
@@ -249,9 +249,18 @@ const BelotGame: React.FC = () => {
     const playCard = (card: BelotCard) => {
         const saysBelote = (state?.play?.beloteCards ?? [])
             .some((each) => each.suit === card.suit && each.rank === card.rank);
-        if (saysBelote) setAskingBelote(card);
-        else send(card);
+        // Tapping the waiting belote card again puts it back; any other card
+        // is simply played.
+        const same = askingBelote && askingBelote.suit === card.suit && askingBelote.rank === card.rank;
+        if (saysBelote) setAskingBelote(same ? null : card);
+        else {
+            setAskingBelote(null);
+            send(card);
+        }
     };
+    // A belote card waits only while it is still this player's turn.
+    const myTurnKey = state?.play ? `${state.dealNumber}:${state.play.trickNo}:${state.play.toAct}` : null;
+    useEffect(() => setAskingBelote(null), [myTurnKey]);
 
     // The count of the hand that has just ended, shown once when its line
     // lands on the sheet. The sheet a reload brings back is history, not
@@ -666,8 +675,16 @@ const BelotGame: React.FC = () => {
                     ) : dealt.run ? null : <Bidding state={state} />}
                 </div>
                 {dealt.run && <DealOverlay key={dealt.run.id} run={dealt.run} onCutDone={dealt.cutDone} serverCutAt={state.cutAt} />}
-                {announcements.length > 0 && announce && !dealt.run && (
-                    <AnnounceChoice options={announcements} value={announce} onChange={setAnnounce} />
+                {(announcements.length > 0 || askingBelote) && !dealt.run && (
+                    <SayPanel
+                        announcements={announcements}
+                        announce={announce}
+                        onAnnounce={setAnnounce}
+                        onBelote={askingBelote ? (sayIt) => {
+                            send(askingBelote, sayIt ? undefined : false);
+                            setAskingBelote(null);
+                        } : undefined}
+                    />
                 )}
             </div>
 
@@ -712,16 +729,6 @@ const BelotGame: React.FC = () => {
                 />
             </section>
 
-            {askingBelote && (
-                <BeloteQuestion
-                    card={askingBelote}
-                    onCancel={() => setAskingBelote(null)}
-                    onAnswer={(sayIt) => {
-                        send(askingBelote, sayIt ? undefined : false);
-                        setAskingBelote(null);
-                    }}
-                />
-            )}
 
             {sheetOpen && <BelotScoreSheet state={scored} onClose={() => setSheetOpen(false)} />}
 
