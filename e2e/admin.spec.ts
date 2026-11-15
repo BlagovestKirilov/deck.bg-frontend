@@ -168,7 +168,7 @@ test.describe('the admin page', () => {
         await expect(page.getByRole('link', { name: 'Игри', exact: true })).toHaveAttribute('aria-current', 'page');
         await expect(page.locator('.admin-player')).toHaveCount(0);
 
-        await page.getByRole('link', { name: 'Играчи' }).click();
+        await page.getByRole('link', { name: 'Потребители' }).click();
         await expect(page).toHaveURL(/\/admin\/players$/);
         await expect(page.getByRole('button', { name: /petko91/ })).toBeVisible();
         await expect(page.getByRole('heading', { name: 'Сантасе' })).toHaveCount(0);
@@ -259,7 +259,7 @@ test.describe('the admin page', () => {
         const { lists } = await signedIn(page, 'ADMIN');
         await page.goto('/admin/players');
 
-        await expect(page.getByText('25 играчи')).toBeVisible();
+        await expect(page.getByText('25 потребители')).toBeVisible();
         const rows = page.locator('.admin-player__name');
         await expect(rows.first()).toHaveText('petko91');
         await expect(rows).toHaveCount(8);
@@ -284,7 +284,7 @@ test.describe('the admin page', () => {
 
         await page.getByLabel('Потребителско име').fill('KO9');
         await expect(rows).toHaveText(['petko91']);
-        await expect(page.getByText('1 играч', { exact: true })).toBeVisible();
+        await expect(page.getByText('1 потребител', { exact: true })).toBeVisible();
 
         await page.getByRole('button', { name: 'Изчисти филтрите' }).click();
         await page.getByLabel('Роля').selectOption('ADMIN');
@@ -305,7 +305,7 @@ test.describe('the admin page', () => {
         expect(lists.at(-1)!.searchParams.get('sort')).toBe('lastLoginAt,desc');
 
         await page.getByLabel('Потребителско име').fill('zzz');
-        await expect(page.getByText('Никой играч не отговаря на тези филтри.')).toBeVisible();
+        await expect(page.getByText('Никой потребител не отговаря на тези филтри.')).toBeVisible();
     });
 
     test('an unconfirmed email is said once in the sheet, and marked in the list', async ({ page }) => {
@@ -333,6 +333,12 @@ test.describe('the admin page', () => {
         await expect(sheet.getByRole('heading', { name: 'petko91' })).toBeVisible();
         await expect(sheet).toContainText('1611');
         await expect(sheet).toContainText('Играе в момента');
+        // The last games are folded until asked for, so the sheet opens on
+        // the record and the access setting rather than a wall of rows.
+        await expect(sheet).not.toContainText('Предаде');
+        // Opened one at a time: each button is renamed once its list is open.
+        const folded = sheet.getByRole('button', { name: /Последни игри/ });
+        while (await folded.count() > 0) await folded.first().click();
         await expect(sheet).toContainText('Предаде');
         await expect(sheet).toContainText('Регистриран на 01.09.2026 г.');
         await expect(sheet).toContainText('Влизал за последно на 10.10.2026 г.');

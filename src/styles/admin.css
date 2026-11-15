@@ -369,6 +369,10 @@
     100% { box-shadow: 0 0 0 9px rgba(87, 198, 125, 0); }
 }
 
+/* The last games are behind this, folded until asked for. */
+.admin-recent__toggle { align-self: flex-start; margin-top: var(--sp-2); }
+.admin-recent__toggle svg { transition: transform var(--dur) var(--ease-out); }
+.admin-recent__toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
 .admin-recent {
     margin: 0;
     padding: 0;

@@ -70,6 +70,8 @@ const Line: React.FC<{ row: BelotDealRow; ours: BelotTeam }> = ({ row, ours }) =
     const written = (mine: boolean) => (mine ? row.callerScore : row.opponentScore) ?? 0;
     const raw = (mine: boolean) => (mine ? row.callerPoints : row.opponentPoints) ?? 0;
     const announced = (mine: boolean) => mine ? row.callerDeclarations : row.opponentDeclarations;
+    // Points hanging from earlier hands, paid out to whoever won this one.
+    const carried = (mine: boolean) => (mine === (row.result === 'MADE') ? row.carriedIn ?? 0 : 0);
 
     const cell = (mine: boolean, theirs: boolean) => (
         <span className={`sheet__cell ${theirs ? 'sheet__cell--theirs' : ''}`}>
@@ -86,6 +88,8 @@ const Line: React.FC<{ row: BelotDealRow; ours: BelotTeam }> = ({ row, ours }) =
                     <span className="sheet__announced"> от тях {announced(mine)} обявени</span>
                 )}
             </span>
+            {/* Why this score is bigger than its hand: what had been hanging. */}
+            {carried(mine) > 0 && <span className="sheet__carried">{carried(mine)} висящи</span>}
             {((calledByUs && !theirs) || (!calledByUs && theirs)) && (
                 <span className="sheet__called">
                     <ContractMark contract={row.contract} />
@@ -93,6 +97,7 @@ const Line: React.FC<{ row: BelotDealRow; ours: BelotTeam }> = ({ row, ours }) =
                         <span>{row.doubling === 'CONTRA' ? 'контра' : 'реконтра'}</span>
                     )}
                     {row.result === 'INSIDE' && <span className="sheet__inside">вътре</span>}
+                    {row.result === 'HANGING' && <span className="sheet__hung">виси</span>}
                 </span>
             )}
         </span>

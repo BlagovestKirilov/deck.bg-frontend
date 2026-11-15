@@ -25,6 +25,7 @@ import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import TurnBar from '../ui/TurnBar';
 import BelotCardFace from './BelotCardFace';
+import { SayPanel } from './BelotChoices';
 import Announced, { announcementsBySeat, soundOfAnnouncement } from './BelotDeclarations';
 import { isSoundOn, playCardSound, playSound, playTrickTakenSound, setSoundOn, Sound } from '../../utils/sounds';
 import { DealOverlay, useDealRun } from './BelotDealAnimation';
@@ -228,6 +229,38 @@ const BelotGame: React.FC = () => {
         setSoundOnState(!soundOn);
     };
     const [confirmGiveUp, setConfirmGiveUp] = useState(false);
+
+    // What is said with a card. With the first card, which way to announce
+    // the hand — the richest, unless changed; with a card that would say a
+    // belote, whether to say it, asked as it is played.
+    const announcements = useMemo(() => state?.play?.announcements ?? [], [state?.play?.announcements]);
+    const offered = announcements.map((option) => option.key).join('|');
+    const [announce, setAnnounce] = useState<string | null>(null);
+    useEffect(() => {
+        setAnnounce(announcements[0]?.key ?? null);
+    }, [offered]); // eslint-disable-line react-hooks/exhaustive-deps
+    const [askingBelote, setAskingBelote] = useState<BelotCard | null>(null);
+    const send = (card: BelotCard, belote?: boolean) => {
+        void belotService.play(card, {
+            announce: announcements.length > 0 ? announce ?? undefined : undefined,
+            belote,
+        });
+    };
+    const playCard = (card: BelotCard) => {
+        const saysBelote = (state?.play?.beloteCards ?? [])
+            .some((each) => each.suit === card.suit && each.rank === card.rank);
+        // Tapping the waiting belote card again puts it back; any other card
+        // is simply played.
+        const same = askingBelote && askingBelote.suit === card.suit && askingBelote.rank === card.rank;
+        if (saysBelote) setAskingBelote(same ? null : card);
+        else {
+            setAskingBelote(null);
+            send(card);
+        }
+    };
+    // A belote card waits only while it is still this player's turn.
+    const myTurnKey = state?.play ? `${state.dealNumber}:${state.play.trickNo}:${state.play.toAct}` : null;
+    useEffect(() => setAskingBelote(null), [myTurnKey]);
 
     // The count of the hand that has just ended, shown once when its line
     // lands on the sheet. The sheet a reload brings back is history, not
@@ -642,6 +675,17 @@ const BelotGame: React.FC = () => {
                     ) : dealt.run ? null : <Bidding state={state} />}
                 </div>
                 {dealt.run && <DealOverlay key={dealt.run.id} run={dealt.run} onCutDone={dealt.cutDone} serverCutAt={state.cutAt} />}
+                {(announcements.length > 0 || askingBelote) && !dealt.run && (
+                    <SayPanel
+                        announcements={announcements}
+                        announce={announce}
+                        onAnnounce={setAnnounce}
+                        onBelote={askingBelote ? (sayIt) => {
+                            send(askingBelote, sayIt ? undefined : false);
+                            setAskingBelote(null);
+                        } : undefined}
+                    />
+                )}
             </div>
 
             <section className="belot__hand" aria-label="Вашите карти">
@@ -681,8 +725,10 @@ const BelotGame: React.FC = () => {
                     cards={dealing ? [] : handOnTable}
                     state={state}
                     locked={trickBeingTaken}
+                    onPlay={playCard}
                 />
             </section>
+
 
             {sheetOpen && <BelotScoreSheet state={scored} onClose={() => setSheetOpen(false)} />}
 
@@ -901,7 +947,8 @@ const Held: React.FC<{
     state: BelotState;
     /** The last trick is still being taken: nothing can be played yet. */
     locked: boolean;
-}> = ({ cards, state, locked }) => {
+    onPlay: (card: BelotCard) => void;
+}> = ({ cards, state, locked, onPlay }) => {
     const middle = (cards.length - 1) / 2;
 
     // When each card arrived, so only a card that has just been dealt rises
@@ -940,7 +987,7 @@ const Held: React.FC<{
                             <BelotCardFace
                                 card={card}
                                 muted={!!state.play && !playable}
-                                onPlay={playable && !locked ? () => { void belotService.play(card); } : undefined}
+                                onPlay={playable && !locked ? () => onPlay(card) : undefined}
                             />
                             {dealt && <span className="card-back belot__flip-back" aria-hidden="true" />}
                         </span>

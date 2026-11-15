@@ -13,7 +13,7 @@ const SEARCH_DELAY_MS = 280;
 
 const ROLES: { value: AccountRole | ''; label: string }[] = [
     { value: '', label: 'Всички роли' },
-    { value: 'USER', label: 'Играч' },
+    { value: 'USER', label: 'Потребител' },
     { value: 'ADMIN', label: 'Админ' },
 ];
 
@@ -34,7 +34,7 @@ const ORDERS: { value: PlayerSort; label: string }[] = [
 const FIRST: PlayerQuery = { username: '', role: '', scope: '', sort: 'createdAt,desc', page: 0 };
 
 function players(count: number): string {
-    return count === 1 ? '1 играч' : `${count} играчи`;
+    return count === 1 ? '1 потребител' : `${count} потребители`;
 }
 
 /**
@@ -127,11 +127,11 @@ const AdminPlayers: React.FC = () => {
                 <div className="admin-empty">
                     {filtered ? (
                         <>
-                            <p>Никой играч не отговаря на тези филтри.</p>
+                            <p>Никой потребител не отговаря на тези филтри.</p>
                             <Button variant="secondary" size="sm" onClick={clear}>Изчисти филтрите</Button>
                         </>
                     ) : (
-                        <p>Още няма регистрирани играчи.</p>
+                        <p>Още няма регистрирани потребители.</p>
                     )}
                 </div>
             ) : found && (

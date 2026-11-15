@@ -78,6 +78,20 @@ export interface BelotPlayView {
     wonBy: BelotSeatName | null;
     /** What this player may play now. Empty when it is not their turn. */
     yours: BelotCard[];
+    /**
+     * With this player's first card: the ways they may announce their hand,
+     * the richest first, nothing last. Empty otherwise. Absent from an older
+     * server.
+     */
+    announcements?: BelotAnnouncement[];
+    /** Of `yours`, the cards that would say a belote: the player is asked first. */
+    beloteCards?: BelotCard[];
+}
+
+/** One way to announce the hand, sent back by its key with the first card. */
+export interface BelotAnnouncement {
+    key: string;
+    declarations: BelotDeclarationView[];
 }
 
 /** A finished trick, and who took it. */
@@ -113,6 +127,14 @@ export interface BelotDealRow {
     result: BelotDealResult;
     /** The side that took every trick (капо), or null. Its 90 is inside its points. */
     capotBy: BelotTeam | null;
+    /**
+     * Points left hanging by earlier hands that this hand paid out, to the
+     * side that won it (the callers if made, the others if вътре). Already
+     * inside that side's score. Absent from a server older than this field.
+     */
+    carriedIn?: number;
+    /** On a hand that hung: everything now waiting for the next hand. */
+    leftHanging?: number;
 }
 
 /**

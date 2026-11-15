@@ -52,6 +52,10 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
     }, [left, onClose]);
 
     const calledByUs = row.callerTeam === ourTeam;
+    // What was hanging from earlier hands went to whoever won this one: the
+    // callers if they made it, the others if it went вътре.
+    const carriedIn = row.carriedIn ?? 0;
+    const carriedToCaller = row.result === 'MADE';
     const side = (ours: boolean) => {
         const caller = ours === calledByUs;
         const team = caller ? row.callerTeam : (row.callerTeam === 'NORTH_SOUTH' ? 'EAST_WEST' : 'NORTH_SOUTH');
@@ -65,6 +69,7 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
             tricks: points - announced - capot,
             capot,
             total: points,
+            carried: caller === carriedToCaller ? carriedIn : 0,
             written: (caller ? row.callerScore : row.opponentScore) ?? 0,
         };
     };
@@ -76,11 +81,14 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
     // Said only when the contract was not made, and in the same word to both
     // pairs: the numbers above already say who it went to.
     const inside = row.result === 'INSIDE';
+    // A hand that hung says so; how much is waiting is under the score.
+    const hanging = row.result === 'HANGING';
 
     return (
         <Modal
             label="Резултат от ръката"
             closeButton={false}
+            initialFocus="dialog"
             width="narrow"
             className="hand-result"
             onClose={onClose}
@@ -127,6 +135,19 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
                     <span className="hand-result__cell">{ours.total}</span>
                     <span className="hand-result__cell hand-result__cell--theirs">{theirs.total}</span>
 
+                    {/* Points that hung in an earlier hand, taken by whoever won
+                        this one: shown on their own line, or the written score
+                        would be larger than the count above it with no reason. */}
+                    {carriedIn > 0 && (
+                        <>
+                            <span className="hand-result__label">Висящи</span>
+                            <span className="hand-result__cell">{ours.carried}</span>
+                            <span className="hand-result__cell hand-result__cell--theirs">
+                                {theirs.carried}
+                            </span>
+                        </>
+                    )}
+
                     {/* What goes on the sheet: the line the count is for, so it is
                         the one set large and ruled off from the working above —
                         one rule across the whole width, not one per column. */}
@@ -139,6 +160,7 @@ const BelotHandResult: React.FC<Props> = ({ row, state, ourTeam, onClose }) => {
                 </div>
 
                 {inside && <p className="hand-result__outcome">ВЪТРЕ</p>}
+                {hanging && <p className="hand-result__outcome hand-result__outcome--hanging">ВИСИ</p>}
                 {/* The time left as a fuse rather than a number: it is read at
                     a glance, and a ticking figure pulled the eye off the count. */}
                 <span

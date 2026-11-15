@@ -19,6 +19,13 @@ interface ModalProps {
     width?: 'narrow' | 'default' | 'wide';
     /** Close when the scrim behind the dialog is clicked. Default true. */
     dismissOnScrim?: boolean;
+    /**
+     * Where focus goes on open. 'first' (default) puts it on the first
+     * control. 'dialog' puts it on the dialog itself — for a result that is
+     * read first, where a ring on one of its buttons reads as that button
+     * being chosen already. Tab still reaches every button from there.
+     */
+    initialFocus?: 'first' | 'dialog';
     className?: string;
 }
 
@@ -43,6 +50,7 @@ const Modal: React.FC<ModalProps> = ({
     tone = 'default',
     width = 'default',
     dismissOnScrim = true,
+    initialFocus = 'first',
     className = '',
 }) => {
     const uid = useId();
@@ -55,7 +63,7 @@ const Modal: React.FC<ModalProps> = ({
         restoreTo.current = document.activeElement as HTMLElement | null;
 
         const node = dialogRef.current;
-        const first = node?.querySelector<HTMLElement>(FOCUSABLE);
+        const first = initialFocus === 'first' ? node?.querySelector<HTMLElement>(FOCUSABLE) : null;
         (first ?? node)?.focus();
 
         const { overflow } = document.body.style;
