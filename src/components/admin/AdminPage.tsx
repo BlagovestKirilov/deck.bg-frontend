@@ -81,7 +81,7 @@ const AdminPage: React.FC = () => {
                     back button and a refresh land where the admin was. */}
                 <nav className="admin-tabs" aria-label="Раздели">
                     <NavLink to="/admin/games" className="admin-tab">Игри</NavLink>
-                    <NavLink to="/admin/players" className="admin-tab">Играчи</NavLink>
+                    <NavLink to="/admin/players" className="admin-tab">Потребители</NavLink>
                 </nav>
 
                 {status === 'failed' && (
@@ -122,7 +122,7 @@ const AdminPage: React.FC = () => {
                             path="players"
                             element={
                                 <section className="admin__section" aria-labelledby="admin-players">
-                                    <h2 id="admin-players" className="sr-only">Играчи</h2>
+                                    <h2 id="admin-players" className="sr-only">Потребители</h2>
                                     <p className="admin__lead">
                                         Търси по част от потребителското име и стесни списъка по роля и достъп.
                                         Отвори играч, за да видиш резултатите му и да му дадеш тест достъп.

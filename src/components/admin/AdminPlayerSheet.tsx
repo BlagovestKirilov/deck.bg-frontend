@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { adminService } from '../../api/adminService';
 import { isSessionExpired } from '../../api/apiClient';
 import { AdminGameDetail, AdminPlayerDetail, AdminPlayerRow, Scope } from '../../types/admin.types';
 import { GAMES } from '../lobby/gameCatalogue';
 import { RankMedal, rankName } from '../RankBadge';
+import Button from '../ui/Button';
 import Choice from '../ui/Choice';
 import Icon from '../ui/Icon';
 import Modal from '../ui/Modal';
@@ -93,7 +94,7 @@ const AdminPlayerSheet: React.FC<AdminPlayerSheetProps> = ({ username, onClose, 
     };
 
     return (
-        <Modal title="Играч" width="wide" onClose={onClose}>
+        <Modal title="Потребител" width="wide" onClose={onClose}>
             <div className="lobby profile admin-sheet">
                 {failed ? (
                     <Note tone="error">Данните за {username} не се заредиха. Затвори и опитай пак.</Note>
@@ -166,10 +167,19 @@ const AdminPlayerSheet: React.FC<AdminPlayerSheetProps> = ({ username, onClose, 
     );
 };
 
-/** One game's record, then the game they are in, then their last games. */
+/**
+ * One game's record, then the game they are in, then their last games.
+ *
+ * The last games are folded away until asked for: with three games each
+ * listing who was played and how it went, the sheet was a wall of rows before
+ * the access setting at the top had been read. The record stays open — it is
+ * what the sheet is opened for.
+ */
 const GameDetail: React.FC<{ game: AdminGameDetail }> = ({ game }) => {
     const title = GAMES.find((card) => card.key === game.code)?.title ?? game.code;
     const { record } = game;
+    const [open, setOpen] = useState(false);
+    const listId = useId();
 
     return (
         <section className="record" aria-label={title}>
@@ -196,7 +206,20 @@ const GameDetail: React.FC<{ game: AdminGameDetail }> = ({ game }) => {
             {game.recent.length === 0 ? (
                 <p className="record__note">Още няма завършени игри.</p>
             ) : (
-                <ol className="admin-recent" aria-label={`Последни игри на ${title}`}>
+                <>
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    iconAfter="chevronDown"
+                    className="admin-recent__toggle"
+                    aria-expanded={open}
+                    aria-controls={listId}
+                    onClick={() => setOpen((shown) => !shown)}
+                >
+                    {open ? 'Скрий последните игри' : `Последни игри (${game.recent.length})`}
+                </Button>
+                {open && (
+                <ol id={listId} className="admin-recent" aria-label={`Последни игри на ${title}`}>
                     {game.recent.map((row) => (
                         <li key={row.gameId} className="admin-recent__row">
                             <span className="admin-recent__when">{moment(row.finishedAt)}</span>
@@ -207,6 +230,8 @@ const GameDetail: React.FC<{ game: AdminGameDetail }> = ({ game }) => {
                         </li>
                     ))}
                 </ol>
+                )}
+                </>
             )}
         </section>
     );
