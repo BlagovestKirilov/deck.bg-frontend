@@ -580,6 +580,10 @@ code, kbd, samp { font-family: var(--font-mono); }
     animation: fade-in var(--dur) var(--ease-out);
 }
 
+/* The dialog takes focus only so Tab starts inside it (initialFocus
+   'dialog'); it is not a control, and a ring round the whole card read as
+   something to press. Its buttons keep their own rings. */
+.modal:focus { outline: none; }
 .modal {
     width: 100%;
     max-width: 460px;

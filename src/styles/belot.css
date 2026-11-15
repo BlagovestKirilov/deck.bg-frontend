@@ -1434,7 +1434,32 @@
 }
 .game-result__side--ours .game-result__points { color: var(--text-1); }
 .game-result--won .game-result__side--ours .game-result__points { color: var(--gold-bright); }
-.game-result__who { font-size: var(--fs-xs); font-weight: 700; color: var(--text-3); }
+.game-result__who {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* A username is at most 20 characters. On a phone two of those side
+       by side do not fit, so a long one is cut with an ellipsis here — it is
+       written out in full in the line above the score. */
+    max-width: min(17ch, 32vw);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--text-3);
+}
+.game-result__who > span { max-width: 100%; }
+/* Against whom: under the verdict, before any reason the game ended early. */
+.game-result__versus {
+    max-width: 32ch;
+    margin: calc(var(--sp-2) * -1) auto var(--sp-4);
+    color: var(--text-1);
+    font-size: var(--fs-md);
+    font-weight: 600;
+    line-height: 1.4;
+    text-align: center;
+    text-wrap: balance;
+    overflow-wrap: break-word;
+}
+.game-result__versus + .game-result__reason { margin-top: 0; }
 .game-result__rule {
     width: 1px;
     background: var(--line-strong);
