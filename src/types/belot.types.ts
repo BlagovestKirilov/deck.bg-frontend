@@ -113,6 +113,14 @@ export interface BelotDealRow {
     result: BelotDealResult;
     /** The side that took every trick (капо), or null. Its 90 is inside its points. */
     capotBy: BelotTeam | null;
+    /**
+     * Points left hanging by earlier hands that this hand paid out, to the
+     * side that won it (the callers if made, the others if вътре). Already
+     * inside that side's score. Absent from a server older than this field.
+     */
+    carriedIn?: number;
+    /** On a hand that hung: everything now waiting for the next hand. */
+    leftHanging?: number;
 }
 
 /**

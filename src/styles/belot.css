@@ -1228,6 +1228,15 @@
 /* Red is kept for the one word that means the contract failed. A contra is
    loud but it is not a failure, so it stays in the ordinary ink. */
 .sheet__inside { color: var(--suit-red); }
+/* A hand that hung is not lost, only waiting: ordinary ink, said in words. */
+.sheet__hung { color: var(--ink-2); font-style: italic; }
+/* Hanging points paid out by this hand, under the cards it was worth. */
+.sheet__carried {
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    color: var(--felt-ink);
+    font-variant-numeric: tabular-nums;
+}
 
 .sheet__totals {
     margin-top: var(--sp-3);
@@ -1335,6 +1344,12 @@
 .hand-result__cell--written:not(.hand-result__cell--theirs) { color: var(--gold-bright); }
 
 /* Said once, in the one colour on this plate that means it went wrong. */
+/* Hanging is a draw, not a failure: the pill in gold, not the red of вътре. */
+.hand-result__outcome.hand-result__outcome--hanging {
+    background: var(--gold-wash);
+    box-shadow: inset 0 0 0 1px var(--gold);
+    color: var(--gold-bright);
+}
 .hand-result__outcome {
     width: fit-content;
     margin: var(--sp-4) auto 0;
