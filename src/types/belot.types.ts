@@ -78,6 +78,20 @@ export interface BelotPlayView {
     wonBy: BelotSeatName | null;
     /** What this player may play now. Empty when it is not their turn. */
     yours: BelotCard[];
+    /**
+     * With this player's first card: the ways they may announce their hand,
+     * the richest first, nothing last. Empty otherwise. Absent from an older
+     * server.
+     */
+    announcements?: BelotAnnouncement[];
+    /** Of `yours`, the cards that would say a belote: the player is asked first. */
+    beloteCards?: BelotCard[];
+}
+
+/** One way to announce the hand, sent back by its key with the first card. */
+export interface BelotAnnouncement {
+    key: string;
+    declarations: BelotDeclarationView[];
 }
 
 /** A finished trick, and who took it. */

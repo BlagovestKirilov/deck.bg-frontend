@@ -23,7 +23,14 @@ export const belotService = {
     bid: (kind: BelotBidKind, contract?: BelotContract) =>
         apiClient.post('/belot/bid', { kind, contract: contract ?? null }),
 
-    play: (card: BelotCard) => apiClient.post('/belot/play', { card }),
+    /**
+     * A card, with what is said as it is played: `announce`, the key of the
+     * announcement chosen with the first card; `belote: false` to play a
+     * belote card without saying it. Left out, the server announces the
+     * richest and says every belote.
+     */
+    play: (card: BelotCard, said?: { announce?: string; belote?: boolean }) =>
+        apiClient.post('/belot/play', { card, ...said }),
 
     /**
      * The clock on screen has reached nought. The server acts for whoever ran

@@ -387,6 +387,27 @@
    left felt at the edges and players crowding the middle; at a table the
    middle is for the cards and the players are round the outside of it. */
 
+/* What to announce with the first card: on the felt just above your name,
+   only while that card is to be played. */
+.belot__announce {
+    position: absolute;
+    left: 50%;
+    bottom: var(--sp-3);
+    z-index: 3;
+    width: max-content;
+    max-width: calc(100% - 2 * var(--sp-4));
+    transform: translateX(-50%);
+    padding: var(--sp-2) var(--sp-3) var(--sp-3);
+    border-radius: var(--r-lg);
+    background: var(--scrim);
+    box-shadow: inset 0 0 0 1px var(--line-gold-soft), var(--sh-2);
+    text-align: center;
+}
+.belot__announce .choice__legend { width: 100%; text-align: center; color: var(--text-2); }
+.belot__announce .choice__options { flex-wrap: wrap; justify-content: center; border-radius: var(--r-lg); }
+/* On the paper of a .sheet dialog, so in ink rather than the felt's pale text. */
+.belot__belote-ask { margin: 0; color: var(--ink-2); line-height: 1.5; }
+
 .belot__table {
     position: relative;
     flex: 1 1 auto;
