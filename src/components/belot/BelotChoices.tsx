@@ -1,6 +1,6 @@
 import React from 'react';
-import { BelotAnnouncement, BelotDeclarationView, BelotRank } from '../../types/belot.types';
-import Choice from '../ui/Choice';
+import { BelotAnnouncement, BelotDeclarationView, BelotRank, BelotSuit } from '../../types/belot.types';
+import Button from '../ui/Button';
 
 /** A carré by what it is four of, the way it is said at the table. */
 const CARRE_OF: Partial<Record<BelotRank, string>> = {
@@ -12,61 +12,120 @@ const CARRE_OF: Partial<Record<BelotRank, string>> = {
     QUEEN: 'Каре от дами',
 };
 
-function declarationWord(declaration: BelotDeclarationView): string {
-    switch (declaration.kind) {
-        case 'TERZ': return 'терца';
-        case 'QUARTE': return 'кварта';
-        case 'QUINTE': return 'квинта';
-        case 'CARRE': return CARRE_OF[declaration.topRank] ?? 'Каре';
-        case 'BELOTE': return 'белот';
-    }
-}
+const NAME: Record<string, string> = { TERZ: 'Терца', QUARTE: 'Кварта', QUINTE: 'Квинта' };
 
-/** "Каре от десетки + терца (120)", or "Нищо" for announcing nothing. */
-function label(option: BelotAnnouncement): string {
-    if (option.declarations.length === 0) return 'Нищо';
-    const words = option.declarations.map(declarationWord).join(' + ');
-    const points = option.declarations.reduce((sum, declaration) => sum + declaration.points, 0);
-    return `${words.charAt(0).toUpperCase()}${words.slice(1)} (${points})`;
-}
+/** 7 8 9 10 J Q K A: the order runs are read in. */
+const NATURAL: BelotRank[] = ['SEVEN', 'EIGHT', 'NINE', 'TEN', 'JACK', 'QUEEN', 'KING', 'ACE'];
+const GLYPH: Record<BelotRank, string> = {
+    SEVEN: '7', EIGHT: '8', NINE: '9', TEN: '10', JACK: 'J', QUEEN: 'Q', KING: 'K', ACE: 'A',
+};
+const SUIT_SIGN: Record<BelotSuit, string> = { SPADES: '♠', HEARTS: '♥', DIAMONDS: '♦', CLUBS: '♣' };
+const RUN_LENGTH: Record<string, number> = { TERZ: 3, QUARTE: 4, QUINTE: 5 };
+
+/** One declaration's own key, as the server spells it: kind/suit/top card. */
+export const keyOf = (declaration: BelotDeclarationView): string =>
+    `${declaration.kind}/${declaration.suit ?? '-'}/${declaration.topRank}`;
+
+/** The cards it is, the way they lie in the hand: "♥ 10 9 8", or "10 ♠♥♦♣" for a carré. */
+const Cards: React.FC<{ declaration: BelotDeclarationView }> = ({ declaration }) => {
+    if (declaration.kind === 'CARRE') {
+        return (
+            <span className="belot-declare__cards">
+                {GLYPH[declaration.topRank]}{' '}
+                <span className="belot-declare__suit belot-declare__suit--black">♠</span>
+                <span className="belot-declare__suit belot-declare__suit--red">♥♦</span>
+                <span className="belot-declare__suit belot-declare__suit--black">♣</span>
+            </span>
+        );
+    }
+    const top = NATURAL.indexOf(declaration.topRank);
+    const length = RUN_LENGTH[declaration.kind] ?? 3;
+    const ranks = NATURAL.slice(Math.max(0, top - length + 1), top + 1).reverse().map((rank) => GLYPH[rank]);
+    const red = declaration.suit === 'HEARTS' || declaration.suit === 'DIAMONDS';
+    return (
+        <span className="belot-declare__cards">
+            <span className={`belot-declare__suit belot-declare__suit--${red ? 'red' : 'black'}`}>
+                {SUIT_SIGN[declaration.suit]}
+            </span>{' '}
+            {ranks.join(' ')}
+        </span>
+    );
+};
+
+/** One tickable line: the box, what it is called, and the cards it is. */
+const Row: React.FC<{
+    checked: boolean;
+    onToggle: () => void;
+    name: string;
+    children?: React.ReactNode;
+}> = ({ checked, onToggle, name, children }) => (
+    <button type="button" role="checkbox" aria-checked={checked} className="belot-declare__row" onClick={onToggle}>
+        <span className="belot-declare__box" aria-hidden="true">
+            {checked && (
+                <svg viewBox="0 0 24 24" width="18" height="18">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" strokeWidth="3"
+                          strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            )}
+        </span>
+        <span className="belot-declare__name">{name}</span>
+        {children}
+    </button>
+);
 
 /**
- * What is said with the card about to be played, on the felt above your
- * name, in one panel and one style: with the first card, which way to
- * announce the hand (the richest chosen already); and, once a card that
- * would say a belote has been tapped, whether to say it — both rows at once
- * when that card is the first. Picking a белот answer plays the card.
+ * What to say with the card about to be played, ticked off a list and
+ * confirmed with "Продължи" — the announcements a hand may make with its
+ * first card, and a belote with its own card, in one panel.
+ *
+ * Two announcements that would need the same card cannot both be ticked:
+ * ticking one clears the other. Nothing ticked announces nothing. The turn's
+ * clock keeps running the whole time: a player who never presses
+ * "Продължи" is played for when it runs out, as anyone who lets it run out
+ * is, so nobody can hold the table here.
  */
-export const SayPanel: React.FC<{
+export const DeclarePanel: React.FC<{
     announcements: BelotAnnouncement[];
-    announce: string | null;
-    onAnnounce: (key: string) => void;
-    /** Set while a belote card is waiting to be played. */
-    onBelote?: (sayIt: boolean) => void;
-}> = ({ announcements, announce, onAnnounce, onBelote }) => (
-    <div className="belot__announce">
-        {announcements.length > 0 && announce && (
-            <Choice
-                legend="Обявяваш"
-                options={announcements.map((option) => ({ value: option.key, label: label(option) }))}
-                value={announce}
-                onChange={onAnnounce}
-            />
-        )}
-        {onBelote && (
-            // Answers rather than a setting: either one plays the card, so
-            // neither is shown as already chosen.
-            <fieldset className="choice">
-                <legend className="choice__legend">Белот</legend>
-                <div className="choice__options">
-                    <button type="button" className="choice__option" onClick={() => onBelote(true)}>
-                        Белот (20)
-                    </button>
-                    <button type="button" className="choice__option" onClick={() => onBelote(false)}>
-                        Без белот
-                    </button>
-                </div>
-            </fieldset>
-        )}
-    </div>
-);
+    ticked: Set<string>;
+    onTick: (key: string) => void;
+    /** Set while a card that would say a belote waits to be played. */
+    belote?: { suit: BelotSuit; say: boolean; onToggle: () => void };
+    onContinue: () => void;
+}> = ({ announcements, ticked, onTick, belote, onContinue }) => {
+    // Every declaration any way of reading the hand offers, once each,
+    // the richest first.
+    const seen = new Map<string, BelotDeclarationView>();
+    announcements.forEach((option) => option.declarations.forEach((declaration) => {
+        if (!seen.has(keyOf(declaration))) seen.set(keyOf(declaration), declaration);
+    }));
+    const items = [...seen.values()].sort((one, other) => other.points - one.points);
+
+    return (
+        <div className="belot-declare" role="group" aria-label="Избери обявяване">
+            <p className="belot-declare__title">Избери обявяване</p>
+            {items.map((declaration) => (
+                <Row
+                    key={keyOf(declaration)}
+                    checked={ticked.has(keyOf(declaration))}
+                    onToggle={() => onTick(keyOf(declaration))}
+                    name={declaration.kind === 'CARRE'
+                        ? CARRE_OF[declaration.topRank] ?? 'Каре'
+                        : NAME[declaration.kind] ?? declaration.kind}
+                >
+                    <Cards declaration={declaration} />
+                </Row>
+            ))}
+            {belote && (
+                <Row checked={belote.say} onToggle={belote.onToggle} name="Белот">
+                    <span className="belot-declare__cards">
+                        <span className={`belot-declare__suit belot-declare__suit--${
+                            belote.suit === 'HEARTS' || belote.suit === 'DIAMONDS' ? 'red' : 'black'}`}>
+                            {SUIT_SIGN[belote.suit]}
+                        </span>{' '}K Q
+                    </span>
+                </Row>
+            )}
+            <Button variant="gold" block onClick={onContinue}>Продължи</Button>
+        </div>
+    );
+};
