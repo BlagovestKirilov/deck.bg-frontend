@@ -3,6 +3,7 @@ import {useNavigate} from 'react-router-dom';
 import SockJS from 'sockjs-client';
 import {Stomp} from '@stomp/stompjs';
 import {useAuthContext} from '../context/AuthContext';
+import {subscribeReactions} from '../utils/reactions';
 import {gameService} from '../api/gameService';
 import {socketToken} from '../api/apiClient';
 import {noteUnavailable} from '../api/unavailable';
@@ -14,6 +15,8 @@ import ProfilePage from './ProfilePage';
 import RankIcon, { getRankLabel } from './RankIcon';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
+import { ReactionButton, ReactionLayer } from './ui/Reactions';
+import { useReactionFeed } from '../hooks/useReactionFeed';
 import Modal from './ui/Modal';
 import TurnBar from './ui/TurnBar';
 import StatusScreen from './ui/StatusScreen';
@@ -64,6 +67,35 @@ const rankGlyph = (rank: string) => rank === 'NINE' ? '9' : rank === 'TEN' ? '10
 /** The opponent's bar turns red once they are being asked whether they are still
  *  there: the server's deadline is that question's ten seconds plus three of slack. */
 const OPPONENT_URGENT_SECONDS = 13;
+
+/** Your own move's time as this screen counts it down: a full bar is this many seconds. */
+const OWN_TURN_SECONDS = 20;
+
+/** The "still there?" card's own count, after your time has run out. */
+const WARNING_SECONDS = 10;
+
+/**
+ * The server's slack past the card's count (its 33s turn is 20 + 10 + 3): its
+ * deadline always falls after the card's, so the client reaches nought first.
+ */
+const SERVER_SLACK_SECONDS = 3;
+
+/**
+ * Where a turn stands from the seconds the server says are left on it — on a
+ * new turn, and after a reload, when this screen's own count is gone. The
+ * server's clock is the one that ends the game, so the screen counts to it:
+ * above the card and slack it is your own time, capped at the full turn;
+ * otherwise the card is up with what is left of it, never less than a second
+ * so it is seen before the server ends it.
+ */
+function phaseOfServerTime(serverSeconds: number): { warning: boolean; seconds: number } {
+    const own = serverSeconds - WARNING_SECONDS - SERVER_SLACK_SECONDS;
+    if (own > 0) return { warning: false, seconds: Math.min(OWN_TURN_SECONDS, own) };
+    return {
+        warning: true,
+        seconds: Math.max(1, Math.min(WARNING_SECONDS, serverSeconds - SERVER_SLACK_SECONDS)),
+    };
+}
 
 /** The deck's column in the middle row — and the empty one balancing it on the right. */
 const DECK_SIDE_WIDTH = 'clamp(80px, 22vw, 120px)';
@@ -222,31 +254,47 @@ const AppModal: React.FC<{
 
 /** End-of-deal scoreboard. Dismisses itself after 2s — no button to hunt for. */
 const TrickResultPopup: React.FC<{
-    trickResult: { winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number };
+    trickResult: {
+        winner: string; p1Name: string; p1Score: number; p2Name: string; p2Score: number;
+        /** The game points the hand gave its winner: 1, 2 or 3. */
+        gained: number;
+    };
+    /** Who is looking: the hand reads as won or lost from their side. */
+    me: string;
     onDismiss: () => void;
-}> = ({trickResult, onDismiss}) => {
+}> = ({trickResult, me, onDismiss}) => {
     useEffect(() => {
         const timer = setTimeout(onDismiss, 2000);
         return () => clearTimeout(timer);
     }, [onDismiss]);
+    const mine = trickResult.winner === me;
 
     return (
         <Modal title="Край на раздаването" width="narrow" className="lobby sheet" dismissOnScrim={false}>
             <div style={{display: 'flex', flexDirection: 'column', gap: 'var(--sp-4)'}}>
-                <div className="sheet__taker">
-                    <Icon name="trophy" size={18}/>
-                    <span>{trickResult.winner}</span>
+                {/* Whose hand it was, from your side of the table: your own on
+                    the table's green with a gold trophy, theirs in red with a
+                    flag — told by the words and the mark as well as the colour. */}
+                <div className={`sheet__taker ${mine ? 'sheet__taker--won' : 'sheet__taker--lost'}`}>
+                    <Icon name={mine ? 'trophy' : 'flag'} size={18}/>
+                    <span className="truncate">
+                        {mine ? 'Взехте раздаването' : `${trickResult.winner} взе раздаването`}
+                    </span>
+                    {trickResult.gained > 0 && (
+                        <span className="sheet__gain tabular">+{trickResult.gained} в играта</span>
+                    )}
                 </div>
 
                 <div>
-                    <div className="sheet__row">
-                        <span className="truncate">{trickResult.p1Name}</span>
-                        <span className="tabular sheet__row-points">{trickResult.p1Score} т.</span>
-                    </div>
-                    <div className="sheet__row">
-                        <span className="truncate">{trickResult.p2Name}</span>
-                        <span className="tabular sheet__row-points">{trickResult.p2Score} т.</span>
-                    </div>
+                    {[
+                        { name: trickResult.p1Name, points: trickResult.p1Score },
+                        { name: trickResult.p2Name, points: trickResult.p2Score },
+                    ].map((row) => (
+                        <div key={row.name} className={`sheet__row ${row.name === me ? 'sheet__row--me' : ''}`}>
+                            <span className="truncate">{row.name}</span>
+                            <span className="tabular sheet__row-points">{row.points} т.</span>
+                        </div>
+                    ))}
                 </div>
             </div>
         </Modal>
@@ -308,11 +356,21 @@ const SantaseGame: React.FC = () => {
         p1Name: string;
         p1Score: number;
         p2Name: string;
-        p2Score: number
+        p2Score: number;
+        gained: number;
     }>(null);
     const [finalWinner, setFinalWinner] = useState<string | null>(null);
+    // The game score as it stood before a hand ended, kept on the scoreboard
+    // until that hand's result has been seen: the server sends the new score
+    // with the last trick, and it showed through the pause on that trick
+    // before the result that explains it.
+    const [heldScore, setHeldScore] = useState<null | { first: number; second: number }>(null);
+    // "Предавам се" on the time-up card, asked twice: the clock runs on
+    // meanwhile, and running out still ends it as it always did.
+    const [confirmTimeUpSurrender, setConfirmTimeUpSurrender] = useState(false);
     const [activeBonuses, setActiveBonuses] = useState<{ id: number, val: number, isOpponent: boolean }[]>([]);
     const [soundOn, setSoundOnState] = useState(isSoundOn);
+    const reactions = useReactionFeed();
     const toggleSound = () => {
         setSoundOn(!soundOn);
         setSoundOnState(!soundOn);
@@ -327,6 +385,10 @@ const SantaseGame: React.FC = () => {
     const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(20);
     const [isInWarningPhase, setIsInWarningPhase] = useState<boolean>(false);
     const [showInactivityPopup, setShowInactivityPopup] = useState<boolean>(false);
+    // Each time-up card starts at its first question.
+    useEffect(() => {
+        if (!showInactivityPopup) setConfirmTimeUpSurrender(false);
+    }, [showInactivityPopup]);
     const turnTimerRef = useRef<NodeJS.Timeout | null>(null);
     // The countdown as the interval reads it. The interval decides what
     // happens at nought from this, not from inside a state update: React may
@@ -636,19 +698,10 @@ const SantaseGame: React.FC = () => {
             // Use server's nextMoveTimeInSeconds if available, otherwise default to 20
             const serverTime = gameState.nextMoveTimeInSeconds;
             if (serverTime !== undefined && serverTime > 0) {
-                // Server time includes up to 32 seconds (20 + 10 + 2 buffer)
-                // If > 10, we're in main phase; otherwise we're in warning phase
-                if (serverTime > 10) {
-                    // Main phase - show time above 10 as the "countdown to warning"
-                    setTurnTimeRemaining(serverTime - 10);
-                    setIsInWarningPhase(false);
-                    setShowInactivityPopup(false);
-                } else {
-                    // Already in warning phase
-                    setTurnTimeRemaining(serverTime);
-                    setIsInWarningPhase(true);
-                    setShowInactivityPopup(true);
-                }
+                const phase = phaseOfServerTime(serverTime);
+                setTurnTimeRemaining(phase.seconds);
+                setIsInWarningPhase(phase.warning);
+                setShowInactivityPopup(phase.warning);
             } else {
                 setTurnTimeRemaining(20);
                 setIsInWarningPhase(false);
@@ -662,19 +715,10 @@ const SantaseGame: React.FC = () => {
             // First load (page refresh or initial load) - use server's nextMoveTimeInSeconds
             const serverTime = gameState.nextMoveTimeInSeconds;
             if (serverTime !== undefined && serverTime > 0) {
-                // Server time includes up to 32 seconds (20 + 10 + 2 buffer)
-                // If > 10, we're in main phase; otherwise we're in warning phase
-                if (serverTime > 10) {
-                    // Main phase - show time above 10 as the "countdown to warning"
-                    setTurnTimeRemaining(serverTime - 10);
-                    setIsInWarningPhase(false);
-                    setShowInactivityPopup(false);
-                } else {
-                    // Already in warning phase
-                    setTurnTimeRemaining(serverTime);
-                    setIsInWarningPhase(true);
-                    setShowInactivityPopup(true);
-                }
+                const phase = phaseOfServerTime(serverTime);
+                setTurnTimeRemaining(phase.seconds);
+                setIsInWarningPhase(phase.warning);
+                setShowInactivityPopup(phase.warning);
                 saveTurnStartTime(Date.now());
             } else {
                 // Fallback to persisted time
@@ -925,7 +969,10 @@ const SantaseGame: React.FC = () => {
         setAnnouncedSuit(null);
         setTrickResult(null);
         setIsUiLocked(false);
-        setShowInactivityPopup(false);
+        // Not the time-up card: the turn timer, which runs before this, puts
+        // it up on a reload in the last seconds of a turn, and clearing it
+        // here hid it while its count ran on to a surrender. Every way a game
+        // ends takes the card down already.
     }, [gameState?.gameId]);
 
     const messageQueue = useRef<GameState[]>([]);
@@ -983,6 +1030,12 @@ const SantaseGame: React.FC = () => {
             }, 3000);
         }
 
+        if (prevState && nextState.trickWinnerUsername
+            && (nextState.firstPlayerResult !== prevState.firstPlayerResult
+                || nextState.secondPlayerResult !== prevState.secondPlayerResult)) {
+            setHeldScore({ first: prevState.firstPlayerResult, second: prevState.secondPlayerResult });
+        }
+
         if (isTrickFinished) {
             setGameState(nextState);
             setIsUiLocked(true);
@@ -998,13 +1051,23 @@ const SantaseGame: React.FC = () => {
 
         prevGameStateRef.current = nextState;
 
-        if (nextState.trickWinnerUsername) setTrickResult({
-            winner: nextState.trickWinnerUsername,
-            p1Name: nextState.firstPlayerUsername,
-            p1Score: nextState.trickFirstPlayerScore || 0,
-            p2Name: nextState.secondPlayerUsername,
-            p2Score: nextState.trickSecondPlayerScore || 0
-        });
+        if (nextState.trickWinnerUsername) {
+            // What the hand added to the game: the winner's result now, less
+            // what it was before the hand ended.
+            const winnerIsFirst = nextState.trickWinnerUsername === nextState.firstPlayerUsername;
+            const before = prevState
+                ? (winnerIsFirst ? prevState.firstPlayerResult : prevState.secondPlayerResult)
+                : undefined;
+            const after = winnerIsFirst ? nextState.firstPlayerResult : nextState.secondPlayerResult;
+            setTrickResult({
+                winner: nextState.trickWinnerUsername,
+                p1Name: nextState.firstPlayerUsername,
+                p1Score: nextState.trickFirstPlayerScore || 0,
+                p2Name: nextState.secondPlayerUsername,
+                p2Score: nextState.trickSecondPlayerScore || 0,
+                gained: before === undefined ? 0 : Math.max(0, after - before),
+            });
+        }
         if (nextState.winnerUsername) setFinalWinner(nextState.winnerUsername);
 
         isProcessingQueue.current = false;
@@ -1246,6 +1309,7 @@ const SantaseGame: React.FC = () => {
 
         const onConnect = () => {
             setIsConnected(true);
+            subscribeReactions(client, username);
             connectionLockRef.current = false;
             isReconnectingRef.current = false;
             reconnectStartTimeRef.current = null;
@@ -1623,13 +1687,17 @@ const SantaseGame: React.FC = () => {
                                 {isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
                             </span>
                             <span className="tabular" style={scoreValueStyle('opponent')}>
-                                {isFirstPlayerMe ? gameState.secondPlayerResult : gameState.firstPlayerResult}
+                                {isFirstPlayerMe
+                                    ? (heldScore?.second ?? gameState.secondPlayerResult)
+                                    : (heldScore?.first ?? gameState.firstPlayerResult)}
                             </span>
                         </div>
                         <div style={styles.scoreRow}>
                             <span className="truncate" style={{color: 'var(--text-1)', fontWeight: 700}}>{username}</span>
                             <span className="tabular" style={scoreValueStyle('me')}>
-                                {isFirstPlayerMe ? gameState.firstPlayerResult : gameState.secondPlayerResult}
+                                {isFirstPlayerMe
+                                    ? (heldScore?.first ?? gameState.firstPlayerResult)
+                                    : (heldScore?.second ?? gameState.secondPlayerResult)}
                             </span>
                         </div>
                     </div>
@@ -1667,6 +1735,19 @@ const SantaseGame: React.FC = () => {
                         <Icon name={soundOn ? 'volume' : 'volumeOff'} size={20}/>
                     </button>
 
+                    {/* Reactions, beside the sound: a third round button in the
+                        same row, and the pictures in the air over the table. */}
+                    <ReactionButton
+                        onSend={(code) => { void gameService.react(code).catch(() => undefined); }}
+                        style={{
+                            position: 'absolute',
+                            top: 'calc(var(--sa-top) + clamp(10px, 2.5vw, 20px))',
+                            right: 'calc(var(--sa-right) + clamp(10px, 2.5vw, 20px) + 2 * (var(--tap) + var(--sp-2)))',
+                            zIndex: 'var(--z-hud)' as unknown as number,
+                        }}
+                    />
+                    <ReactionLayer shown={reactions} placeOf={(from) => (from === username ? 'bottom' : 'top')} />
+
 
                     {(() => {
                                                 
@@ -1692,20 +1773,27 @@ const SantaseGame: React.FC = () => {
                                                 />
                                             ))}
                                         </div>
-                                        {/* Their time on the felt under their hand, burning down
-                                            while the move is theirs: the server's own two moments,
-                                            so a Continue on their side refills it here. The slot
-                                            is always there, so the hand never moves between turns. */}
-                                        <div className="opponent-hand__time">
-                                            {!gameState.winnerUsername && (
-                                                <TurnBar
-                                                    startedAt={gameState.opponentTurnStartedAt}
-                                                    deadline={gameState.opponentDeadline}
-                                                    urgentSeconds={OPPONENT_URGENT_SECONDS}
-                                                    label={isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
-                                                />
-                                            )}
-                                        </div>
+                                        {/* Their time under their cards, burning down while the
+                                            move is theirs: the server's own two moments, so a
+                                            Continue on their side refills it here. The slot is
+                                            always there, so the hand never moves between turns. */}
+                                        {(() => {
+                                            const opponent = isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername;
+                                            const theirTurn = !gameState.isOnTurn && !gameState.winnerUsername
+                                                && !!gameState.opponentDeadline;
+                                            return (
+                                                <div className="santase-time" data-reaction-anchor={opponent}>
+                                                    {theirTurn ? (
+                                                        <TurnBar
+                                                            startedAt={gameState.opponentTurnStartedAt}
+                                                            deadline={gameState.opponentDeadline}
+                                                            urgentSeconds={OPPONENT_URGENT_SECONDS}
+                                                            label={opponent}
+                                                        />
+                                                    ) : null}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 </div>
 
@@ -1847,61 +1935,58 @@ const SantaseGame: React.FC = () => {
                                         The button used to be absolutely positioned with magic
                                         pixel offsets measured from the pill's centre. */}
                                     {(() => {
-                                        const urgent = gameState.isOnTurn && turnTimeRemaining <= 5;
+                                        // Not before the hand's first trick: with nothing
+                                        // taken there are no points to have 66 of, and the
+                                        // press could only lose the hand. Until then the
+                                        // stock is whole and both hands hold six.
+                                        const noTrickYet = gameState.remainingCardsCount === 12
+                                            && gameState.deck.length === 6
+                                            && (gameState.opponentPlayerCardsCount ?? 6) === 6;
                                         const canFinishDeal = gameState.isOnTurn && !gameState.playedCard
-                                            && !gameState.opponentPlayedCard && isConnected;
+                                            && !gameState.opponentPlayedCard && isConnected && !noTrickYet;
 
                                         return (
                                             <div style={turnRowStyle}>
+                                              <div className="santase-claim">
+                                                {/* Your time and the 66, one group centred over your
+                                                    hand: the bar only on your move, the 66 only when
+                                                    it can be pressed. The row keeps its height when
+                                                    both are gone, so the hand below never moves. The
+                                                    words are for a screen reader. */}
                                                 <div
-                                                    className={`turn-pill ${urgent ? 'turn-pill--urgent' : ''}`}
+                                                    className={gameState.isOnTurn && !gameState.winnerUsername
+                                                        ? `santase-clock ${turnTimeRemaining <= 5 ? 'is-urgent' : ''}`
+                                                        : 'santase-time-idle'}
+                                                    data-reaction-anchor={username}
                                                     role="status"
                                                     aria-live="polite"
                                                 >
-                                                    <span
-                                                        className="turn-pill__dot"
-                                                        style={{
-                                                            background: gameState.isOnTurn
-                                                                ? (urgent ? 'var(--danger)' : 'var(--success)')
-                                                                : 'var(--text-3)',
-                                                        }}
-                                                    />
-                                                    {gameState.isOnTurn ? (
-                                                        <>
-                                                            <span>ВАШ РЕД</span>
-                                                            <span
-                                                                className="tabular"
-                                                                style={{
-                                                                    minWidth: '2ch',
-                                                                    textAlign: 'center',
-                                                                    fontWeight: 800,
-                                                                    color: turnTimeRemaining <= 5
-                                                                        ? 'var(--danger)'
-                                                                        : turnTimeRemaining <= 10
-                                                                            ? 'var(--warning)'
-                                                                            : 'var(--success)',
-                                                                }}
-                                                            >
-                                                                {turnTimeRemaining}
-                                                            </span>
-                                                        </>
-                                                    ) : (
-                                                        <span>{isSmallMobile ? 'ОПОНЕНТ…' : 'ОПОНЕНТЪТ ИГРАЕ…'}</span>
+                                                    <span className="sr-only">
+                                                        {gameState.isOnTurn ? 'Ваш ред' : 'Опонентът играе'}
+                                                    </span>
+                                                    {gameState.isOnTurn && !gameState.winnerUsername && (
+                                                        <span className="santase-clock__count tabular" aria-hidden="true">
+                                                            {turnTimeRemaining}
+                                                        </span>
                                                     )}
+                                                    {gameState.isOnTurn && !gameState.winnerUsername ? (
+                                                        <TurnBar
+                                                            className="santase-clock__fuse"
+                                                            startedAt={null}
+                                                            deadline={null}
+                                                            fraction={turnTimeRemaining / OWN_TURN_SECONDS}
+                                                            seconds={turnTimeRemaining}
+                                                            urgentSeconds={5}
+                                                            label={username}
+                                                        />
+                                                    ) : null}
                                                 </div>
 
-                                                {/* a real <button>: focusable, self-describing, and
-                                                    disabled rather than pointer-events:none */}
+                                                {canFinishDeal && (
                                                 <button
                                                     type="button"
-                                                    className="round-btn round-btn--claim"
-                                                    disabled={!canFinishDeal}
+                                                    className="round-btn round-btn--claim santase-claim__66"
                                                     aria-label="Обяви 66 точки и приключи раздаването"
-                                                    style={{
-                                                        width: 'clamp(44px, 12vw, 56px)',
-                                                        height: 'clamp(44px, 12vw, 56px)',
-                                                        fontSize: 'clamp(1rem, 3.4vw, 1.25rem)',
-                                                    }}
                                                     onClick={() => setConfirmAction({
                                                         title: 'Край',
                                                         message: 'Имате ли 66 точки?',
@@ -1914,6 +1999,8 @@ const SantaseGame: React.FC = () => {
                                                 >
                                                     66
                                                 </button>
+                                                )}
+                                              </div>
                                             </div>
                                         );
                                     })()}
@@ -2056,19 +2143,35 @@ const SantaseGame: React.FC = () => {
                         className="lobby sheet urgent"
                         actions={
                             <>
-                                <Button
-                                    variant="ghost"
-                                    onClick={handleInactivitySurrender}
-                                >
-                                    Предавам се
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    disabled={noneLeft}
-                                    onClick={handleInactivityContinue}
-                                >
-                                    {noneLeft ? 'Няма удължения' : 'Продължи (+20)'}
-                                </Button>
+                                {confirmTimeUpSurrender ? (
+                                    <>
+                                        <Button variant="ghost" onClick={() => setConfirmTimeUpSurrender(false)}>
+                                            Назад
+                                        </Button>
+                                        <Button
+                                            variant="danger"
+                                            onClick={() => {
+                                                setConfirmTimeUpSurrender(false);
+                                                void handleInactivitySurrender();
+                                            }}
+                                        >
+                                            Предай
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Button variant="ghost" onClick={() => setConfirmTimeUpSurrender(true)}>
+                                            Предавам се
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            disabled={noneLeft}
+                                            onClick={handleInactivityContinue}
+                                        >
+                                            {noneLeft ? 'Няма удължения' : 'Продължи (+20)'}
+                                        </Button>
+                                    </>
+                                )}
                             </>
                         }
                     >
@@ -2083,7 +2186,9 @@ const SantaseGame: React.FC = () => {
                             </div>
 
                             <p className="sheet__text">
-                                Ако не предприемете действие, играта ще приключи като загуба.
+                                {confirmTimeUpSurrender
+                                    ? 'Сигурни ли сте? Играта ще приключи като загуба.'
+                                    : 'Ако не предприемете действие, играта ще приключи като загуба.'}
                             </p>
 
                             <span className="sheet__note">
@@ -2129,7 +2234,11 @@ const SantaseGame: React.FC = () => {
 
             {trickResult && <TrickResultPopup 
                 trickResult={trickResult}
-                onDismiss={() => setTrickResult(null)}
+                me={username}
+                onDismiss={() => {
+                    setTrickResult(null);
+                    setHeldScore(null);
+                }}
             />}
 
             {showProfile && (

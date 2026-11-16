@@ -1,3 +1,4 @@
+import { subscribeReactions } from '../utils/reactions';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { noteUnavailable } from '../api/unavailable';
@@ -236,6 +237,7 @@ export function useGameSession<S extends MinimalState>(
             // The search topic doubles as the resume channel: asking to search
             // while a game is already live makes the server reply GAME_STARTED
             // with its id, which is how a reopened tab finds its way back.
+            subscribeReactions(client, username);
             searchSubRef.current = client.subscribe(
                 `/topic/search/${gameKey}/${username}`,
                 (msg: any) => {

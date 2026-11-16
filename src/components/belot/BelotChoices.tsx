@@ -4,12 +4,12 @@ import Button from '../ui/Button';
 
 /** A carré by what it is four of, the way it is said at the table. */
 const CARRE_OF: Partial<Record<BelotRank, string>> = {
-    JACK: 'Каре от валета',
-    NINE: 'Каре от деветки',
-    ACE: 'Каре от аса',
-    TEN: 'Каре от десетки',
-    KING: 'Каре от попове',
-    QUEEN: 'Каре от дами',
+    JACK: 'Каре валета',
+    NINE: 'Каре деветки',
+    ACE: 'Каре аса',
+    TEN: 'Каре десетки',
+    KING: 'Каре попове',
+    QUEEN: 'Каре дами',
 };
 
 const NAME: Record<string, string> = { TERZ: 'Терца', QUARTE: 'Кварта', QUINTE: 'Квинта' };

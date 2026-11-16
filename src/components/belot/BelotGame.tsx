@@ -21,6 +21,8 @@ import Button from '../ui/Button';
 import GamePrelude from '../lobby/GamePrelude';
 import { BelotArt } from '../lobby/GameArt';
 import Icon from '../ui/Icon';
+import { ReactionButton, ReactionLayer, ReactionPlace } from '../ui/Reactions';
+import { useReactionFeed } from '../../hooks/useReactionFeed';
 import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import TurnBar from '../ui/TurnBar';
@@ -224,24 +226,23 @@ const BelotGame: React.FC = () => {
 
     const [sheetOpen, setSheetOpen] = useState(false);
     const [soundOn, setSoundOnState] = useState(isSoundOn);
+    const reactions = useReactionFeed();
     const toggleSound = () => {
         setSoundOn(!soundOn);
         setSoundOnState(!soundOn);
     };
     const [confirmGiveUp, setConfirmGiveUp] = useState(false);
 
-    // What is said with a card, ticked off a list. With the first card, the
-    // announcements — the richest ticked already, confirmed with Продължи
-    // before a card is chosen; with a card that would say a belote, the
-    // belote, ticked, confirmed with Продължи, which plays it. The clock runs
-    // on throughout: whoever lets it run out is played for, as always.
+    // What is said with a card, ticked off a list once the card is tapped and
+    // confirmed with Продължи, which plays it: with the first card, the
+    // announcements, the richest ticked already; with the first king or queen
+    // of a belote, in whichever trick, the belote. The clock runs on
+    // throughout: whoever lets it run out is played for, as always.
     const announcements = useMemo(() => state?.play?.announcements ?? [], [state?.play?.announcements]);
     const offered = announcements.map((option) => option.key).join('|');
     const [ticked, setTicked] = useState<Set<string>>(new Set());
-    const [announceSettled, setAnnounceSettled] = useState(false);
     useEffect(() => {
         setTicked(new Set((announcements[0]?.declarations ?? []).map(keyOf)));
-        setAnnounceSettled(false);
     }, [offered]); // eslint-disable-line react-hooks/exhaustive-deps
     // Two that are never in one way of reading the hand share a card.
     const together = (one: string, other: string) => announcements.some((option) => {
@@ -258,8 +259,11 @@ const BelotGame: React.FC = () => {
         return next;
     });
     const announce = ticked.size === 0 ? 'NONE' : [...ticked].sort().join(',');
-    const [askingBelote, setAskingBelote] = useState<BelotCard | null>(null);
+    // The card tapped and waiting for Продължи.
+    const [pending, setPending] = useState<BelotCard | null>(null);
     const [sayBelote, setSayBelote] = useState(true);
+    const isBeloteCard = (card: BelotCard) => (state?.play?.beloteCards ?? [])
+        .some((each) => each.suit === card.suit && each.rank === card.rank);
     const send = (card: BelotCard, belote?: boolean) => {
         void belotService.play(card, {
             announce: announcements.length > 0 ? announce : undefined,
@@ -267,23 +271,21 @@ const BelotGame: React.FC = () => {
         });
     };
     const playCard = (card: BelotCard) => {
-        const saysBelote = (state?.play?.beloteCards ?? [])
-            .some((each) => each.suit === card.suit && each.rank === card.rank);
-        // Tapping the waiting belote card again puts it back; any other card
-        // is simply played.
-        const same = askingBelote && askingBelote.suit === card.suit && askingBelote.rank === card.rank;
-        if (saysBelote) {
-            setSayBelote(true);
-            setAskingBelote(same ? null : card);
-        } else {
-            setAskingBelote(null);
+        // Nothing to say with it: played at once.
+        if (announcements.length === 0 && !isBeloteCard(card)) {
+            setPending(null);
             send(card);
+            return;
         }
+        // Tapping the waiting card again puts it back; another card waits
+        // instead of it.
+        const same = pending && pending.suit === card.suit && pending.rank === card.rank;
+        setSayBelote(true);
+        setPending(same ? null : card);
     };
-    const showDeclare = !!askingBelote || (announcements.length > 0 && !announceSettled);
-    // A belote card waits only while it is still this player's turn.
+    // A card waits only while it is still this player's turn.
     const myTurnKey = state?.play ? `${state.dealNumber}:${state.play.trickNo}:${state.play.toAct}` : null;
-    useEffect(() => setAskingBelote(null), [myTurnKey]);
+    useEffect(() => setPending(null), [myTurnKey]);
 
     // The count of the hand that has just ended, shown once when its line
     // lands on the sheet. The sheet a reload brings back is history, not
@@ -413,7 +415,13 @@ const BelotGame: React.FC = () => {
         if (newly.length === 0) return;
 
         newly.forEach((heard) => seen.add(heard.key));
+        // Each word once per seat: two карета are said as one "каре", as the
+        // bubble says them as one "Две карета".
+        const voiced = new Set<string>();
         newly.forEach((heard) => {
+            const once = `${heard.seat}:${heard.word}`;
+            if (voiced.has(once)) return;
+            voiced.add(once);
             const sound = soundOfAnnouncement(heard.word);
             if (sound) playSound(sound);
         });
@@ -635,6 +643,16 @@ const BelotGame: React.FC = () => {
                 </button>
                 </div>
                 <div className="belot__bar-actions">
+                    <ReactionButton onSend={(code) => { void belotService.react(code).catch(() => undefined); }} />
+                    <ReactionLayer
+                        shown={reactions}
+                        placeOf={(from): ReactionPlace | undefined => {
+                            const sat = state.seats.find((seat) => seat.username === from);
+                            if (!sat) return undefined;
+                            const place = placeOf(sat.seat, state.yourSeat);
+                            return place === 'you' ? 'bottom' : place === 'partner' ? 'top' : place;
+                        }}
+                    />
                     {/* The sound on or off, beside the way out: both are about
                         the session rather than the hand. */}
                     <button
@@ -698,18 +716,17 @@ const BelotGame: React.FC = () => {
                     ) : dealt.run ? null : <Bidding state={state} />}
                 </div>
                 {dealt.run && <DealOverlay key={dealt.run.id} run={dealt.run} onCutDone={dealt.cutDone} serverCutAt={state.cutAt} />}
-                {showDeclare && !dealt.run && (
+                {pending && !dealt.run && (
                     <DeclarePanel
                         announcements={announcements}
                         ticked={ticked}
                         onTick={tick}
-                        belote={askingBelote ? { suit: askingBelote.suit, say: sayBelote, onToggle: () => setSayBelote((say) => !say) } : undefined}
+                        belote={isBeloteCard(pending)
+                            ? { suit: pending.suit, say: sayBelote, onToggle: () => setSayBelote((say) => !say) }
+                            : undefined}
                         onContinue={() => {
-                            setAnnounceSettled(true);
-                            if (askingBelote) {
-                                send(askingBelote, sayBelote ? undefined : false);
-                                setAskingBelote(null);
-                            }
+                            send(pending, isBeloteCard(pending) && !sayBelote ? false : undefined);
+                            setPending(null);
                         }}
                     />
                 )}
@@ -731,6 +748,7 @@ const BelotGame: React.FC = () => {
                             takingSeat === you.seat ? 'is-taking' : '',
                             closing ? 'is-last' : '',
                         ].filter(Boolean).join(' ')}
+                        data-reaction-anchor={you.username}
                         >
                             <span className="belot__you-name">{you.username}</span>
                             {toAct === you.seat && (
@@ -862,7 +880,7 @@ const Opponent: React.FC<{
         {/* Behind the plate and partly under it, the way somebody's hand is
             half hidden behind the person holding it. */}
         <Fan cards={dealing ? 0 : Math.min(seat?.cardsLeft ?? 0, given ?? Infinity)} />
-        <div className="belot__plate">
+        <div className="belot__plate" data-reaction-anchor={seat?.username}>
             <span className="belot__who">
                 <span className="belot__name">{seat?.username ?? 'свободно'}</span>
                 {seat && !state.play && state.dealerSeat === seat.seat && <Dealer />}
@@ -949,7 +967,7 @@ const Hurry: React.FC<{ secondsLeft: number; missed: number }> = ({ secondsLeft,
             <p className="sheet__text">
                 {lastTime
                     ? 'Ако не изиграеш, играта е загубена, а рейтингът ти пада двойно.'
-                    : 'Ако не изиграеш, масата ще изиграе вместо теб.'}
+                    : 'Ако не изиграеш, ботът ще изиграе вместо теб.'}
             </p>
         </div>
     );

@@ -1,3 +1,4 @@
+import { ReactionCode } from '../utils/reactions';
 import apiClient from './apiClient';
 import { BelotBidKind, BelotCard, BelotContract, BelotProfile, BelotState } from '../types/belot.types';
 
@@ -55,6 +56,8 @@ export const belotService = {
      * Safe to call twice: a table that is already over is left alone.
      */
     surrender: () => apiClient.post('/belot/surrender'),
+    /** A reaction to the table; all four see it. */
+    react: (reaction: ReactionCode) => apiClient.post('/belot/react', { reaction }),
 
     /**
      * This player's belot record.

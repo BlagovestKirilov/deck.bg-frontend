@@ -13,6 +13,8 @@ import TablaBoard, { Die, PipDie } from './tabla/TablaBoard';
 import OpeningRoll from './tabla/OpeningRoll';
 import Button from './ui/Button';
 import Icon from './ui/Icon';
+import { ReactionButton, ReactionLayer } from './ui/Reactions';
+import { useReactionFeed } from '../hooks/useReactionFeed';
 import Modal from './ui/Modal';
 import StatusScreen from './ui/StatusScreen';
 import TurnBar from './ui/TurnBar';
@@ -75,6 +77,7 @@ const TablaGame: React.FC = () => {
     /** Leaving forfeits the game, so it is confirmed first — as in Сантасе. */
     const [confirmLeave, setConfirmLeave] = useState(false);
     const [soundOn, setSoundOnState] = useState(isSoundOn);
+    const reactions = useReactionFeed();
     const toggleSound = () => {
         setSoundOn(!soundOn);
         setSoundOnState(!soundOn);
@@ -520,7 +523,7 @@ const TablaGame: React.FC = () => {
 
             {/* opponent */}
             <div className="tabla-hud" style={{ flex: '0 0 auto' }}>
-                <span className="tabla-hud__name">
+                <span className="tabla-hud__name" data-reaction-anchor={opponentName}>
                     <span className="truncate" style={{ color: 'var(--text-1)', fontWeight: 700 }}>
                         {opponentName}
                     </span>
@@ -543,6 +546,8 @@ const TablaGame: React.FC = () => {
                 </span>
 
                 <div className="tabla-hud__actions">
+                    <ReactionButton onSend={(code) => { void tablaService.react(code).catch(() => undefined); }} />
+                    <ReactionLayer shown={reactions} placeOf={(from) => (from === username ? 'bottom' : 'top')} />
                     {/* The sound on or off, beside the way out: both are about
                         the session rather than the turn. */}
                     <button
@@ -590,7 +595,7 @@ const TablaGame: React.FC = () => {
             <div className="tabla-footer">
                 {/* my side + turn */}
                 <div className="tabla-hud">
-                    <span className="tabla-hud__name">
+                    <span className="tabla-hud__name" data-reaction-anchor={username}>
                         <span className="truncate" style={{ color: 'var(--gold)', fontWeight: 700 }}>
                             {username}
                         </span>
