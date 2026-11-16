@@ -1281,6 +1281,9 @@ code, kbd, samp { font-family: var(--font-mono); }
     place-items: center;
     width: var(--tap);
     height: var(--tap);
+    /* No browser padding: the picture is wider than what it left inside,
+       and spilled out to the right — the tray looked off-centre. */
+    padding: 0;
     border: 0;
     border-radius: var(--r-md);
     background: none;
