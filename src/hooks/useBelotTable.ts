@@ -1,3 +1,4 @@
+import { subscribeReactions } from '../utils/reactions';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import SockJS from 'sockjs-client';
 import { Stomp } from '@stomp/stompjs';
@@ -124,6 +125,7 @@ export function useBelotTable(username: string): Table {
             client.subscribe(`/topic/belot/${username}`, (message: any) => {
                 receive(JSON.parse(message.body) as BelotState);
             });
+            subscribeReactions(client, username);
 
             if (searchWhenConnected.current || waiting.current) {
                 searchWhenConnected.current = false;

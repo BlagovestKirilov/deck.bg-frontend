@@ -21,6 +21,8 @@ import Button from '../ui/Button';
 import GamePrelude from '../lobby/GamePrelude';
 import { BelotArt } from '../lobby/GameArt';
 import Icon from '../ui/Icon';
+import { ReactionButton, ReactionLayer, ReactionPlace } from '../ui/Reactions';
+import { useReactionFeed } from '../../hooks/useReactionFeed';
 import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import TurnBar from '../ui/TurnBar';
@@ -224,6 +226,7 @@ const BelotGame: React.FC = () => {
 
     const [sheetOpen, setSheetOpen] = useState(false);
     const [soundOn, setSoundOnState] = useState(isSoundOn);
+    const reactions = useReactionFeed();
     const toggleSound = () => {
         setSoundOn(!soundOn);
         setSoundOnState(!soundOn);
@@ -640,6 +643,16 @@ const BelotGame: React.FC = () => {
                 </button>
                 </div>
                 <div className="belot__bar-actions">
+                    <ReactionButton onSend={(code) => { void belotService.react(code).catch(() => undefined); }} />
+                    <ReactionLayer
+                        shown={reactions}
+                        placeOf={(from): ReactionPlace | undefined => {
+                            const sat = state.seats.find((seat) => seat.username === from);
+                            if (!sat) return undefined;
+                            const place = placeOf(sat.seat, state.yourSeat);
+                            return place === 'you' ? 'bottom' : place === 'partner' ? 'top' : place;
+                        }}
+                    />
                     {/* The sound on or off, beside the way out: both are about
                         the session rather than the hand. */}
                     <button
@@ -735,6 +748,7 @@ const BelotGame: React.FC = () => {
                             takingSeat === you.seat ? 'is-taking' : '',
                             closing ? 'is-last' : '',
                         ].filter(Boolean).join(' ')}
+                        data-reaction-anchor={you.username}
                         >
                             <span className="belot__you-name">{you.username}</span>
                             {toAct === you.seat && (
@@ -866,7 +880,7 @@ const Opponent: React.FC<{
         {/* Behind the plate and partly under it, the way somebody's hand is
             half hidden behind the person holding it. */}
         <Fan cards={dealing ? 0 : Math.min(seat?.cardsLeft ?? 0, given ?? Infinity)} />
-        <div className="belot__plate">
+        <div className="belot__plate" data-reaction-anchor={seat?.username}>
             <span className="belot__who">
                 <span className="belot__name">{seat?.username ?? 'свободно'}</span>
                 {seat && !state.play && state.dealerSeat === seat.seat && <Dealer />}
@@ -953,7 +967,7 @@ const Hurry: React.FC<{ secondsLeft: number; missed: number }> = ({ secondsLeft,
             <p className="sheet__text">
                 {lastTime
                     ? 'Ако не изиграеш, играта е загубена, а рейтингът ти пада двойно.'
-                    : 'Ако не изиграеш, масата ще изиграе вместо теб.'}
+                    : 'Ако не изиграеш, ботът ще изиграе вместо теб.'}
             </p>
         </div>
     );

@@ -11,6 +11,12 @@ interface TurnBarProps {
     className?: string;
     /** Whose time it is, for a screen reader. */
     label?: string;
+    /**
+     * For a table that counts the time itself rather than sending two moments
+     * (santase's own turn): how much is left, from 1 to 0, and in seconds.
+     */
+    fraction?: number;
+    seconds?: number;
 }
 
 /**
@@ -21,7 +27,9 @@ interface TurnBarProps {
  * moments the server sent, so it is right after a reload too, and refills on
  * its own when the server moves the deadline — a player pressing Continue.
  */
-const TurnBar: React.FC<TurnBarProps> = ({ startedAt, deadline, urgentSeconds, className = '', label }) => {
+const TurnBar: React.FC<TurnBarProps> = ({
+    startedAt, deadline, urgentSeconds, className = '', label, fraction, seconds,
+}) => {
     const [left, setLeft] = useState(1);
     const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
@@ -44,9 +52,12 @@ const TurnBar: React.FC<TurnBarProps> = ({ startedAt, deadline, urgentSeconds, c
         return () => window.clearInterval(id);
     }, [startedAt, deadline]);
 
-    if (!startedAt || !deadline) return null;
-    const urgent = secondsLeft !== null && secondsLeft <= urgentSeconds;
-    const spoken = secondsLeft === null ? undefined : `Остават ${secondsLeft} секунди`;
+    const counted = fraction !== undefined;
+    if (!counted && (!startedAt || !deadline)) return null;
+    const share = counted ? Math.min(1, Math.max(0, fraction)) : left;
+    const remaining = counted ? (seconds ?? null) : secondsLeft;
+    const urgent = remaining !== null && remaining <= urgentSeconds;
+    const spoken = remaining === null ? undefined : `Остават ${remaining} секунди`;
 
     return (
         <span
@@ -55,9 +66,9 @@ const TurnBar: React.FC<TurnBarProps> = ({ startedAt, deadline, urgentSeconds, c
             aria-label={label && spoken ? `${label}: ${spoken}` : spoken}
             // The same fraction for a table that draws the time as something
             // other than a bar: belot's ring round a player's plate.
-            style={{ '--turn-left': left } as React.CSSProperties}
+            style={{ '--turn-left': share } as React.CSSProperties}
         >
-            <span className="turnbar__fill" style={{ transform: `scaleX(${left})` }} />
+            <span className="turnbar__fill" style={{ transform: `scaleX(${share})` }} />
         </span>
     );
 };

@@ -18,6 +18,7 @@ export type IconName =
     | 'x'
     | 'volume'
     | 'volumeOff'
+    | 'smile'
     | 'xCircle'
     | 'close'
     | 'trophy'
@@ -89,6 +90,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
             <path d="M4 9.5h3.2L12 5.6v12.8l-4.8-3.9H4z" />
             <path d="M15.6 9.2a4 4 0 0 1 0 5.6" />
             <path d="M18.2 6.6a7.6 7.6 0 0 1 0 10.8" />
+        </>
+    ),
+    smile: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M8.5 14.2c.9 1.3 2.1 2 3.5 2s2.6-.7 3.5-2" />
+            <path d="M9 9.6h.01M15 9.6h.01" strokeWidth="2.4" />
         </>
     ),
     volumeOff: (

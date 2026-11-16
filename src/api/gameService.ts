@@ -1,3 +1,4 @@
+import { ReactionCode } from '../utils/reactions';
 import apiClient from './apiClient';
 import { ActiveGameResponse } from '../types/game.types';
 
@@ -33,6 +34,10 @@ export const gameService = {
 
     surrender: () =>
         apiClient.post(`/santase/surrender`),
+
+    /** A reaction to the table; both players see it. */
+    react: (reaction: ReactionCode) =>
+        apiClient.post('/santase/react', { reaction }),
 
     inactivity: () =>
         apiClient.post('/santase/inactivity'),
