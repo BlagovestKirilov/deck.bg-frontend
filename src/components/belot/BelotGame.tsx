@@ -25,7 +25,7 @@ import Modal from '../ui/Modal';
 import StatusScreen from '../ui/StatusScreen';
 import TurnBar from '../ui/TurnBar';
 import BelotCardFace from './BelotCardFace';
-import { SayPanel } from './BelotChoices';
+import { DeclarePanel, keyOf } from './BelotChoices';
 import Announced, { announcementsBySeat, soundOfAnnouncement } from './BelotDeclarations';
 import { isSoundOn, playCardSound, playSound, playTrickTakenSound, setSoundOn, Sound } from '../../utils/sounds';
 import { DealOverlay, useDealRun } from './BelotDealAnimation';
@@ -230,19 +230,39 @@ const BelotGame: React.FC = () => {
     };
     const [confirmGiveUp, setConfirmGiveUp] = useState(false);
 
-    // What is said with a card. With the first card, which way to announce
-    // the hand — the richest, unless changed; with a card that would say a
-    // belote, whether to say it, asked as it is played.
+    // What is said with a card, ticked off a list. With the first card, the
+    // announcements — the richest ticked already, confirmed with Продължи
+    // before a card is chosen; with a card that would say a belote, the
+    // belote, ticked, confirmed with Продължи, which plays it. The clock runs
+    // on throughout: whoever lets it run out is played for, as always.
     const announcements = useMemo(() => state?.play?.announcements ?? [], [state?.play?.announcements]);
     const offered = announcements.map((option) => option.key).join('|');
-    const [announce, setAnnounce] = useState<string | null>(null);
+    const [ticked, setTicked] = useState<Set<string>>(new Set());
+    const [announceSettled, setAnnounceSettled] = useState(false);
     useEffect(() => {
-        setAnnounce(announcements[0]?.key ?? null);
+        setTicked(new Set((announcements[0]?.declarations ?? []).map(keyOf)));
+        setAnnounceSettled(false);
     }, [offered]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Two that are never in one way of reading the hand share a card.
+    const together = (one: string, other: string) => announcements.some((option) => {
+        const keys = option.declarations.map(keyOf);
+        return keys.includes(one) && keys.includes(other);
+    });
+    const tick = (key: string) => setTicked((before) => {
+        const next = new Set(before);
+        if (next.has(key)) next.delete(key);
+        else {
+            [...next].forEach((other) => { if (!together(key, other)) next.delete(other); });
+            next.add(key);
+        }
+        return next;
+    });
+    const announce = ticked.size === 0 ? 'NONE' : [...ticked].sort().join(',');
     const [askingBelote, setAskingBelote] = useState<BelotCard | null>(null);
+    const [sayBelote, setSayBelote] = useState(true);
     const send = (card: BelotCard, belote?: boolean) => {
         void belotService.play(card, {
-            announce: announcements.length > 0 ? announce ?? undefined : undefined,
+            announce: announcements.length > 0 ? announce : undefined,
             belote,
         });
     };
@@ -252,12 +272,15 @@ const BelotGame: React.FC = () => {
         // Tapping the waiting belote card again puts it back; any other card
         // is simply played.
         const same = askingBelote && askingBelote.suit === card.suit && askingBelote.rank === card.rank;
-        if (saysBelote) setAskingBelote(same ? null : card);
-        else {
+        if (saysBelote) {
+            setSayBelote(true);
+            setAskingBelote(same ? null : card);
+        } else {
             setAskingBelote(null);
             send(card);
         }
     };
+    const showDeclare = !!askingBelote || (announcements.length > 0 && !announceSettled);
     // A belote card waits only while it is still this player's turn.
     const myTurnKey = state?.play ? `${state.dealNumber}:${state.play.trickNo}:${state.play.toAct}` : null;
     useEffect(() => setAskingBelote(null), [myTurnKey]);
@@ -675,15 +698,19 @@ const BelotGame: React.FC = () => {
                     ) : dealt.run ? null : <Bidding state={state} />}
                 </div>
                 {dealt.run && <DealOverlay key={dealt.run.id} run={dealt.run} onCutDone={dealt.cutDone} serverCutAt={state.cutAt} />}
-                {(announcements.length > 0 || askingBelote) && !dealt.run && (
-                    <SayPanel
+                {showDeclare && !dealt.run && (
+                    <DeclarePanel
                         announcements={announcements}
-                        announce={announce}
-                        onAnnounce={setAnnounce}
-                        onBelote={askingBelote ? (sayIt) => {
-                            send(askingBelote, sayIt ? undefined : false);
-                            setAskingBelote(null);
-                        } : undefined}
+                        ticked={ticked}
+                        onTick={tick}
+                        belote={askingBelote ? { suit: askingBelote.suit, say: sayBelote, onToggle: () => setSayBelote((say) => !say) } : undefined}
+                        onContinue={() => {
+                            setAnnounceSettled(true);
+                            if (askingBelote) {
+                                send(askingBelote, sayBelote ? undefined : false);
+                                setAskingBelote(null);
+                            }
+                        }}
                     />
                 )}
             </div>
