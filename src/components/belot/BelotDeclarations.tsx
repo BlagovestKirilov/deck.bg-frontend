@@ -33,6 +33,28 @@ export function soundOfAnnouncement(word: string): Sound | undefined {
 }
 
 /**
+ * Two of the same, said the way the table says it: "Две карета", not
+ * "Каре + Каре". Eight cards hold two of a kind at most.
+ */
+const TWO_OF: Record<string, string> = {
+    Терца: 'Две терци',
+    '50': 'Две по 50',
+    '100': 'Две по 100',
+    Каре: 'Две карета',
+    Белот: 'Два белота',
+};
+
+/**
+ * What a seat said, as one phrase: each kind once, a pair of the same in
+ * the plural, in the order they were said — "Две терци + Белот".
+ */
+export function spoken(words: string[]): string {
+    const counted = new Map<string, number>();
+    words.forEach((word) => counted.set(word, (counted.get(word) ?? 0) + 1));
+    return [...counted].map(([word, count]) => (count > 1 ? TWO_OF[word] ?? `${count} × ${word}` : word)).join(' + ');
+}
+
+/**
  * Who announced what, in the order the server listed it.
  *
  * Kept per seat rather than as one list, because an announcement belongs to
@@ -68,7 +90,7 @@ const Announced: React.FC<{ said?: string[] }> = ({ said }) => {
     // One bubble for everything said in the same breath, keyed on what it
     // says, so a second announcement pops in fresh rather than changing the
     // words inside a bubble that is already fading.
-    const words = said.join(' + ');
+    const words = spoken(said);
     return (
         <span key={words} className="belot__said belot__said--announce" role="status">
             {words}
