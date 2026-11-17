@@ -1663,6 +1663,7 @@ const SantaseGame: React.FC = () => {
                         type="button"
                         onClick={handleLeaveGame}
                         className="round-btn round-btn--danger"
+                        data-exit
                         aria-label="Напусни играта"
                         style={{
                             position: 'absolute',

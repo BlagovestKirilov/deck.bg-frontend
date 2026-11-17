@@ -668,6 +668,7 @@ const BelotGame: React.FC = () => {
                         <button
                             type="button"
                             className="round-btn round-btn--danger"
+                            data-exit
                             onClick={() => setConfirmGiveUp(true)}
                             aria-label="Предай играта и излез"
                         >

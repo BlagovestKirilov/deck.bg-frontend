@@ -1,11 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon';
 import { REACTIONS, ReactionCode, nextReactionAt, reactionOf } from '../../utils/reactions';
 import { ShownReaction } from '../../hooks/useReactionFeed';
 
 /**
- * The round button beside the sound switch, and the tray it opens: the
+ * Where the button stands: in the column of the table's way out (the round
+ * button marked data-exit, top right at every table), as far from the bottom
+ * as that one is from the top. Measured, because a table may be a centred
+ * column on a wide screen (табла) or span it (santase): the screen's own
+ * corner was a long way from the X there. Null where there is no X to line
+ * up with; the stylesheet's corner holds then.
+ */
+function underTheExit(own: HTMLElement | null): React.CSSProperties | null {
+    const exit = document.querySelector<HTMLElement>('[data-exit]');
+    if (!exit || !own) return null;
+    const x = exit.getBoundingClientRect();
+    if (x.width === 0) return null;
+    const width = own.getBoundingClientRect().width || x.width;
+    return {
+        right: Math.round(window.innerWidth - (x.left + x.width / 2) - width / 2),
+        bottom: Math.round(Math.max(0, x.top)),
+    };
+}
+
+/**
+ * The round button under the table's way out, and the tray it opens: the
  * reactions as pictures, one tap to send. Closes on a pick, on Escape and
  * on a tap anywhere else.
  *
@@ -18,6 +38,26 @@ export const ReactionButton: React.FC<{
 }> = ({ onSend }) => {
     const [open, setOpen] = useState(false);
     const box = useRef<HTMLDivElement>(null);
+    const [place, setPlace] = useState<React.CSSProperties | null>(null);
+
+    // Follow the X: on every render of the table around it, on a resize, and
+    // when the X's own row changes size. Only a change is stored, so this
+    // settles at once.
+    useLayoutEffect(() => {
+        const follow = () => setPlace((was) => {
+            const next = underTheExit(box.current);
+            return was?.right === next?.right && was?.bottom === next?.bottom ? was : next;
+        });
+        follow();
+        window.addEventListener('resize', follow);
+        const row = document.querySelector<HTMLElement>('[data-exit]')?.parentElement;
+        const watch = row && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(follow) : null;
+        if (row) watch?.observe(row);
+        return () => {
+            window.removeEventListener('resize', follow);
+            watch?.disconnect();
+        };
+    });
     const sentAt = useRef<number[]>([]);
     const [resting, setResting] = useState(false);
     const restTimer = useRef<number | undefined>(undefined);
@@ -51,7 +91,7 @@ export const ReactionButton: React.FC<{
     }, [open]);
 
     return (
-        <div className="reaction-anchor" ref={box}>
+        <div className="reaction-anchor" ref={box} style={place ?? undefined}>
             <button
                 type="button"
                 className="round-btn round-btn--quiet"

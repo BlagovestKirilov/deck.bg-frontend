@@ -562,6 +562,7 @@ const TablaGame: React.FC = () => {
                     <button
                         type="button"
                         className="round-btn round-btn--danger"
+                        data-exit
                         onClick={() => setConfirmLeave(true)}
                         aria-label="Напусни играта"
                     >
