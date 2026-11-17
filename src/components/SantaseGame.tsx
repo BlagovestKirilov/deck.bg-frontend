@@ -19,6 +19,7 @@ import { ReactionButton, ReactionLayer } from './ui/Reactions';
 import { useReactionFeed } from '../hooks/useReactionFeed';
 import Modal from './ui/Modal';
 import TurnBar from './ui/TurnBar';
+import ClockChip from './ui/ClockChip';
 import StatusScreen from './ui/StatusScreen';
 import CardCentre from './ui/CardCentre';
 import GamePrelude from './lobby/GamePrelude';
@@ -365,9 +366,6 @@ const SantaseGame: React.FC = () => {
     // with the last trick, and it showed through the pause on that trick
     // before the result that explains it.
     const [heldScore, setHeldScore] = useState<null | { first: number; second: number }>(null);
-    // "Предавам се" on the time-up card, asked twice: the clock runs on
-    // meanwhile, and running out still ends it as it always did.
-    const [confirmTimeUpSurrender, setConfirmTimeUpSurrender] = useState(false);
     const [activeBonuses, setActiveBonuses] = useState<{ id: number, val: number, isOpponent: boolean }[]>([]);
     const [soundOn, setSoundOnState] = useState(isSoundOn);
     const reactions = useReactionFeed();
@@ -385,10 +383,6 @@ const SantaseGame: React.FC = () => {
     const [turnTimeRemaining, setTurnTimeRemaining] = useState<number>(20);
     const [isInWarningPhase, setIsInWarningPhase] = useState<boolean>(false);
     const [showInactivityPopup, setShowInactivityPopup] = useState<boolean>(false);
-    // Each time-up card starts at its first question.
-    useEffect(() => {
-        if (!showInactivityPopup) setConfirmTimeUpSurrender(false);
-    }, [showInactivityPopup]);
     const turnTimerRef = useRef<NodeJS.Timeout | null>(null);
     // The countdown as the interval reads it. The interval decides what
     // happens at nought from this, not from inside a state update: React may
@@ -446,12 +440,9 @@ const SantaseGame: React.FC = () => {
 
     // Track turn start time for persistence across refreshes
     const lastTurnStateRef = useRef<boolean | null>(null);
-    const [inactivityCount, setInactivityCount] = useState<number>(0);
-    const MAX_INACTIVITY = 2;
 
     // Session storage keys for timer persistence
     const TURN_START_KEY = 'santase_turn_start';
-    const INACTIVITY_COUNT_KEY = 'santase_inactivity_count';
     const GAME_ID_KEY = 'santase_timer_game_id';
 
     // Helper to get turn start time from sessionStorage
@@ -490,31 +481,6 @@ const SantaseGame: React.FC = () => {
         }
     };
 
-    // Helper to get inactivity count from sessionStorage
-    const getInactivityCount = (): number => {
-        try {
-            const stored = sessionStorage.getItem(INACTIVITY_COUNT_KEY);
-            const storedGameId = sessionStorage.getItem(GAME_ID_KEY);
-            if (stored && storedGameId === gameState?.gameId) {
-                return parseInt(stored, 10);
-            }
-        } catch (e) {
-            console.warn('Could not access sessionStorage', e);
-        }
-        return 0;
-    };
-
-    // Helper to save inactivity count to sessionStorage
-    const saveInactivityCount = (count: number) => {
-        try {
-            sessionStorage.setItem(INACTIVITY_COUNT_KEY, count.toString());
-            if (gameState?.gameId) {
-                sessionStorage.setItem(GAME_ID_KEY, gameState.gameId);
-            }
-        } catch (e) {
-            console.warn('Could not access sessionStorage', e);
-        }
-    };
 
     // Helper function to reset turn timer to initial state
     const resetTurnTimer = () => {
@@ -566,10 +532,6 @@ const SantaseGame: React.FC = () => {
         setShowInactivityPopup(false);
         setIsInWarningPhase(false);
         clearTurnStartTime();
-        setInactivityCount(0);
-        try {
-            sessionStorage.removeItem(INACTIVITY_COUNT_KEY);
-        } catch (e) { /* ignore */ }
 
         try {
             await gameService.surrender();
@@ -681,13 +643,8 @@ const SantaseGame: React.FC = () => {
                     clearTurnStartTime();
                 }
                 lastTurnStateRef.current = gameState?.isOnTurn ?? null;
-                // Reset inactivity count when game ends
                 if (gameState?.winnerUsername || finalWinner) {
-                    setInactivityCount(0);
                     clearTurnStartTime();
-                    try {
-                        sessionStorage.removeItem(INACTIVITY_COUNT_KEY);
-                    } catch (e) { /* ignore */ }
                 }
             }
             return;
@@ -1706,6 +1663,7 @@ const SantaseGame: React.FC = () => {
                         type="button"
                         onClick={handleLeaveGame}
                         className="round-btn round-btn--danger"
+                        data-exit
                         aria-label="Напусни играта"
                         style={{
                             position: 'absolute',
@@ -1735,17 +1693,9 @@ const SantaseGame: React.FC = () => {
                         <Icon name={soundOn ? 'volume' : 'volumeOff'} size={20}/>
                     </button>
 
-                    {/* Reactions, beside the sound: a third round button in the
-                        same row, and the pictures in the air over the table. */}
-                    <ReactionButton
-                        onSend={(code) => { void gameService.react(code).catch(() => undefined); }}
-                        style={{
-                            position: 'absolute',
-                            top: 'calc(var(--sa-top) + clamp(10px, 2.5vw, 20px))',
-                            right: 'calc(var(--sa-right) + clamp(10px, 2.5vw, 20px) + 2 * (var(--tap) + var(--sp-2)))',
-                            zIndex: 'var(--z-hud)' as unknown as number,
-                        }}
-                    />
+                    {/* Reactions: the button in the bottom-right corner, as at
+                        every table, and the pictures in the air over the table. */}
+                    <ReactionButton onSend={(code) => { void gameService.react(code).catch(() => undefined); }} />
                     <ReactionLayer shown={reactions} placeOf={(from) => (from === username ? 'bottom' : 'top')} />
 
 
@@ -1762,6 +1712,9 @@ const SantaseGame: React.FC = () => {
                                     <div className="opponent-hand">
                                         <div
                                             style={{...styles.handOpponent, gap: 'clamp(-14px, -3vw, -8px)'}}
+                                            // Their reactions pop beside their cards: where they sit.
+                                            data-reaction-anchor={isFirstPlayerMe ? gameState.secondPlayerUsername : gameState.firstPlayerUsername}
+                                            data-reaction-side="right"
                                             role="img"
                                             aria-label={`Карти у опонента: ${gameState.opponentPlayerCardsCount || 0}`}
                                         >
@@ -1782,7 +1735,7 @@ const SantaseGame: React.FC = () => {
                                             const theirTurn = !gameState.isOnTurn && !gameState.winnerUsername
                                                 && !!gameState.opponentDeadline;
                                             return (
-                                                <div className="santase-time" data-reaction-anchor={opponent}>
+                                                <div className="santase-time">
                                                     {theirTurn ? (
                                                         <TurnBar
                                                             startedAt={gameState.opponentTurnStartedAt}
@@ -1953,34 +1906,19 @@ const SantaseGame: React.FC = () => {
                                                     it can be pressed. The row keeps its height when
                                                     both are gone, so the hand below never moves. The
                                                     words are for a screen reader. */}
-                                                <div
-                                                    className={gameState.isOnTurn && !gameState.winnerUsername
-                                                        ? `santase-clock ${turnTimeRemaining <= 5 ? 'is-urgent' : ''}`
-                                                        : 'santase-time-idle'}
-                                                    data-reaction-anchor={username}
-                                                    role="status"
-                                                    aria-live="polite"
-                                                >
+                                                <span className="clock-slot" role="status" aria-live="polite">
                                                     <span className="sr-only">
                                                         {gameState.isOnTurn ? 'Ваш ред' : 'Опонентът играе'}
                                                     </span>
                                                     {gameState.isOnTurn && !gameState.winnerUsername && (
-                                                        <span className="santase-clock__count tabular" aria-hidden="true">
-                                                            {turnTimeRemaining}
-                                                        </span>
-                                                    )}
-                                                    {gameState.isOnTurn && !gameState.winnerUsername ? (
-                                                        <TurnBar
-                                                            className="santase-clock__fuse"
-                                                            startedAt={null}
-                                                            deadline={null}
-                                                            fraction={turnTimeRemaining / OWN_TURN_SECONDS}
+                                                        <ClockChip
                                                             seconds={turnTimeRemaining}
+                                                            total={OWN_TURN_SECONDS}
                                                             urgentSeconds={5}
                                                             label={username}
                                                         />
-                                                    ) : null}
-                                                </div>
+                                                    )}
+                                                </span>
 
                                                 {canFinishDeal && (
                                                 <button
@@ -2005,8 +1943,12 @@ const SantaseGame: React.FC = () => {
                                         );
                                     })()}
 
-                                    {/* Cards section */}
-                                    <div style={{
+                                    {/* Cards section. Your reactions pop beside your cards,
+                                        across the table from theirs. */}
+                                    <div
+                                        data-reaction-anchor={username}
+                                        data-reaction-side="right"
+                                        style={{
                                         ...styles.handPlayer,
                                         // phones fan the cards with a negative margin instead of a gap
                                         gap: isMobile ? '0' : 'var(--sp-3)',
@@ -2124,80 +2066,36 @@ const SantaseGame: React.FC = () => {
                 </div>
             )}
 
-            {/* Countdown before an auto-loss. Deliberately NOT dismissible by
-                scrim or Escape: the only ways out are the two explicit choices. */}
-            {showInactivityPopup && gameState && (() => {
-                const used = gameState?.inactivityCount ?? 0;
-                const extensionsLeft = Math.max(0, MAX_INACTIVITY - used);
-                const noneLeft = used >= MAX_INACTIVITY;
-                const critical = turnTimeRemaining <= 3;
-
-                return (
-                    <Modal
-                        title="Времето изтича!"
-                        width="narrow"
-                        dismissOnScrim={false}
-                        // Printed on the same card as every other dialog; the
-                        // red rule and the red count carry the urgency, so the
-                        // danger tone's inline colour is not wanted here.
-                        className="lobby sheet urgent"
-                        actions={
-                            <>
-                                {confirmTimeUpSurrender ? (
-                                    <>
-                                        <Button variant="ghost" onClick={() => setConfirmTimeUpSurrender(false)}>
-                                            Назад
-                                        </Button>
-                                        <Button
-                                            variant="danger"
-                                            onClick={() => {
-                                                setConfirmTimeUpSurrender(false);
-                                                void handleInactivitySurrender();
-                                            }}
-                                        >
-                                            Предай
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Button variant="ghost" onClick={() => setConfirmTimeUpSurrender(true)}>
-                                            Предавам се
-                                        </Button>
-                                        <Button
-                                            variant="primary"
-                                            disabled={noneLeft}
-                                            onClick={handleInactivityContinue}
-                                        >
-                                            {noneLeft ? 'Няма удължения' : 'Продължи (+20)'}
-                                        </Button>
-                                    </>
-                                )}
-                            </>
-                        }
-                    >
-                        <div style={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--sp-4)', textAlign: 'center'}}>
-                            <div
-                                className={`tabular sheet__countdown ${critical ? 'sheet__countdown--critical' : ''}`}
-                                role="timer"
-                                aria-live="assertive"
-                                aria-label={`Остават ${turnTimeRemaining} секунди`}
-                            >
-                                {turnTimeRemaining}
-                            </div>
-
-                            <p className="sheet__text">
-                                {confirmTimeUpSurrender
-                                    ? 'Сигурни ли сте? Играта ще приключи като загуба.'
-                                    : 'Ако не предприемете действие, играта ще приключи като загуба.'}
-                            </p>
-
-                            <span className="sheet__note">
-                                Оставащи удължения: {extensionsLeft} / {MAX_INACTIVITY}
-                            </span>
+            {/* Your time ran out: табла's card, word for word — Continue, or
+                the count runs on and the game is lost on its own. Not
+                dismissible by scrim or Escape. */}
+            {showInactivityPopup && gameState && (
+                <Modal
+                    title="Още ли сте тук?"
+                    width="narrow"
+                    className="lobby sheet urgent"
+                    dismissOnScrim={false}
+                    actions={
+                        <Button variant="primary" size="lg" onClick={() => void handleInactivityContinue()}>
+                            Продължи
+                        </Button>
+                    }
+                >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--sp-3)' }}>
+                        <div
+                            className={`tabular sheet__countdown ${turnTimeRemaining <= 3 ? 'sheet__countdown--critical' : ''}`}
+                            role="timer"
+                            aria-live="assertive"
+                            aria-label={`Остават ${turnTimeRemaining} секунди`}
+                        >
+                            {turnTimeRemaining}
                         </div>
-                    </Modal>
-                );
-            })()}
+                        <p className="sheet__text" style={{ textAlign: 'center' }}>
+                            Времето за хода изтече. Продължете, иначе играта се брои за загубена.
+                        </p>
+                    </div>
+                </Modal>
+            )}
 
             {confirmAction && (
                 <AppModal

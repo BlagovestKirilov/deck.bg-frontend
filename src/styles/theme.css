@@ -143,6 +143,8 @@
 
     /* min touch target — Apple 44pt / Material 48dp */
     --tap: 44px;
+    /* A round chip on the felt — santase's 66 — and the clock cut to match. */
+    --chip: clamp(44px, 12vw, 56px);
 }
 
 /* =====================================================================
@@ -851,11 +853,6 @@ code, kbd, samp { font-family: var(--font-mono); }
     to   { background-position: 0 50%; }
 }
 
-@keyframes pulse-dot {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%      { opacity: 0.6; transform: scale(1.25); }
-}
-
 @keyframes float-up-fade {
     0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
     20%  { transform: translate(-50%, -20px) scale(1.08); opacity: 1; }
@@ -1192,25 +1189,6 @@ code, kbd, samp { font-family: var(--font-mono); }
     backdrop-filter: blur(10px);
 }
 
-.turn-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--sp-2);
-    padding: var(--sp-2) var(--sp-5);
-    border-radius: var(--r-pill);
-    background: rgba(5, 14, 9, 0.88);
-    border: 1px solid var(--line-strong);
-    box-shadow: var(--sh-1);
-    backdrop-filter: blur(10px);
-    font-size: var(--fs-sm);
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    white-space: nowrap;
-    transition: border-color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
-}
-.turn-pill--urgent { border-color: var(--danger); background: rgba(60, 12, 12, 0.9); }
-.turn-pill__dot { width: 9px; height: 9px; border-radius: 50%; animation: pulse-dot 2s ease-in-out infinite; }
-
 .round-btn {
     display: grid;
     place-items: center;
@@ -1259,12 +1237,23 @@ code, kbd, samp { font-family: var(--font-mono); }
 .round-btn--quiet:hover:not(:disabled) { background: rgba(4, 12, 7, 0.75); }
 
 /* ---- reactions (ui/Reactions): a tray of pictures, and pictures in the air ---- */
-.reaction-anchor { position: relative; display: inline-flex; }
+/* The button sits at the bottom of the X's column at every table — lined up
+   under the way out (ui/Reactions measures it), not in the top bar, where a
+   third round button ran into the name plates (belot's partner, under the
+   bar). This corner is where it stands until that is measured. */
+.reaction-anchor {
+    position: fixed;
+    right: calc(var(--sa-right) + clamp(10px, 2.5vw, 20px));
+    bottom: calc(var(--sa-bottom) + clamp(10px, 2.5vw, 20px));
+    z-index: var(--z-hud);
+    display: inline-flex;
+}
 /* Resting between two sends: there, but plainly not ready. */
 .reaction-anchor .round-btn:disabled { opacity: 0.45; cursor: default; }
 .reaction-tray {
     position: absolute;
-    top: calc(100% + var(--sp-2));
+    /* Opens upward, out of the corner. */
+    bottom: calc(100% + var(--sp-2));
     right: 0;
     z-index: var(--z-overlay);
     display: grid;
@@ -1892,30 +1881,30 @@ code, kbd, samp { font-family: var(--font-mono); }
 /* Your time and the 66 as one group, centred over your hand: each there
    only when it means something, the row's height kept when both are gone. */
 .santase-claim {
-    --santase-chip: clamp(44px, 12vw, 56px);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--sp-3);
-    min-height: var(--santase-chip);
+    min-height: var(--chip);
 }
 .santase-claim__66 {
-    width: var(--santase-chip);
-    height: var(--santase-chip);
+    width: var(--chip);
+    height: var(--chip);
     font-size: clamp(1rem, 3.4vw, 1.25rem);
 }
-/* Your time, cut from the same card stock as the 66 beside it — the cream,
-   the green ring, the height, the face of its figures — so the two read as a
-   pair of chips on the felt: the seconds, and a thick gold fuse burning down
-   in a groove pressed into the card. Its last five seconds turn the ring, the
-   figure and the fuse red. */
-.santase-clock {
+/* Your own time at a two-player table (ui/ClockChip): cut from the card
+   stock of santase's 66 — the cream, the green ring, the height, the face of
+   its figures — so beside the 66 the two read as a pair of chips: the
+   seconds, and a thick gold fuse burning down in a groove pressed into the
+   card. Its last seconds turn the ring, the figure and the fuse red. */
+.clock-slot { display: contents; }
+.clock-chip {
     display: inline-flex;
     align-items: center;
     gap: var(--sp-2);
-    height: var(--santase-chip);
+    height: var(--chip);
     width: clamp(136px, 40vw, 208px);
-    padding: 0 calc(var(--santase-chip) * 0.3) 0 calc(var(--santase-chip) * 0.26);
+    padding: 0 calc(var(--chip) * 0.3) 0 calc(var(--chip) * 0.26);
     border-radius: var(--r-pill);
     background: var(--card);
     color: var(--ink);
@@ -1925,7 +1914,7 @@ code, kbd, samp { font-family: var(--font-mono); }
         0 6px 16px -6px rgba(0, 0, 0, 0.7);
     transition: box-shadow var(--dur) var(--ease-out);
 }
-.santase-clock__count {
+.clock-chip__count {
     min-width: 2ch;
     font-family: var(--font-display);
     font-weight: 700;
@@ -1934,24 +1923,24 @@ code, kbd, samp { font-family: var(--font-mono); }
     text-align: center;
     transition: color var(--dur) var(--ease-out);
 }
-.santase-clock__fuse.turnbar {
+.clock-chip__fuse.turnbar {
     flex: 1;
-    height: calc(var(--santase-chip) * 0.34);
+    height: calc(var(--chip) * 0.34);
     background: rgba(29, 27, 24, 0.1);
     box-shadow: inset 0 2px 3px rgba(29, 27, 24, 0.28), inset 0 0 0 1px var(--ink-line);
 }
-.santase-clock__fuse .turnbar__fill {
+.clock-chip__fuse .turnbar__fill {
     background: linear-gradient(90deg, var(--gold-deep), var(--gold) 55%, var(--gold-bright));
     box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 0 rgba(0, 0, 0, 0.12);
 }
-.santase-clock.is-urgent {
+.clock-chip.is-urgent {
     box-shadow:
         inset 0 0 0 2px var(--danger-deep),
         0 1px 0 rgba(0, 0, 0, 0.35),
         0 6px 18px -4px rgba(255, 111, 111, 0.55);
 }
-.santase-clock.is-urgent .santase-clock__count { color: var(--danger-deep); }
-.santase-clock__fuse.is-urgent .turnbar__fill {
+.clock-chip.is-urgent .clock-chip__count { color: var(--danger-deep); }
+.clock-chip__fuse.is-urgent .turnbar__fill {
     background: linear-gradient(90deg, var(--danger-deep), var(--danger));
 }
 .santase-time-idle { display: contents; }

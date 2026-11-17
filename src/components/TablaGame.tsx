@@ -18,6 +18,7 @@ import { useReactionFeed } from '../hooks/useReactionFeed';
 import Modal from './ui/Modal';
 import StatusScreen from './ui/StatusScreen';
 import TurnBar from './ui/TurnBar';
+import ClockChip from './ui/ClockChip';
 import GamePrelude from './lobby/GamePrelude';
 import { TablaArt } from './lobby/GameArt';
 import { isSoundOn, playDiceSound, setSoundOn } from '../utils/sounds';
@@ -36,7 +37,7 @@ const COLOR_LABEL: Record<CheckerColor, string> = { white: 'белите', black
 const TURN_SECONDS = 45;
 /** Seconds on the prompt before the game is given up. */
 const WARNING_SECONDS = 10;
-/** When the turn pill starts reading as urgent. */
+/** When your clock chip turns red. */
 const WARNING_AT = 10;
 /** The opponent's bar turns red once they are on the prompt: the server's deadline is
  *  the prompt's seconds plus three of slack. */
@@ -501,7 +502,6 @@ const TablaGame: React.FC = () => {
     const showOpening = state.openingPhase
         || (Boolean(state.openingThrows?.length) && openingSeen !== state.gameId);
     const clockRunning = mustAct(state);
-    const urgent = clockRunning && secondsLeft <= WARNING_AT;
     const canUndo = state.isOnTurn && state.pendingHops.length > 0;
     const canRoll = state.isOnTurn && state.die1 == null;
     const iWon = state.winnerUsername === username;
@@ -562,6 +562,7 @@ const TablaGame: React.FC = () => {
                     <button
                         type="button"
                         className="round-btn round-btn--danger"
+                        data-exit
                         onClick={() => setConfirmLeave(true)}
                         aria-label="Напусни играта"
                     >
@@ -606,27 +607,20 @@ const TablaGame: React.FC = () => {
                         </span>
                     </span>
 
-                    <span className={`turn-pill ${urgent ? 'turn-pill--urgent' : ''}`} role="status" aria-live="polite">
-                        <span
-                            className="turn-pill__dot"
-                            style={{ background: clockRunning ? (urgent ? 'var(--danger)' : 'var(--success)') : 'var(--text-3)' }}
-                        />
-                        {state.isOnTurn ? (
-                            <>
-                                <span>ВАШ РЕД</span>
-                                <span className="tabular" style={{ minWidth: '2ch', fontWeight: 800 }}>{secondsLeft}</span>
-                            </>
-                        ) : state.openingPhase ? (
-                            // Nobody is on turn yet: both are throwing. Whoever
-                            // still has to sees their time, as on a turn.
-                            <>
-                                <span>ПЪРВО ХВЪРЛЯНЕ</span>
-                                {clockRunning && (
-                                    <span className="tabular" style={{ minWidth: '2ch', fontWeight: 800 }}>{secondsLeft}</span>
-                                )}
-                            </>
-                        ) : (
-                            <span>ОПОНЕНТЪТ ИГРАЕ…</span>
+                    {/* Your time: the chip santase shows, only while you must
+                        act — your turn or your opening throw. The words are
+                        for a screen reader. */}
+                    <span className="clock-slot" role="status" aria-live="polite">
+                        <span className="sr-only">
+                            {state.isOnTurn ? 'Ваш ред' : state.openingPhase ? 'Първо хвърляне' : 'Опонентът играе'}
+                        </span>
+                        {clockRunning && (
+                            <ClockChip
+                                seconds={secondsLeft}
+                                total={TURN_SECONDS}
+                                urgentSeconds={WARNING_AT}
+                                label={username}
+                            />
                         )}
                     </span>
                 </div>

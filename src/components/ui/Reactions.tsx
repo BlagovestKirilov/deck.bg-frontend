@@ -1,11 +1,31 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Icon from './Icon';
 import { REACTIONS, ReactionCode, nextReactionAt, reactionOf } from '../../utils/reactions';
 import { ShownReaction } from '../../hooks/useReactionFeed';
 
 /**
- * The round button beside the sound switch, and the tray it opens: the
+ * Where the button stands: in the column of the table's way out (the round
+ * button marked data-exit, top right at every table), as far from the bottom
+ * as that one is from the top. Measured, because a table may be a centred
+ * column on a wide screen (табла) or span it (santase): the screen's own
+ * corner was a long way from the X there. Null where there is no X to line
+ * up with; the stylesheet's corner holds then.
+ */
+function underTheExit(own: HTMLElement | null): React.CSSProperties | null {
+    const exit = document.querySelector<HTMLElement>('[data-exit]');
+    if (!exit || !own) return null;
+    const x = exit.getBoundingClientRect();
+    if (x.width === 0) return null;
+    const width = own.getBoundingClientRect().width || x.width;
+    return {
+        right: Math.round(window.innerWidth - (x.left + x.width / 2) - width / 2),
+        bottom: Math.round(Math.max(0, x.top)),
+    };
+}
+
+/**
+ * The round button under the table's way out, and the tray it opens: the
  * reactions as pictures, one tap to send. Closes on a pick, on Escape and
  * on a tap anywhere else.
  *
@@ -15,10 +35,29 @@ import { ShownReaction } from '../../hooks/useReactionFeed';
  */
 export const ReactionButton: React.FC<{
     onSend: (code: ReactionCode) => void;
-    style?: React.CSSProperties;
-}> = ({ onSend, style }) => {
+}> = ({ onSend }) => {
     const [open, setOpen] = useState(false);
     const box = useRef<HTMLDivElement>(null);
+    const [place, setPlace] = useState<React.CSSProperties | null>(null);
+
+    // Follow the X: on every render of the table around it, on a resize, and
+    // when the X's own row changes size. Only a change is stored, so this
+    // settles at once.
+    useLayoutEffect(() => {
+        const follow = () => setPlace((was) => {
+            const next = underTheExit(box.current);
+            return was?.right === next?.right && was?.bottom === next?.bottom ? was : next;
+        });
+        follow();
+        window.addEventListener('resize', follow);
+        const row = document.querySelector<HTMLElement>('[data-exit]')?.parentElement;
+        const watch = row && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(follow) : null;
+        if (row) watch?.observe(row);
+        return () => {
+            window.removeEventListener('resize', follow);
+            watch?.disconnect();
+        };
+    });
     const sentAt = useRef<number[]>([]);
     const [resting, setResting] = useState(false);
     const restTimer = useRef<number | undefined>(undefined);
@@ -52,7 +91,7 @@ export const ReactionButton: React.FC<{
     }, [open]);
 
     return (
-        <div className="reaction-anchor" ref={box} style={style}>
+        <div className="reaction-anchor" ref={box} style={place ?? undefined}>
             <button
                 type="button"
                 className="round-btn round-btn--quiet"
@@ -99,6 +138,23 @@ export type ReactionPlace = 'top' | 'bottom' | 'left' | 'right';
 /** The gap between a player's name and their reaction. */
 const BESIDE_PX = 10;
 
+/** Room a reaction needs beside something: the picture at its largest. */
+const POP_PX = 64;
+
+/** The box round an element's children — the cards in a hand row. */
+function cardsOf(element: HTMLElement): { left: number; right: number; top: number; bottom: number } | null {
+    const boxes = [...element.children]
+        .map((child) => child.getBoundingClientRect())
+        .filter((box) => box.width > 0 && box.height > 0);
+    if (boxes.length === 0) return null;
+    return {
+        left: Math.min(...boxes.map((box) => box.left)),
+        right: Math.max(...boxes.map((box) => box.right)),
+        top: Math.min(...boxes.map((box) => box.top)),
+        bottom: Math.max(...boxes.map((box) => box.bottom)),
+    };
+}
+
 /**
  * Where a reaction goes: next to the element the game marked with
  * data-reaction-anchor for its sender — that player's name, wherever this
@@ -115,6 +171,21 @@ function besideTheirName(username: string): React.CSSProperties | null {
     const middleX = box.left + box.width / 2;
     const middleY = box.top + box.height / 2;
     const width = window.innerWidth;
+    // A seat drawn as a hand of cards (santase) asks for the side outright:
+    // to the right of the cards themselves — not of a row that may span the
+    // screen — level with them. Where the cards reach the edge, as on a
+    // phone, the picture sits on the hand's corner instead: under the cards
+    // across the table, over your own.
+    if (anchor.dataset.reactionSide === 'right') {
+        const cards = cardsOf(anchor) ?? box;
+        const level = (cards.top + cards.bottom) / 2;
+        if (cards.right + BESIDE_PX + POP_PX <= width) {
+            return { left: cards.right + BESIDE_PX, top: level, translate: '0 -50%' };
+        }
+        return level < window.innerHeight / 2
+            ? { left: cards.right, top: cards.bottom + BESIDE_PX, translate: '-100% 0' }
+            : { left: cards.right, top: cards.top - BESIDE_PX, translate: '-100% -100%' };
+    }
     if (middleX < width / 3) {
         return { left: box.right + BESIDE_PX, top: middleY, translate: '0 -50%' };
     }
