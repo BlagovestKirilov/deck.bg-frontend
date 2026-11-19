@@ -1008,7 +1008,7 @@ const Held: React.FC<{
     held.forEach((key) => { if (!arrived.current.has(key)) arrived.current.set(key, now); });
 
     return (
-        <div className="belot__cards" data-count={cards.length}>
+        <div className="belot__cards" data-count={cards.length} data-reaction-avoid>
             {cards.map((card, i) => {
                 const step = i - middle;
                 const key = `${card.suit}-${card.rank}`;
