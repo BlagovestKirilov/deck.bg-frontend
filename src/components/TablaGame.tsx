@@ -478,29 +478,45 @@ const TablaGame: React.FC = () => {
     const passNowRef = useRef<() => void>(() => {});
     passNowRef.current = () => void passNow();
 
-    // Auto-roll: when the turn comes over from the opponent and the setting is
-    // on, the dice are thrown a moment later — after their hand has been seen
-    // landing, not on top of it. Never the opening throw that decides who
-    // starts, nor the first turn after it: those are thrown by hand. Checked
-    // again when the moment comes, so a throw by hand, the setting turned off
-    // or the game ending in between leaves it be.
-    const rollNowRef = useRef<() => void>(() => {});
-    rollNowRef.current = () => {
-        if (!autoRoll || !state || state.winnerUsername || state.openingPhase) return;
-        if (!state.isOnTurn || state.die1 != null) return;
-        void guard(tablaService.roll);
-    };
+    // Auto-roll, in two parts.
+    //
+    // Whose turn may be thrown for: one that came over from the opponent.
+    // Never the opening throw that decides who starts, nor the first turn
+    // after it, nor a turn found already under way on a reload — those are
+    // thrown by hand.
+    const [autoTurn, setAutoTurn] = useState(false);
     const lastTurnRef = useRef<{ onTurn: boolean; opening: boolean } | null>(null);
     useEffect(() => {
-        if (!state) return undefined;
+        if (!state) return;
         const was = lastTurnRef.current;
         const now = { onTurn: state.isOnTurn, opening: Boolean(state.openingPhase) };
         lastTurnRef.current = now;
-        const handedOver = !!was && !was.onTurn && !was.opening && now.onTurn && !now.opening;
-        if (!handedOver) return undefined;
+        if (!now.onTurn || now.opening) {
+            setAutoTurn(false);
+        } else if (was && !was.onTurn && !was.opening) {
+            setAutoTurn(true);
+        }
+    }, [state?.gameId, state?.isOnTurn, state?.openingPhase]);
+
+    // And the throw: due while the setting is on, the turn is one of those and
+    // the dice are not thrown yet — a moment after the turn came over, so the
+    // opponent's hand is seen landing first. While it is due, Хвърли is not
+    // shown; anything that ends it gives the button back at once: the setting
+    // turned off, or the throw failing (the turn is then thrown by hand). So
+    // the screen is never left with no way to throw.
+    const autoRollDue = Boolean(autoRoll && autoTurn && state && state.isOnTurn
+        && state.die1 == null && !state.winnerUsername && !state.openingPhase);
+    const rollNowRef = useRef<() => void>(() => {});
+    rollNowRef.current = () => {
+        void guard(tablaService.roll).then((thrown) => {
+            if (!thrown) setAutoTurn(false);
+        });
+    };
+    useEffect(() => {
+        if (!autoRollDue) return undefined;
         const id = setTimeout(() => rollNowRef.current(), AUTO_ROLL_DELAY_MS);
         return () => clearTimeout(id);
-    }, [state?.gameId, state?.isOnTurn, state?.openingPhase]);
+    }, [autoRollDue]);
 
     useEffect(() => {
         if (!blocked) {
@@ -659,8 +675,9 @@ const TablaGame: React.FC = () => {
                         {/* Beside your name, where it stays put whoever's turn
                             it is: on, the dice are thrown for you a moment
                             after the opponent's turn ends. A picture only —
-                            its name is for a screen reader and the tooltip. */}
-                        <button
+                            its name is for a screen reader and the tooltip.
+                            Not until the opening has settled who starts. */}
+                        {!showOpening && <button
                             type="button"
                             role="switch"
                             aria-checked={autoRoll}
@@ -674,7 +691,7 @@ const TablaGame: React.FC = () => {
                             {/* Larger than the sound button's 20: the die sits
                                 inside the arrow and wants the room. */}
                             <Icon name="diceAuto" size={28} />
-                        </button>
+                        </button>}
                     </div>
 
                     {/* Your time: the chip santase shows, only while you must
@@ -763,7 +780,8 @@ const TablaGame: React.FC = () => {
                         </Button>
                     )}
 
-                    {canRoll && (
+                    {/* Not while an auto-roll is about to throw for you. */}
+                    {canRoll && !autoRollDue && (
                         <Button variant="primary" icon="dice" loading={busy}
                                 className="btn--keep-label"
                                 aria-label="Хвърли заровете"
