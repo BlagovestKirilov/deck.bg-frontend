@@ -1767,7 +1767,8 @@ code, kbd, samp { font-family: var(--font-mono); }
     /* The cube is small, so the vanishing point has to be close or the
        perspective reads as a flat rotation. */
     perspective: calc(var(--die) * 4);
-    transition: opacity var(--dur-fast) var(--ease-out);
+    transition: opacity var(--dur) var(--ease-out), scale var(--dur) var(--ease-out),
+        translate var(--dur) var(--ease-out);
 }
 
 /* The throw: up off the table and back down, while the cube turns. Transform
@@ -1807,7 +1808,10 @@ code, kbd, samp { font-family: var(--font-mono); }
     background: var(--text-on-light);
 }
 
-.die--used { opacity: .32; }
+/* A die already played this turn: set down beside the live one — smaller,
+   sunk and dim — so which of the two is spent reads at a glance. Върни
+   brings it back up. Faded alone it was easy to miss on the dark felt. */
+.die--used { opacity: .35; scale: .78; translate: 0 4px; }
 
 /* Fallback face when a value is not 1..6, so a die is never blank. */
 .die--numeric {
