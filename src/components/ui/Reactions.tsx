@@ -17,12 +17,29 @@ function underTheExit(own: HTMLElement | null): React.CSSProperties | null {
     if (!exit || !own) return null;
     const x = exit.getBoundingClientRect();
     if (x.width === 0) return null;
-    const width = own.getBoundingClientRect().width || x.width;
-    return {
-        right: Math.round(window.innerWidth - (x.left + x.width / 2) - width / 2),
-        bottom: Math.round(Math.max(0, x.top)),
-    };
+    const ownBox = own.getBoundingClientRect();
+    const width = ownBox.width || x.width;
+    const height = ownBox.height || x.height;
+    const right = window.innerWidth - (x.left + x.width / 2) - width / 2;
+    let bottom = Math.max(0, x.top);
+
+    // Never on a player's cards: a hand the table marked data-reaction-avoid
+    // (belot's eight on a phone run to the edge) pushes the button up to sit
+    // just above it, in the same column.
+    const left = window.innerWidth - right - width;
+    document.querySelectorAll<HTMLElement>('[data-reaction-avoid]').forEach((element) => {
+        const cards = cardsOf(element);
+        if (!cards) return;
+        const top = window.innerHeight - bottom - height;
+        const overlaps = left < cards.right && left + width > cards.left
+            && top < cards.bottom && top + height > cards.top;
+        if (overlaps) bottom = Math.max(bottom, window.innerHeight - cards.top + AVOID_GAP_PX);
+    });
+    return { right: Math.round(right), bottom: Math.round(bottom) };
 }
+
+/** The room left between the button and a hand it has stepped up over. */
+const AVOID_GAP_PX = 8;
 
 /**
  * The round button under the table's way out, and the tray it opens: the
@@ -51,8 +68,10 @@ export const ReactionButton: React.FC<{
         follow();
         window.addEventListener('resize', follow);
         const row = document.querySelector<HTMLElement>('[data-exit]')?.parentElement;
-        const watch = row && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(follow) : null;
+        const watch = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(follow) : null;
         if (row) watch?.observe(row);
+        // A hand growing to eight, or shrinking as it is played, moves it too.
+        document.querySelectorAll<HTMLElement>('[data-reaction-avoid]').forEach((hand) => watch?.observe(hand));
         return () => {
             window.removeEventListener('resize', follow);
             watch?.disconnect();

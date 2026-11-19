@@ -1948,6 +1948,7 @@ const SantaseGame: React.FC = () => {
                                     <div
                                         data-reaction-anchor={username}
                                         data-reaction-side="right"
+                                        data-reaction-avoid
                                         style={{
                                         ...styles.handPlayer,
                                         // phones fan the cards with a negative margin instead of a gap

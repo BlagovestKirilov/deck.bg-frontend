@@ -37,6 +37,19 @@ const COLOR_LABEL: Record<CheckerColor, string> = { white: 'белите', black
 const TURN_SECONDS = 45;
 /** Seconds on the prompt before the game is given up. */
 const WARNING_SECONDS = 10;
+/** Where the auto-roll setting is kept on this device. */
+const AUTO_ROLL_KEY = 'deck.tabla.autoRoll';
+/** The pause between the opponent's turn ending and your dice being thrown for you. */
+const AUTO_ROLL_DELAY_MS = 900;
+
+function readAutoRoll(): boolean {
+    try {
+        return localStorage.getItem(AUTO_ROLL_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
 /** When your clock chip turns red. */
 const WARNING_AT = 10;
 /** The opponent's bar turns red once they are on the prompt: the server's deadline is
@@ -85,6 +98,18 @@ const TablaGame: React.FC = () => {
     };
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    // Throw the dice for me when my turn comes round: a setting of this
+    // device's, kept between games.
+    const [autoRoll, setAutoRollState] = useState(readAutoRoll);
+    const toggleAutoRoll = () => {
+        const next = !autoRoll;
+        setAutoRollState(next);
+        try {
+            localStorage.setItem(AUTO_ROLL_KEY, next ? '1' : '0');
+        } catch {
+            // Not kept, then: it still holds for this visit.
+        }
+    };
     const [secondsLeft, setSecondsLeft] = useState(TURN_SECONDS);
     const [showResult, setShowResult] = useState(false);
     /** True while the "still there?" prompt is up and its own clock is running. */
@@ -453,6 +478,30 @@ const TablaGame: React.FC = () => {
     const passNowRef = useRef<() => void>(() => {});
     passNowRef.current = () => void passNow();
 
+    // Auto-roll: when the turn comes over from the opponent and the setting is
+    // on, the dice are thrown a moment later — after their hand has been seen
+    // landing, not on top of it. Never the opening throw that decides who
+    // starts, nor the first turn after it: those are thrown by hand. Checked
+    // again when the moment comes, so a throw by hand, the setting turned off
+    // or the game ending in between leaves it be.
+    const rollNowRef = useRef<() => void>(() => {});
+    rollNowRef.current = () => {
+        if (!autoRoll || !state || state.winnerUsername || state.openingPhase) return;
+        if (!state.isOnTurn || state.die1 != null) return;
+        void guard(tablaService.roll);
+    };
+    const lastTurnRef = useRef<{ onTurn: boolean; opening: boolean } | null>(null);
+    useEffect(() => {
+        if (!state) return undefined;
+        const was = lastTurnRef.current;
+        const now = { onTurn: state.isOnTurn, opening: Boolean(state.openingPhase) };
+        lastTurnRef.current = now;
+        const handedOver = !!was && !was.onTurn && !was.opening && now.onTurn && !now.opening;
+        if (!handedOver) return undefined;
+        const id = setTimeout(() => rollNowRef.current(), AUTO_ROLL_DELAY_MS);
+        return () => clearTimeout(id);
+    }, [state?.gameId, state?.isOnTurn, state?.openingPhase]);
+
     useEffect(() => {
         if (!blocked) {
             passSentRef.current = false;
@@ -596,16 +645,37 @@ const TablaGame: React.FC = () => {
             <div className="tabla-footer">
                 {/* my side + turn */}
                 <div className="tabla-hud">
-                    <span className="tabla-hud__name" data-reaction-anchor={username}>
-                        <span className="truncate" style={{ color: 'var(--gold)', fontWeight: 700 }}>
-                            {username}
+                    <div className="tabla-hud__me">
+                        <span className="tabla-hud__name" data-reaction-anchor={username}>
+                            <span className="truncate" style={{ color: 'var(--gold)', fontWeight: 700 }}>
+                                {username}
+                            </span>
+                            <span className="pip-count">
+                                <PipDie color={myColor} />
+                                <span className="sr-only">Пипове с {COLOR_LABEL[myColor]}: </span>
+                                <span className="tabla-hud__pip tabular">{state.myPipCount}</span>
+                            </span>
                         </span>
-                        <span className="pip-count">
-                            <PipDie color={myColor} />
-                            <span className="sr-only">Пипове с {COLOR_LABEL[myColor]}: </span>
-                            <span className="tabla-hud__pip tabular">{state.myPipCount}</span>
-                        </span>
-                    </span>
+                        {/* Beside your name, where it stays put whoever's turn
+                            it is: on, the dice are thrown for you a moment
+                            after the opponent's turn ends. A picture only —
+                            its name is for a screen reader and the tooltip. */}
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={autoRoll}
+                            className={`round-btn round-btn--quiet auto-roll ${autoRoll ? 'is-on' : ''}`}
+                            onClick={toggleAutoRoll}
+                            aria-label="Автохвърляне на заровете"
+                            title={autoRoll
+                                ? 'Автохвърляне: включено'
+                                : 'Автохвърляне: заровете се хвърлят сами след хода на противника'}
+                        >
+                            {/* Larger than the sound button's 20: the die sits
+                                inside the arrow and wants the room. */}
+                            <Icon name="diceAuto" size={28} />
+                        </button>
+                    </div>
 
                     {/* Your time: the chip santase shows, only while you must
                         act — your turn or your opening throw. The words are

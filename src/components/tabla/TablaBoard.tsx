@@ -113,7 +113,7 @@ export const Die: React.FC<{
     // turning a blank box to the front.
     if (!PIP_SLOTS[value]) {
         return (
-            <span className={`die die--numeric ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}`}>
+            <span className={`die die--numeric ${used ? 'die--used' : ''}`} role="img" aria-label={`Зар ${value}${used ? ', изигран' : ''}`}>
                 {value}
             </span>
         );
@@ -124,7 +124,7 @@ export const Die: React.FC<{
             className={`die ${used ? 'die--used' : ''}`}
             style={{ '--lift': lift } as React.CSSProperties}
             role="img"
-            aria-label={`Зар ${value}`}
+            aria-label={`Зар ${value}${used ? ', изигран' : ''}`}
         >
             <span
                 ref={cube}

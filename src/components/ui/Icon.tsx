@@ -41,7 +41,8 @@ export type IconName =
     | 'search'
     | 'compass'
     | 'userCog'
-    | 'dice';
+    | 'dice'
+    | 'diceAuto';
 
 interface IconProps {
     name: IconName;
@@ -233,6 +234,21 @@ const PATHS: Record<IconName, React.ReactNode> = {
         <>
             <rect x="3.2" y="3.2" width="17.6" height="17.6" rx="4" />
             <path d="M8.4 8.4v.01M15.6 8.4v.01M12 12v.01M8.4 15.6v.01M15.6 15.6v.01" />
+        </>
+    ),
+    /* A die that throws itself: the die, and a turn arrow all the way round
+       it — each turn, again, on its own. */
+    diceAuto: (
+        <>
+            <path d="M20.5 12a8.5 8.5 0 1 1-2.5-6" />
+            {/* The arrowhead's corner on the ring's end, exactly. */}
+            <path d="M18 2.6V6h-3.4" />
+            <rect x="7.5" y="7.5" width="9" height="9" rx="2.2" />
+            {/* A three, its pips filled circles of one size: drawn as dots of
+                stroke they snapped to the pixels unevenly at this scale. */}
+            <circle cx="9.9" cy="9.9" r="1.05" fill="currentColor" stroke="none" />
+            <circle cx="12" cy="12" r="1.05" fill="currentColor" stroke="none" />
+            <circle cx="14.1" cy="14.1" r="1.05" fill="currentColor" stroke="none" />
         </>
     ),
     compass: (
