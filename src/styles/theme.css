@@ -1975,6 +1975,27 @@ code, kbd, samp { font-family: var(--font-mono); }
     max-width: min(100%, 46rem);
     padding: var(--sp-2) var(--sp-3);
 }
+/* Your name and pips, and the auto-roll switch beside them: one group at
+   the footer's near end, so the switch does not move when the clock comes
+   and goes at the far end. */
+.tabla-hud__me {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-width: 0;
+}
+/* Auto-roll: a round button of the HUD's glass, the sound button's twin,
+   grey when off; ringed and drawn in gold when on — the gold of your name
+   beside it. */
+.auto-roll { flex: none; color: var(--text-2); }
+.auto-roll:hover:not(:disabled) { color: var(--text-1); }
+.auto-roll.is-on,
+.auto-roll.is-on:hover:not(:disabled) {
+    color: var(--gold);
+    background: var(--gold-wash);
+    border-color: var(--gold);
+    box-shadow: 0 0 12px rgba(227, 191, 93, 0.25);
+}
 /* The sound and the way out, side by side at the HUD's far end. */
 .tabla-hud__actions {
     display: flex;
