@@ -37,14 +37,16 @@ const COLOR_LABEL: Record<CheckerColor, string> = { white: 'белите', black
 const TURN_SECONDS = 45;
 /** Seconds on the prompt before the game is given up. */
 const WARNING_SECONDS = 10;
-/** Where the auto-roll setting is kept on this device. */
+/** Where the game auto-roll is on for is kept, so a reload mid-game keeps it. */
 const AUTO_ROLL_KEY = 'deck.tabla.autoRoll';
 /** The pause between the opponent's turn ending and your dice being thrown for you. */
 const AUTO_ROLL_DELAY_MS = 900;
 
-function readAutoRoll(): boolean {
+/** Whether auto-roll was turned on for this game. */
+function readAutoRoll(gameId: string | undefined): boolean {
+    if (!gameId) return false;
     try {
-        return localStorage.getItem(AUTO_ROLL_KEY) === '1';
+        return localStorage.getItem(AUTO_ROLL_KEY) === gameId;
     } catch {
         return false;
     }
@@ -98,18 +100,9 @@ const TablaGame: React.FC = () => {
     };
     const [toast, setToast] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
-    // Throw the dice for me when my turn comes round: a setting of this
-    // device's, kept between games.
-    const [autoRoll, setAutoRollState] = useState(readAutoRoll);
-    const toggleAutoRoll = () => {
-        const next = !autoRoll;
-        setAutoRollState(next);
-        try {
-            localStorage.setItem(AUTO_ROLL_KEY, next ? '1' : '0');
-        } catch {
-            // Not kept, then: it still holds for this visit.
-        }
-    };
+    // Throw the dice for me when my turn comes round: for this game only.
+    // Every new game starts with it off; a reload in the same game keeps it.
+    const [autoRoll, setAutoRollState] = useState(false);
     const [secondsLeft, setSecondsLeft] = useState(TURN_SECONDS);
     const [showResult, setShowResult] = useState(false);
     /** True while the "still there?" prompt is up and its own clock is running. */
@@ -158,6 +151,21 @@ const TablaGame: React.FC = () => {
 
     const session = useGameSession<TablaState>({ gameKey: 'tabla', username, api, onState });
     const { state, isConnected, isSearching, isResuming, startSearch, leaveGame, finishAndReturn } = session;
+
+    // Read again for each game: on only where it was turned on in this one.
+    useEffect(() => {
+        setAutoRollState(readAutoRoll(state?.gameId));
+    }, [state?.gameId]);
+    const toggleAutoRoll = () => {
+        const next = !autoRoll;
+        setAutoRollState(next);
+        try {
+            if (next && state?.gameId) localStorage.setItem(AUTO_ROLL_KEY, state.gameId);
+            else localStorage.removeItem(AUTO_ROLL_KEY);
+        } catch {
+            // Not kept, then: it still holds until a reload.
+        }
+    };
 
     // How far each cube has turned, and whether it is still in the air. The
     // landing rotation comes from the server's values, so the animation cannot
