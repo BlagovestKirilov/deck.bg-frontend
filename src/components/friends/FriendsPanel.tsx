@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
 import Field from '../ui/Field';
+import Icon from '../ui/Icon';
 import { RankMedal, rankName } from '../RankBadge';
 import { friendService } from '../../api/friendService';
 import { Friends } from '../../hooks/useFriends';
@@ -28,13 +29,17 @@ const PENDING_TAG: Record<FriendRelation, string | null> = {
     RECEIVED: 'очаква вашия отговор',
 };
 
-/** What the one button does for the player picked, and whether it can. */
+/**
+ * What the one button does for the player picked, said with their name, and
+ * whether it can: nobody picked yet, a request to send, one of theirs to
+ * accept, or one of yours already out.
+ */
 function actionFor(hit: FriendSearchHit | undefined): { label: string; enabled: boolean } {
     switch (hit?.relation) {
-        case 'SENT': return { label: 'Изпратена', enabled: false };
-        case 'RECEIVED': return { label: 'Приеми', enabled: true };
-        case 'NONE': return { label: 'Добави', enabled: true };
-        default: return { label: 'Добави', enabled: false };
+        case 'SENT': return { label: `Поканата до ${hit.username} е изпратена`, enabled: false };
+        case 'RECEIVED': return { label: `Приеми поканата на ${hit.username}`, enabled: true };
+        case 'NONE': return { label: `Изпрати покана на ${hit.username}`, enabled: true };
+        default: return { label: 'Изберете играч', enabled: false };
     }
 }
 
@@ -317,22 +322,27 @@ const AddFriend: React.FC<AddFriendProps> = ({ run, error, onBack, onSent }) => 
     const picked = found?.players.find((hit) => hit.username.toLowerCase() === prefix.toLowerCase());
     const action = actionFor(picked);
 
+    const submit = () => {
+        if (!picked || !action.enabled) return;
+        void run(() => friendService.request(picked.username)).then((sent) => { if (sent) onSent(); });
+    };
+
     return (
         <>
-            <Button variant="ghost" size="sm" icon="arrowLeft" className="friends__back" onClick={onBack}>
-                Към приятелите
-            </Button>
+            {/* The way back: a quiet link, not a second button competing with the one that matters. */}
+            <button type="button" className="friends__back" onClick={onBack}>
+                <Icon name="arrowLeft" size={16} />
+                <span>Приятели</span>
+            </button>
             <form
                 className="friends__add"
                 onSubmit={(event) => {
                     event.preventDefault();
-                    if (!picked || !action.enabled) return;
-                    void run(() => friendService.request(picked.username)).then((sent) => { if (sent) onSent(); });
+                    submit();
                 }}
             >
-                {/* One button for the one player named: tapping a name below
-                    fills the field, and the button says what it will do. */}
-                <div className="friends__add-row">
+                {/* A search, and it looks like one: the glass inside the field. */}
+                <div className="friends__search">
                     <Field
                         ref={input}
                         label="Име на играча"
@@ -343,56 +353,75 @@ const AddFriend: React.FC<AddFriendProps> = ({ run, error, onBack, onSent }) => 
                         autoCapitalize="off"
                         spellCheck={false}
                         maxLength={64}
+                        enterKeyHint="search"
                     />
-                    <Button type="submit" variant="primary" disabled={!action.enabled}>
-                        {action.label}
-                    </Button>
+                    <span className="friends__search-glass" aria-hidden="true"><Icon name="search" size={20} /></span>
                 </div>
-                {error && <p className="friends__error" role="alert">{error}</p>}
+
                 {/* Always three rows tall, whatever it holds, so nothing moves
                     while the name is typed. */}
                 <div className="friends__found" aria-live="polite">
                     {!found ? (
-                        <p className="friends__found-note">Напишете поне 3 букви от името.</p>
+                        <FoundNote icon="search" line="Потърсете играч по името му" small="Напишете поне 3 букви." />
                     ) : found.players.length === 0 && !found.more ? (
-                        <p className="friends__found-note">Няма играч с такова име.</p>
+                        <FoundNote icon="user" line={`Няма играч „${prefix}“`} small="Проверете името и опитайте отново." />
+                    ) : found.players.length === 0 ? (
+                        <FoundNote icon="search" line={`Твърде много играчи започват с „${prefix}“`} small="Напишете още букви." />
                     ) : (
                         <>
-                            {found.players.length > 0 && (
-                                <ul className="friends__picks" aria-label="Намерени играчи">
-                                    {found.players.map((hit) => (
-                                        <li key={hit.username}>
-                                            <button
-                                                type="button"
-                                                className={`friends__pick ${hit === picked ? 'is-picked' : ''}`}
-                                                aria-pressed={hit === picked}
-                                                onClick={() => setTyped(hit.username)}
-                                            >
+                            <ul className="friends__picks" aria-label="Намерени играчи">
+                                {found.players.map((hit) => (
+                                    <li key={hit.username}>
+                                        <button
+                                            type="button"
+                                            className={`friends__pick ${hit === picked ? 'is-picked' : ''}`}
+                                            aria-pressed={hit === picked}
+                                            onClick={() => setTyped(hit.username)}
+                                        >
+                                            <span className="friends__pick-text">
                                                 <span className="friends__name truncate">{hit.username}</span>
                                                 {PENDING_TAG[hit.relation] && (
                                                     <span className="friends__tag friends__tag--pending">
                                                         {PENDING_TAG[hit.relation]}
                                                     </span>
                                                 )}
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
+                                            </span>
+                                            {hit === picked && (
+                                                <span className="friends__picked-mark" aria-hidden="true">
+                                                    <Icon name="check" size={16} />
+                                                </span>
+                                            )}
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
                             {found.more && (
-                                <p className="friends__found-note">
-                                    {found.players.length
-                                        ? 'Има и други с това начало. Напишете още букви, за да ги видите.'
-                                        : `Твърде много имена започват с „${prefix}“. Напишете още букви.`}
-                                </p>
+                                <p className="friends__found-more">Има и други с това начало — напишете още букви.</p>
                             )}
                         </>
                     )}
                 </div>
+
+                {error && <p className="friends__error" role="alert">{error}</p>}
+
+                {/* The one button, under what it acts on, saying whom it is for. */}
+                <Button type="submit" variant="primary" block icon={picked ? 'userPlus' : undefined}
+                        disabled={!action.enabled} className="friends__send">
+                    {action.label}
+                </Button>
             </form>
         </>
     );
 };
+
+/** What the results box says when there are no results to show: a mark, a line, and what to do. */
+const FoundNote: React.FC<{ icon: 'search' | 'user'; line: string; small: string }> = ({ icon, line, small }) => (
+    <div className="friends__found-empty">
+        <span className="friends__found-icon" aria-hidden="true"><Icon name={icon} size={22} /></span>
+        <p className="friends__found-line">{line}</p>
+        <p className="friends__found-small">{small}</p>
+    </div>
+);
 
 interface InviteDialogProps {
     friend: string;

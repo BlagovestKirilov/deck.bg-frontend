@@ -1085,14 +1085,52 @@
 /* What a search found, in a box of three rows' height whatever it holds, so
    the panel below it stays put while a name is typed. */
 .friends__found {
-    --found-row: 52px;
-    height: calc(var(--found-row) * 3);
+    --found-row: 56px;
+    height: calc(var(--found-row) * 3 + 2px);
     overflow: hidden;
 }
-/* The field and its one button, side by side, the button on the input's line. */
-.friends__add-row { display: flex; align-items: flex-end; gap: var(--sp-2); }
-.friends__add-row .field { flex: 1; min-width: 0; }
-.friends__add-row > .btn { flex: none; width: 7.5rem; height: 52px; padding-inline: var(--sp-3); }
+/* Nothing to list yet, or nothing found: said in the middle of the box, with
+   a mark, so the space reads as waiting rather than broken. */
+.friends__found-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    height: 100%;
+    padding: 0 var(--sp-4);
+    border-radius: 14px;
+    border: 1px dashed rgba(29, 27, 24, 0.18);
+    text-align: center;
+}
+.friends__found-icon {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    margin-bottom: var(--sp-1);
+    border-radius: 50%;
+    background: var(--felt-ink-wash);
+    color: var(--felt-ink);
+}
+.friends__found-line { margin: 0; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+.friends__found-small { margin: 0; font-size: var(--fs-sm); color: var(--ink-3); }
+.friends__found-more { margin: var(--sp-1) 0 0; font-size: var(--fs-xs); color: var(--ink-3); text-align: center; }
+/* The search field: the glass inside it, on the left. */
+.friends__search { position: relative; }
+.friends__search .field__input { padding-left: 44px; }
+.friends__search-glass {
+    position: absolute;
+    left: 14px;
+    bottom: 0;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    color: var(--ink-3);
+    pointer-events: none;
+}
+/* The button names whom it is for; a long name gives way, never the line. */
+.friends__send .btn__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* A found player: the whole row is the button that picks them. */
 .friends__picks { list-style: none; margin: 0; padding: 0; }
 .friends__picks li + li { border-top: 1px solid var(--ink-line); }
@@ -1104,16 +1142,35 @@
     height: var(--found-row);
     padding: 0 var(--sp-3);
     border: 0;
-    border-radius: var(--r-md);
+    border-radius: 12px;
     background: none;
+    color: var(--ink);
     font: inherit;
     text-align: left;
     cursor: pointer;
     touch-action: manipulation;
+    transition: background-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
 }
 .friends__pick:hover { background: rgba(29, 27, 24, 0.05); }
-.friends__pick.is-picked { background: var(--felt-ink-wash); box-shadow: inset 0 0 0 1px rgba(21, 82, 53, 0.35); }
-.friends__pick .friends__name { flex: 1; }
+.friends__pick.is-picked { background: var(--felt-ink-wash); box-shadow: inset 0 0 0 2px var(--felt-ink); }
+.friends__pick-text { display: flex; align-items: center; gap: var(--sp-2); flex: 1; min-width: 0; }
+.friends__pick .friends__name { min-width: 0; }
+/* Where the box is narrow, the name keeps its line and the tag goes under it. */
+.friends__found { container: found / inline-size; }
+@container found (max-width: 300px) {
+    .friends__pick-text { flex-direction: column; align-items: flex-start; gap: 2px; }
+    .friends__pick .friends__pick-text .friends__tag { align-self: flex-start; font-size: 0.66rem; padding: 0 var(--sp-2); }
+}
+.friends__picked-mark {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--felt-ink);
+    color: var(--card);
+}
 /* A request waiting for an answer, either way: orange wherever it shows —
    the tag in a search, a sent request in the list, the requests to answer. */
 .friends__tag {
@@ -1140,17 +1197,25 @@
 .friends__section--pending .friends__heading { color: var(--warning-ink); }
 .friends__section--pending .friends__row + .friends__row { border-top-color: rgba(148, 86, 10, 0.2); }
 /* Back to the list, from adding: a quiet link-like button on the card. */
-.friends__back { align-self: flex-start; color: var(--ink-2); border-color: transparent; }
-.friends__back:hover:not(:disabled) { color: var(--ink); background: rgba(29, 27, 24, 0.05); }
+.friends__back {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-1);
+    min-height: var(--tap);
+    margin: calc(var(--sp-2) * -1) 0 calc(var(--sp-2) * -1) calc(var(--sp-1) * -1);
+    padding: 0 var(--sp-2) 0 var(--sp-1);
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    color: var(--ink-2);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+.friends__back:hover { color: var(--ink); background: rgba(29, 27, 24, 0.05); }
 .friends .friends__row .btn--ghost { color: var(--ink); border-color: var(--ink-line); }
 .friends .friends__row .btn--ghost:hover:not(:disabled) { color: var(--ink); background: rgba(29, 27, 24, 0.06); }
-.friends__found-note {
-    margin: 0;
-    padding: var(--sp-2) 0;
-    font-size: var(--fs-sm);
-    line-height: 1.45;
-    color: var(--ink-3);
-}
 .friends__heading {
     margin: 0 0 var(--sp-1);
     font-family: var(--lobby-display);
