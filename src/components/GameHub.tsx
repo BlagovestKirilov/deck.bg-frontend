@@ -15,6 +15,8 @@ import Modal from './ui/Modal';
 import Toast from './ui/Toast';
 import ProfilePage from './ProfilePage';
 import { GAMES } from './lobby/gameCatalogue';
+import { useFriendsContext } from '../context/FriendsContext';
+import FriendsPanel from './friends/FriendsPanel';
 
 /**
  * Picks a game. Deliberately a dumb picker: each game keeps its own lobby, so
@@ -29,6 +31,13 @@ const GameHub: React.FC = () => {
     const [isAdmin, setIsAdmin] = useState(false);
     const [confirmLogout, setConfirmLogout] = useState(false);
     const username = user?.username ?? '';
+
+    // Friends: the list and the requests. Held for the whole app, so a
+    // challenge reaches this player on any screen; the hub opens the panel.
+    const friends = useFriendsContext();
+    const [showFriends, setShowFriends] = useState(false);
+    // What is waiting for this player's answer: requests and a challenge.
+    const waiting = (friends.page?.incoming.length ?? 0) + (friends.page?.incomingChallenge ? 1 : 0);
 
     // Which games are being offered to this player. Null while nothing is known
     // yet — the first visit in a browser — and then every card is drawn, since
@@ -110,6 +119,20 @@ const GameHub: React.FC = () => {
                                 Админ
                             </Button>
                         )}
+                        {/* Friends, with how many requests wait for an answer. */}
+                        <span className="hub-nav__friends">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                icon="users"
+                                className="btn--icon-on-phone"
+                                onClick={() => setShowFriends(true)}
+                                aria-label={waiting ? `Приятели, ${waiting} чакат отговор` : 'Приятели'}
+                            >
+                                Приятели
+                            </Button>
+                            {waiting > 0 && <span className="hub-nav__count tabular" aria-hidden="true">{waiting}</span>}
+                        </span>
                         {/* The same component as Изход, so the two cannot drift
                             apart: one border, one height, one hover. */}
                         <Button
@@ -170,6 +193,14 @@ const GameHub: React.FC = () => {
             </div>
 
             {showProfile && <ProfilePage username={username} onClose={() => setShowProfile(false)} />}
+
+            {showFriends && (
+                <FriendsPanel
+                    friends={friends}
+                    offered={offered.map((game) => game.key)}
+                    onClose={() => setShowFriends(false)}
+                />
+            )}
 
             {confirmLogout && (
                 <Modal

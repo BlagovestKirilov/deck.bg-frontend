@@ -68,6 +68,15 @@ export const test = base.extend({
             problems.push(`request failed: ${url} (${reason})`);
         });
 
+        // Every signed-in screen reads the friends list, and a test about
+        // something else has no reason to know it. Answered here with nobody,
+        // so such a test never reaches a real server on :8080 — whose 401 to a
+        // made-up token would end the session and send the page home. A test
+        // about friends routes /friends itself; its route, set later, wins.
+        await page.route('http://localhost:8080/friends**', (route) => route.fulfill({
+            json: { friends: [], incoming: [], outgoing: [], incomingChallenge: null, outgoingChallenge: null },
+        }));
+
         await use(page);
 
         expect(problems, 'the browser reported errors while the test ran').toEqual([]);

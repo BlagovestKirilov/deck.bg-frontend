@@ -16,6 +16,7 @@ import ConfirmDeletion from './components/ConfirmDeletion';
 import DeletionSuccess from './components/DeletionSuccess';
 import NotFound from './components/NotFound';
 import AdminPage from './components/admin/AdminPage';
+import { FriendsProvider } from './context/FriendsContext';
 import './index.css';
 
 /**
@@ -28,6 +29,8 @@ const App: React.FC = () => {
 
     return (
         <div style={shellStyle}>
+            {/* Friends for every screen: a challenge reaches a player wherever they are. */}
+            <FriendsProvider>
             <Routes>
                 <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="/delete-account" element={<AccountDeletionInfo />} />
@@ -65,6 +68,7 @@ const App: React.FC = () => {
                 <Route path="/admin/*" element={isAuthenticated ? <AdminPage /> : <AuthPage />} />
                 <Route path="*" element={<NotFound />} />
             </Routes>
+            </FriendsProvider>
         </div>
     );
 };

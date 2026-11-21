@@ -71,6 +71,10 @@
     --danger-wash:  rgba(255, 111, 111, 0.13);
     --warning:      #ffb020;
     --warning-wash: rgba(255, 176, 32, 0.14);
+    /* The same warning as ink on a card: something waiting for an answer.
+       ~5.4:1 on --card. */
+    --warning-ink:      #94560a;
+    --warning-ink-wash: rgba(214, 128, 20, 0.14);
 
     /* ---- lines ---- */
     --line:        rgba(255, 255, 255, 0.10);
@@ -1366,8 +1370,10 @@ code, kbd, samp { font-family: var(--font-mono); }
    survived and pushed the icon half a gap off centre. With the wrapper gone the
    icon is the only child and centres exactly. */
 @media (max-width: 768px) {
-    .hub-nav .btn--icon-on-phone .btn__label { display: none; }
-    .hub-nav .btn--icon-on-phone {
+    .hub-nav .btn--icon-on-phone .btn__label,
+    .friends .btn--icon-on-phone .btn__label { display: none; }
+    .hub-nav .btn--icon-on-phone,
+    .friends .btn--icon-on-phone {
         width: var(--tap);
         min-width: var(--tap);
         padding-inline: 0;

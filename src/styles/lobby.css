@@ -191,7 +191,8 @@
 
 /* ---- the shared form parts, reprinted in ink ---- */
 
-.play-card .field__label {
+.play-card .field__label,
+.friends .field__label {
     font-family: var(--lobby-body);
     font-size: var(--fs-sm);
     font-weight: 600;
@@ -199,26 +200,37 @@
     text-transform: none;
     color: var(--ink-2);
 }
-.play-card .field__req { color: var(--suit-red); }
-.play-card .field__input {
+.play-card .field__req,
+.friends .field__req { color: var(--suit-red); }
+.play-card .field__input,
+.friends .field__input {
     border: 1px solid var(--ink-line);
     background: #fff;
     color: var(--ink);
     font-family: var(--lobby-body);
 }
-.play-card .field__input::placeholder { color: var(--ink-3); opacity: 1; }
-.play-card .field__input:hover:not(:disabled) { border-color: rgba(29, 27, 24, 0.34); }
-.play-card .field__input:focus {
+.play-card .field__input::placeholder,
+.friends .field__input::placeholder { color: var(--ink-3); opacity: 1; }
+.play-card .field__input:hover:not(:disabled),
+.friends .field__input:hover:not(:disabled) { border-color: rgba(29, 27, 24, 0.34); }
+.play-card .field__input:focus,
+.friends .field__input:focus {
     border-color: var(--felt-ink);
     background: #fff;
     box-shadow: 0 0 0 3px var(--felt-ink-wash);
 }
-.play-card .field__input[aria-invalid='true'] { border-color: var(--suit-red); }
-.play-card .field__input[aria-invalid='true']:focus { box-shadow: 0 0 0 3px var(--suit-red-wash); }
-.play-card .field__affix { color: var(--ink-3); }
-.play-card .field__affix:hover { color: var(--ink); background: rgba(29, 27, 24, 0.06); }
-.play-card .field__hint { color: var(--ink-3); }
-.play-card .field__error { color: var(--suit-red); }
+.play-card .field__input[aria-invalid='true'],
+.friends .field__input[aria-invalid='true'] { border-color: var(--suit-red); }
+.play-card .field__input[aria-invalid='true']:focus,
+.friends .field__input[aria-invalid='true']:focus { box-shadow: 0 0 0 3px var(--suit-red-wash); }
+.play-card .field__affix,
+.friends .field__affix { color: var(--ink-3); }
+.play-card .field__affix:hover,
+.friends .field__affix:hover { color: var(--ink); background: rgba(29, 27, 24, 0.06); }
+.play-card .field__hint,
+.friends .field__hint { color: var(--ink-3); }
+.play-card .field__error,
+.friends .field__error { color: var(--suit-red); }
 
 /* ---- the outcome card (email confirmed, link expired, account deleted) ---- */
 
@@ -266,7 +278,8 @@
 }
 
 /* Autofill paints its own pale yellow over the card; keep the ink colours. */
-.play-card .field__input:-webkit-autofill {
+.play-card .field__input:-webkit-autofill,
+.friends .field__input:-webkit-autofill {
     -webkit-text-fill-color: var(--ink);
     -webkit-box-shadow: 0 0 0 40px #fff inset;
 }
@@ -1046,3 +1059,302 @@
     .game-pick:hover .art-card,
     .game-pick:hover .art-die { transform: none; }
 }
+
+/* ---- friends (components/friends): the list, requests and challenges ---- */
+/* The count of what waits for an answer, on the hub's Приятели button. */
+.hub-nav__friends { position: relative; display: inline-flex; }
+.hub-nav__count {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: var(--r-pill);
+    background: var(--suit-red);
+    color: var(--card);
+    font-size: var(--fs-xs);
+    font-weight: 800;
+    line-height: 20px;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 0 0 2px rgba(4, 12, 7, 0.6);
+}
+.friends__body { display: flex; flex-direction: column; gap: var(--sp-5); }
+.friends__add { display: flex; flex-direction: column; gap: var(--sp-2); }
+/* What a search found, in a box of three rows' height whatever it holds, so
+   the panel below it stays put while a name is typed. */
+.friends__found {
+    --found-row: 52px;
+    height: calc(var(--found-row) * 3);
+    overflow: hidden;
+}
+/* The field and its one button, side by side, the button on the input's line. */
+.friends__add-row { display: flex; align-items: flex-end; gap: var(--sp-2); }
+.friends__add-row .field { flex: 1; min-width: 0; }
+.friends__add-row > .btn { flex: none; width: 7.5rem; height: 52px; padding-inline: var(--sp-3); }
+/* A found player: the whole row is the button that picks them. */
+.friends__picks { list-style: none; margin: 0; padding: 0; }
+.friends__picks li + li { border-top: 1px solid var(--ink-line); }
+.friends__pick {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+    height: var(--found-row);
+    padding: 0 var(--sp-3);
+    border: 0;
+    border-radius: var(--r-md);
+    background: none;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+}
+.friends__pick:hover { background: rgba(29, 27, 24, 0.05); }
+.friends__pick.is-picked { background: var(--felt-ink-wash); box-shadow: inset 0 0 0 1px rgba(21, 82, 53, 0.35); }
+.friends__pick .friends__name { flex: 1; }
+/* A request waiting for an answer, either way: orange wherever it shows —
+   the tag in a search, a sent request in the list, the requests to answer. */
+.friends__tag {
+    flex: none;
+    align-self: flex-start;
+    padding: 2px var(--sp-2);
+    border-radius: var(--r-pill);
+    font-size: var(--fs-xs);
+    font-weight: 700;
+    line-height: 1.5;
+}
+.friends__tag--pending {
+    color: var(--warning-ink);
+    background: var(--warning-ink-wash);
+    box-shadow: inset 0 0 0 1px rgba(148, 86, 10, 0.25);
+}
+.friends__pick .friends__tag { align-self: center; }
+.friends__section--pending {
+    padding: var(--sp-2) var(--sp-3);
+    border-radius: var(--r-md);
+    background: var(--warning-ink-wash);
+    box-shadow: inset 3px 0 0 var(--warning-ink);
+}
+.friends__section--pending .friends__heading { color: var(--warning-ink); }
+.friends__section--pending .friends__row + .friends__row { border-top-color: rgba(148, 86, 10, 0.2); }
+/* Back to the list, from adding: a quiet link-like button on the card. */
+.friends__back { align-self: flex-start; color: var(--ink-2); border-color: transparent; }
+.friends__back:hover:not(:disabled) { color: var(--ink); background: rgba(29, 27, 24, 0.05); }
+.friends .friends__row .btn--ghost { color: var(--ink); border-color: var(--ink-line); }
+.friends .friends__row .btn--ghost:hover:not(:disabled) { color: var(--ink); background: rgba(29, 27, 24, 0.06); }
+.friends__found-note {
+    margin: 0;
+    padding: var(--sp-2) 0;
+    font-size: var(--fs-sm);
+    line-height: 1.45;
+    color: var(--ink-3);
+}
+.friends__heading {
+    margin: 0 0 var(--sp-1);
+    font-family: var(--lobby-display);
+    font-size: var(--fs-lg);
+    font-weight: 700;
+    color: var(--ink);
+}
+.friends__list { list-style: none; margin: 0; padding: 0; }
+.friends__row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    min-height: var(--tap);
+    padding: var(--sp-2) 0;
+}
+.friends__row + .friends__row { border-top: 1px solid var(--ink-line); }
+.friends__row > .friends__name { flex: 1; }
+/* A friend: the dot and the name with its status, their ranks, and what can
+   be done — the buttons wrap under the name on a narrow phone. */
+.friends__row--friend { flex-wrap: wrap; }
+.friends__who { display: flex; flex-direction: column; flex: 1; min-width: 8ch; }
+.friends__name { min-width: 0; font-weight: 700; color: var(--ink); }
+.friends__status { font-size: var(--fs-sm); color: var(--ink-3); }
+/* Here: the table's green. Playing: gold. Away: an empty ring. The status in
+   words beside it says the same, for anyone who cannot tell the colours. */
+.friends__dot { flex: none; width: 10px; height: 10px; border-radius: 50%; }
+.friends__dot--here { background: var(--felt-ink); box-shadow: 0 0 0 3px var(--felt-ink-wash); }
+.friends__dot--playing { background: var(--gold-deep); box-shadow: 0 0 0 3px var(--gold-wash); }
+.friends__dot--away { box-shadow: inset 0 0 0 2px var(--ink-3); }
+.friends__ranks { display: flex; align-items: center; gap: var(--sp-1); }
+.friends__rank { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; }
+.friends__rank-game { font-size: 0.68rem; line-height: 1; color: var(--ink-3); }
+.friends__rank-letter { display: none; }
+/* The list measures itself: the game's name goes under each medal while the
+   row has room for it, and only where it does not — the narrowest phones —
+   does the name become its first letter on the medal's corner. */
+.friends__list { container: friends-list / inline-size; }
+@container friends-list (max-width: 270px) {
+    .friends__rank { position: relative; }
+    .friends__rank img { width: 28px !important; height: 28px !important; }
+    .friends__rank-game { display: none; }
+    .friends__rank-letter {
+        position: absolute;
+        right: -3px;
+        bottom: -3px;
+        display: grid;
+        place-items: center;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: var(--ink);
+        color: var(--card);
+        font-size: 0.56rem;
+        font-weight: 800;
+        line-height: 1;
+        box-shadow: 0 0 0 1.5px var(--card);
+    }
+}
+/* Phones: one line a friend, on the narrowest too. The gaps close, and the
+   name and its status give way with an ellipsis before anything wraps. The
+   two buttons keep their 44px: they are what a thumb is for. */
+@media (max-width: 480px) {
+    .friends__row--friend { flex-wrap: nowrap; gap: var(--sp-2); }
+    .friends__who { min-width: 0; }
+    .friends__status { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .friends__ranks { gap: 4px; }
+    .friends__rank-game { font-size: 0.62rem; }
+    .friends__actions { gap: 6px; }
+    /* Both buttons the same 44px square: the bin was a few px wider. */
+    .friends__actions .btn:not(:has(.btn__label)),
+    .friends__actions .btn--icon-on-phone { width: var(--tap); min-width: var(--tap); padding-inline: 0; }
+}
+/* The narrowest phones: the panel's own margin gives the names more room. */
+@media (max-width: 380px) {
+    .modal.friends { padding: var(--sp-4); }
+}
+.friends__actions { display: flex; align-items: center; gap: var(--sp-2); flex: none; margin-left: auto; }
+.friends__empty { margin: 0; font-size: var(--fs-md); color: var(--ink-2); }
+/* Five friends to a page, and the way between pages under them. */
+.friends__pager {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--sp-3);
+    padding-top: var(--sp-2);
+    border-top: 1px solid var(--ink-line);
+}
+.friends__pager-at { min-width: 5ch; text-align: center; font-size: var(--fs-sm); color: var(--ink-2); }
+.friends__pager .btn--ghost { color: var(--ink); border-color: var(--ink-line); }
+
+/* Inviting a friend: each game as the hub draws it, on the card — its
+   picture on a patch of felt, its name, how it is won. One tap sends. */
+.invite__body { display: flex; flex-direction: column; gap: var(--sp-3); }
+.invite__lede { margin: 0; font-size: var(--fs-sm); color: var(--ink-2); }
+.invite__games { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); }
+.invite__game {
+    display: grid;
+    grid-template-columns: clamp(80px, 24vw, 104px) 1fr auto;
+    align-items: center;
+    gap: var(--sp-3);
+    width: 100%;
+    padding: var(--sp-2);
+    border: 1px solid var(--ink-line);
+    border-radius: 14px;
+    background: rgba(29, 27, 24, 0.025);
+    color: var(--ink);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: border-color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+}
+.invite__game:hover:not(:disabled) { border-color: var(--felt-ink); background: var(--felt-ink-wash); }
+.invite__game:disabled { cursor: default; opacity: 0.6; }
+.invite__game[aria-busy='true'] { opacity: 1; border-color: var(--felt-ink); background: var(--felt-ink-wash); }
+.invite__game .spinner { color: var(--felt-ink); }
+.invite__art {
+    display: block;
+    aspect-ratio: 4 / 3;
+    border-radius: 10px;
+    background: radial-gradient(ellipse at 50% 60%, #1d5333, #0c2817);
+    overflow: hidden;
+}
+.invite__art svg { display: block; width: 100%; height: 100%; }
+.invite__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.invite__name { font-family: var(--lobby-display); font-size: 1.45rem; font-weight: 700; line-height: 1.1; }
+.invite__rule { font-size: var(--fs-sm); color: var(--ink-3); }
+/* A challenge this player sent, still waiting: a strip of the table's green
+   at the top of the panel, with the way to take it back. */
+.friends__waiting {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+    border-radius: var(--r-md);
+    background: var(--felt-ink-wash);
+    box-shadow: inset 0 0 0 1px rgba(21, 82, 53, 0.25);
+    color: var(--ink);
+}
+.friends__waiting .spinner { flex: none; color: var(--felt-ink); }
+.friends__waiting-text { flex: 1; font-size: var(--fs-sm); }
+.friends__waiting .btn--ghost { color: var(--ink); border-color: var(--ink-line); }
+.friends__error { margin: 0; font-weight: 600; color: var(--suit-red); }
+
+/* A challenge made to this player: who, what, and a minute running down. */
+.challenge__body { display: flex; flex-direction: column; gap: var(--sp-3); }
+.challenge__line { margin: 0; font-size: var(--fs-lg); color: var(--ink); }
+.challenge__note { margin: 0; font-size: var(--fs-sm); color: var(--ink-3); }
+.challenge__clock {
+    height: 8px;
+    overflow: hidden;
+    border-radius: var(--r-pill);
+    background: rgba(29, 27, 24, 0.1);
+    box-shadow: inset 0 1px 2px rgba(29, 27, 24, 0.25);
+}
+.challenge__fuse {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+    transform-origin: 0 50%;
+    transition: transform 1s linear;
+}
+/* The challenge this player made, waiting: a card across the foot of the
+   hub, card stock edged in the table's green — the minute left on a ring,
+   who is being waited for, and the way to take it back. */
+.challenge-bar {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--sa-bottom) + var(--sp-4));
+    translate: -50% 0;
+    z-index: var(--z-hud);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-3);
+    width: min(calc(100% - 2 * var(--sp-4)), 26rem);
+    padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-3);
+    border-radius: 18px;
+    background: var(--card);
+    color: var(--ink);
+    box-shadow: inset 0 0 0 2px var(--felt-ink), var(--sh-3);
+}
+.challenge-bar__text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.3; }
+.challenge-bar__who { font-size: var(--fs-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.challenge-bar__what { font-size: var(--fs-sm); color: var(--ink-3); }
+/* The minute left: a green ring that empties, the seconds inside it. */
+.countdown-ring { position: relative; flex: none; width: 44px; height: 44px; }
+.countdown-ring svg { display: block; width: 100%; height: 100%; rotate: -90deg; }
+.countdown-ring circle { fill: none; stroke-width: 3; }
+.countdown-ring__track { stroke: var(--ink-line); }
+.countdown-ring__left {
+    stroke: var(--felt-ink);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1s linear;
+}
+.countdown-ring__count {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    font-family: var(--lobby-display);
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--felt-ink);
+}
+.challenge-bar .btn--ghost { color: var(--ink); border-color: var(--ink-line); }
+.challenge-bar .btn--ghost:hover:not(:disabled) { color: var(--ink); background: rgba(29, 27, 24, 0.06); }

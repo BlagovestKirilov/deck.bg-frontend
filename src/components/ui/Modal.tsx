@@ -75,6 +75,25 @@ const Modal: React.FC<ModalProps> = ({
         };
     }, []);
 
+    // Escape is heard on the dialog itself — and also on the page, for when
+    // focus has fallen out of it: a button pressed inside can take itself off
+    // the screen, which leaves focus on the body, where the dialog's own
+    // handler never hears a key. Only the topmost dialog answers, and only
+    // while focus is in no dialog at all.
+    const onCloseRef = useRef(onClose);
+    onCloseRef.current = onClose;
+    useEffect(() => {
+        const onPageKey = (e: KeyboardEvent) => {
+            if (e.key !== 'Escape' || !onCloseRef.current) return;
+            if ((document.activeElement as HTMLElement | null)?.closest('[role="dialog"]')) return;
+            const dialogs = document.querySelectorAll('[role="dialog"]');
+            if (dialogs[dialogs.length - 1] !== dialogRef.current) return;
+            onCloseRef.current();
+        };
+        document.addEventListener('keydown', onPageKey);
+        return () => document.removeEventListener('keydown', onPageKey);
+    }, []);
+
     const onKeyDown = useCallback(
         (e: React.KeyboardEvent) => {
             if (e.key === 'Escape' && onClose) {

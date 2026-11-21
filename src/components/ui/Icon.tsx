@@ -11,6 +11,9 @@ import React from 'react';
 
 export type IconName =
     | 'user'
+    | 'users'
+    | 'userPlus'
+    | 'play'
     | 'warning'
     | 'mail'
     | 'check'
@@ -62,6 +65,28 @@ const PATHS: Record<IconName, React.ReactNode> = {
         <>
             <circle cx="12" cy="8" r="3.6" />
             <path d="M4.5 20c.6-3.7 3.7-5.6 7.5-5.6s6.9 1.9 7.5 5.6" />
+        </>
+    ),
+    /* Play, in a ring: a game, now — the invitation to one. */
+    play: (
+        <>
+            <circle cx="12" cy="12" r="9" />
+            <path d="M10.2 8.6v6.8l5.6-3.4-5.6-3.4Z" />
+        </>
+    ),
+    userPlus: (
+        <>
+            <circle cx="10" cy="8" r="3.6" />
+            <path d="M2.8 20c.6-3.7 3.5-5.6 7.2-5.6 1.4 0 2.6.3 3.7.8" />
+            <path d="M18.5 13.5v6M15.5 16.5h6" />
+        </>
+    ),
+    users: (
+        <>
+            <circle cx="9" cy="8.4" r="3.2" />
+            <path d="M2.8 19.5c.6-3.3 3.1-5 6.2-5s5.6 1.7 6.2 5" />
+            <path d="M15.4 5.4a3.1 3.1 0 0 1 0 6" />
+            <path d="M17.4 14.7c2 .6 3.4 2.2 3.8 4.8" />
         </>
     ),
     warning: (
