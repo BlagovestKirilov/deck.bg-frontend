@@ -47,7 +47,8 @@ export type FriendEventType =
     | 'CHALLENGE_DECLINED'
     | 'CHALLENGE_CANCELLED'
     | 'CHALLENGE_EXPIRED'
-    | 'GAME_STARTED';
+    | 'GAME_STARTED'
+    | 'PRESENCE';
 
 /** What happened among this player's friends, on /topic/friends/{username}. */
 export interface FriendEvent {
